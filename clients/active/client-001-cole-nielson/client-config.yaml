@@ -12,10 +12,10 @@ client:
   created_at: "2024-06-09T17:00:00Z"
   status: "active"
 
-# Email domains (extracted from environment variables)
+# Email domains (aligned with working Mailgun configuration)
 domains:
-  primary: "colenielson.dev"  # Inferred from email addresses
-  support: "support@colenielson.dev"
+  primary: "mail.colesportfolio.com"  # Configured Mailgun domain
+  support: "support@mail.colesportfolio.com"
   mailgun: "mail.colesportfolio.com"  # Configured Mailgun domain
 
 # Company branding (current hard-coded values)

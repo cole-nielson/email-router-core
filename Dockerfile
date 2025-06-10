@@ -21,8 +21,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copy application code and client configurations
 COPY app/ ./app/
+COPY clients/ ./clients/
 
 # Create non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser appuser \
