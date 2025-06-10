@@ -566,4 +566,6 @@ ClientManager = EnhancedClientManager
 
 def get_client_manager():
     """Dependency injection function for ClientManager."""
-    return EnhancedClientManager() 
+    if not hasattr(get_client_manager, '_instance'):
+        get_client_manager._instance = EnhancedClientManager()
+    return get_client_manager._instance 

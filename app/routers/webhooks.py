@@ -8,7 +8,7 @@ from fastapi import APIRouter, Request, BackgroundTasks, Depends
 from typing import Optional
 
 from ..services.dynamic_classifier import DynamicClassifier, get_dynamic_classifier
-from ..services.client_manager import ClientManager, get_client_manager
+from ..services.client_manager import get_client_manager
 from ..services.routing_engine import RoutingEngine, get_routing_engine
 from ..services.email_composer import generate_customer_acknowledgment, generate_team_analysis
 from ..services.email_sender import send_auto_reply, forward_to_team
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/mailgun/inbound")
+@router.post("/mailgun/inbound", response_model=None)
 async def mailgun_inbound_webhook(
     request: Request, 
     background_tasks: BackgroundTasks,
@@ -199,7 +199,7 @@ Please review this email manually.
         logger.error(f"Failed to send failure notification: {e}")
 
 
-@router.get("/status")
+@router.get("/status", response_model=None)
 async def webhook_status(client_manager = Depends(get_client_manager)):
     """
     Get webhook processing status and client information.
@@ -248,7 +248,7 @@ async def webhook_status(client_manager = Depends(get_client_manager)):
         return {"status": "error", "message": str(e)}
 
 
-@router.post("/test")
+@router.post("/test", response_model=None)
 async def test_webhook(request: Request, background_tasks: BackgroundTasks,
                       client_manager = Depends(get_client_manager),
                       dynamic_classifier = Depends(get_dynamic_classifier),
