@@ -188,7 +188,9 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
         
         # Define webhook endpoints (use different auth)
         self.webhook_endpoints = {
-            "/webhooks/mailgun/inbound"
+            "/webhooks/mailgun/inbound",
+            "/webhooks/status",
+            "/webhooks/test"
         }
         
         # Define admin-only endpoints
@@ -260,7 +262,8 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
     
     def _is_webhook_endpoint(self, path: str) -> bool:
         """Check if endpoint is a webhook."""
-        return any(path.startswith(endpoint) for endpoint in self.webhook_endpoints)
+        # Check if path starts with /webhooks/ - all webhook endpoints should be public
+        return path.startswith("/webhooks/")
     
     def _extract_api_key(self, request: Request) -> Optional[str]:
         """Extract API key from request headers."""

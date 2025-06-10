@@ -5,7 +5,7 @@ API v1 Router for client management and system operations.
 
 import logging
 import time
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Annotated
 from fastapi import APIRouter, HTTPException, status, Depends, Query, Path
 from datetime import datetime
 
@@ -28,7 +28,7 @@ metrics = MetricsCollector()
 
 @router.get("/status", response_model=APIStatusResponse, tags=["System Status"])
 async def get_api_status(
-    client_manager: ClientManager = Depends(get_client_manager)
+    client_manager: Annotated[ClientManager, Depends(get_client_manager)]
 ):
     """
     Get comprehensive API status and system information.
@@ -122,12 +122,12 @@ async def get_api_status(
 
 @router.get("/clients", response_model=ClientListResponse, tags=["Client Management"])
 async def list_clients(
+    client_manager: Annotated[ClientManager, Depends(get_client_manager)],
+    current_user: Annotated[Dict, Depends(get_current_user)],
     limit: int = Query(default=50, ge=1, le=100, description="Maximum number of clients to return"),
     offset: int = Query(default=0, ge=0, description="Number of clients to skip"),
     status_filter: Optional[str] = Query(default=None, description="Filter by client status"),
-    industry_filter: Optional[str] = Query(default=None, description="Filter by industry"),
-    client_manager: ClientManager = Depends(get_client_manager),
-    current_user: Dict = Depends(get_current_user)
+    industry_filter: Optional[str] = Query(default=None, description="Filter by industry")
 ):
     """
     List all configured clients with pagination and filtering.
@@ -223,9 +223,9 @@ async def list_clients(
 
 @router.get("/clients/{client_id}", response_model=ClientSummary, tags=["Client Management"])
 async def get_client(
-    client_id: str = Path(..., description="Client identifier"),
-    client_manager: ClientManager = Depends(get_client_manager),
-    current_user: Dict = Depends(get_current_user)
+    client_manager: Annotated[ClientManager, Depends(get_client_manager)],
+    current_user: Annotated[Dict, Depends(get_current_user)],
+    client_id: str = Path(..., description="Client identifier")
 ):
     """
     Get detailed information about a specific client.
@@ -281,9 +281,9 @@ async def get_client(
 
 @router.post("/clients/{client_id}/validate", tags=["Client Management"])
 async def validate_client(
-    client_id: str = Path(..., description="Client identifier"),
-    client_manager: ClientManager = Depends(get_client_manager),
-    current_user: Dict = Depends(get_current_user)
+    client_manager: Annotated[ClientManager, Depends(get_client_manager)],
+    current_user: Annotated[Dict, Depends(get_current_user)],
+    client_id: str = Path(..., description="Client identifier")
 ):
     """
     Validate client configuration and setup.
@@ -371,9 +371,9 @@ async def validate_client(
 
 @router.post("/domain/resolve", response_model=DomainResolutionResult, tags=["Domain Resolution"])
 async def resolve_domain(
-    domain: str = Query(..., description="Domain to resolve"),
-    client_manager: ClientManager = Depends(get_client_manager),
-    current_user: Dict = Depends(get_current_user)
+    client_manager: Annotated[ClientManager, Depends(get_client_manager)],
+    current_user: Annotated[Dict, Depends(get_current_user)],
+    domain: str = Query(..., description="Domain to resolve")
 ):
     """
     Resolve domain to client using advanced matching strategies.
@@ -430,7 +430,7 @@ async def resolve_domain(
 
 @router.get("/metrics/summary", tags=["System Metrics"])
 async def get_metrics_summary(
-    current_user: Dict = Depends(get_current_user)
+    current_user: Annotated[Dict, Depends(get_current_user)]
 ):
     """
     Get comprehensive system metrics summary.
@@ -469,9 +469,9 @@ async def get_metrics_summary(
 
 @router.post("/clients/{client_id}/refresh", tags=["Client Management"])
 async def refresh_client_config(
-    client_id: str = Path(..., description="Client identifier"),
-    client_manager: ClientManager = Depends(get_client_manager),
-    current_user: Dict = Depends(get_current_user)
+    client_manager: Annotated[ClientManager, Depends(get_client_manager)],
+    current_user: Annotated[Dict, Depends(get_current_user)],
+    client_id: str = Path(..., description="Client identifier")
 ):
     """
     Refresh client configuration from disk.

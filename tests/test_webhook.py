@@ -24,16 +24,16 @@ def test_health_endpoint():
     assert data["status"] == "healthy"
     assert "components" in data
     assert "ai_classifier" in data["components"]
-    assert "email_sender" in data["components"]
+    assert "email_service" in data["components"]
 
 def test_root_endpoint():
     """Test root endpoint."""
     response = client.get("/")
     assert response.status_code == 200
     data = response.json()
-    assert "AI Email Router" in data["service"]
-    assert data["status"] == "active"
-    assert "/webhooks/mailgun/inbound" in data["webhook"]
+    assert "Email Router SaaS API" in data["name"]
+    assert data["status"] == "operational"
+    assert "/webhooks/mailgun/inbound" in data["endpoints"]["webhook_inbound"]
 
 def test_webhook_endpoint_valid_data():
     """Test Mailgun webhook endpoint with valid data."""

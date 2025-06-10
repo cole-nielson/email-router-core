@@ -495,10 +495,10 @@ class RoutingEngine:
         }
 
 
-def get_routing_engine(client_manager: ClientManager = None):
+def get_routing_engine():
     """Dependency injection function for RoutingEngine."""
-    if client_manager is None:
+    if not hasattr(get_routing_engine, '_instance'):
         from .client_manager import get_client_manager
         client_manager = get_client_manager()
-    
-    return RoutingEngine(client_manager) 
+        get_routing_engine._instance = RoutingEngine(client_manager)
+    return get_routing_engine._instance 

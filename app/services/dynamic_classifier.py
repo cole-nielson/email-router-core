@@ -342,10 +342,10 @@ class DynamicClassifier:
             return {}
 
 
-def get_dynamic_classifier(client_manager: ClientManager = None):
+def get_dynamic_classifier():
     """Dependency injection function for DynamicClassifier."""
-    if client_manager is None:
+    if not hasattr(get_dynamic_classifier, '_instance'):
         from .client_manager import get_client_manager
         client_manager = get_client_manager()
-    
-    return DynamicClassifier(client_manager) 
+        get_dynamic_classifier._instance = DynamicClassifier(client_manager)
+    return get_dynamic_classifier._instance 

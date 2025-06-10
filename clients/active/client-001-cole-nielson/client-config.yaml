@@ -16,7 +16,7 @@ client:
 domains:
   primary: "colenielson.dev"  # Inferred from email addresses
   support: "support@colenielson.dev"
-  mailgun: "${MAILGUN_DOMAIN}"  # Will be loaded from env
+  mailgun: "mail.colesportfolio.com"  # Configured Mailgun domain
 
 # Company branding (current hard-coded values)
 branding:

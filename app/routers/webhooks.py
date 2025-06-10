@@ -5,10 +5,10 @@ Webhook handlers for incoming emails with multi-tenant support.
 
 import logging
 from fastapi import APIRouter, Request, BackgroundTasks, Depends
-from typing import Optional
+from typing import Optional, Annotated
 
 from ..services.dynamic_classifier import DynamicClassifier, get_dynamic_classifier
-from ..services.client_manager import get_client_manager
+from ..services.client_manager import ClientManager, get_client_manager
 from ..services.routing_engine import RoutingEngine, get_routing_engine
 from ..services.email_composer import generate_customer_acknowledgment, generate_team_analysis
 from ..services.email_sender import send_auto_reply, forward_to_team
@@ -21,9 +21,9 @@ router = APIRouter()
 async def mailgun_inbound_webhook(
     request: Request, 
     background_tasks: BackgroundTasks,
-    client_manager = Depends(get_client_manager),
-    dynamic_classifier = Depends(get_dynamic_classifier),
-    routing_engine = Depends(get_routing_engine)
+    client_manager: Annotated[ClientManager, Depends(get_client_manager)],
+    dynamic_classifier: Annotated[DynamicClassifier, Depends(get_dynamic_classifier)],
+    routing_engine: Annotated[RoutingEngine, Depends(get_routing_engine)]
 ):
     """
     🎯 CORE MVP ENDPOINT: Receive inbound emails from Mailgun with multi-tenant support
@@ -200,7 +200,7 @@ Please review this email manually.
 
 
 @router.get("/status", response_model=None)
-async def webhook_status(client_manager = Depends(get_client_manager)):
+async def webhook_status(client_manager: Annotated[ClientManager, Depends(get_client_manager)]):
     """
     Get webhook processing status and client information.
     
@@ -250,9 +250,9 @@ async def webhook_status(client_manager = Depends(get_client_manager)):
 
 @router.post("/test", response_model=None)
 async def test_webhook(request: Request, background_tasks: BackgroundTasks,
-                      client_manager = Depends(get_client_manager),
-                      dynamic_classifier = Depends(get_dynamic_classifier),
-                      routing_engine = Depends(get_routing_engine)):
+                      client_manager: Annotated[ClientManager, Depends(get_client_manager)],
+                      dynamic_classifier: Annotated[DynamicClassifier, Depends(get_dynamic_classifier)],
+                      routing_engine: Annotated[RoutingEngine, Depends(get_routing_engine)]):
     """
     Test endpoint for webhook functionality.
     

@@ -17,7 +17,15 @@ from datetime import datetime
 import time
 from typing import Dict, List
 
-# from .routers.webhooks import router as webhook_router
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+    print("✅ Loaded environment variables from .env file")
+except ImportError:
+    print("⚠️ python-dotenv not installed, using system environment variables")
+
+from .routers.webhooks import router as webhook_router
 from .routers.api.v1 import router as api_v1_router
 from .models.schemas import HealthResponse, APIInfo
 from .utils.config import get_config
@@ -184,9 +192,7 @@ def custom_openapi():
 app.openapi = custom_openapi
 
 # Include routers with API versioning
-# Note: Webhook router temporarily disabled due to FastAPI dependency injection type issue
-# This will be resolved in a future update
-# app.include_router(webhook_router, prefix="/webhooks", tags=["Webhooks"])
+app.include_router(webhook_router, prefix="/webhooks", tags=["Webhooks"])
 app.include_router(api_v1_router, prefix="/api/v1", tags=["Client Management"])
 
 # Custom documentation endpoints
