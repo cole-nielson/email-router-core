@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en" data-theme="custom">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="description" content="Custom AI Automation Dashboard - Real-time monitoring and analytics for your automated business processes" />
+		<meta name="robots" content="noindex, nofollow" />
+		
+		<!-- Security headers -->
+		<meta http-equiv="X-Content-Type-Options" content="nosniff" />
+		<meta http-equiv="X-Frame-Options" content="DENY" />
+		<meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+		
+		<!-- Preload critical resources -->
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		
+		<title>%sveltekit.title%</title>
+		%sveltekit.head%
+	</head>
+	<body data-sveltekit-preload-data="hover" class="bg-base-100 text-base-content">
+		<div style="display: contents">%sveltekit.body%</div>
+		
+		<!-- Performance monitoring -->
+		<script>
+			// Track Core Web Vitals
+			if ('performance' in window && 'PerformanceObserver' in window) {
+				const observer = new PerformanceObserver((list) => {
+					for (const entry of list.getEntries()) {
+						if (entry.entryType === 'navigation') {
+							console.log('Page Load Time:', entry.loadEventEnd - entry.loadEventStart);
+						}
+					}
+				});
+				observer.observe({ entryTypes: ['navigation'] });
+			}
+		</script>
+	</body>
+</html>

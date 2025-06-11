@@ -1,0 +1,182 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* Global styles for the dashboard */
+@layer base {
+  html {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply antialiased;
+  }
+}
+
+/* Dashboard-specific component styles */
+@layer components {
+  /* Dashboard layout */
+  .dashboard-container {
+    @apply min-h-screen bg-base-100 flex;
+  }
+  
+  .dashboard-sidebar {
+    @apply w-64 bg-base-200 border-r border-base-300 flex-shrink-0;
+  }
+  
+  .dashboard-main {
+    @apply flex-1 flex flex-col overflow-hidden;
+  }
+  
+  .dashboard-header {
+    @apply bg-base-100 border-b border-base-300 px-6 py-4 flex-shrink-0;
+  }
+  
+  /* Mobile responsive sidebar */
+  @media (max-width: 768px) {
+    .dashboard-sidebar {
+      @apply fixed inset-y-0 left-0 z-30 transform -translate-x-full;
+    }
+  }
+  
+  /* Metric cards */
+  .metric-card {
+    @apply bg-white rounded-lg shadow-sm border border-base-300 p-6 hover:shadow-md transition-shadow;
+  }
+  
+  .metric-value {
+    @apply text-3xl font-bold text-primary;
+  }
+  
+  .metric-label {
+    @apply text-sm font-medium text-base-content/70 uppercase tracking-wide;
+  }
+  
+  .metric-change {
+    @apply text-sm font-medium;
+  }
+  
+  .metric-change.positive {
+    @apply text-success;
+  }
+  
+  .metric-change.negative {
+    @apply text-error;
+  }
+  
+  /* Status indicators */
+  .status-indicator {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .status-healthy {
+    @apply bg-success/10 text-success;
+  }
+  
+  .status-warning {
+    @apply bg-warning/10 text-warning;
+  }
+  
+  .status-error {
+    @apply bg-error/10 text-error;
+  }
+  
+  /* Activity feed */
+  .activity-item {
+    @apply flex items-start space-x-3 py-3 border-b border-base-200 last:border-b-0;
+  }
+  
+  .activity-icon {
+    @apply flex-shrink-0 w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center;
+  }
+  
+  .activity-content {
+    @apply flex-1 min-w-0;
+  }
+  
+  .activity-title {
+    @apply text-sm font-medium text-base-content;
+  }
+  
+  .activity-description {
+    @apply text-xs text-base-content/70 mt-1;
+  }
+  
+  .activity-time {
+    @apply text-xs text-base-content/50 mt-1;
+  }
+  
+  /* Real-time indicators */
+  .pulse-indicator {
+    @apply relative;
+  }
+  
+  .pulse-indicator::before {
+    @apply absolute inset-0 rounded-full animate-ping bg-success opacity-75;
+    content: '';
+  }
+  
+  .pulse-indicator::after {
+    @apply relative rounded-full bg-success;
+    content: '';
+  }
+  
+  /* Chart containers */
+  .chart-container {
+    @apply relative h-64 w-full;
+  }
+  
+  .chart-loading {
+    @apply absolute inset-0 flex items-center justify-center bg-base-100/50;
+  }
+  
+  /* Loading states */
+  .skeleton {
+    @apply animate-pulse bg-base-300 rounded;
+  }
+  
+  .skeleton-text {
+    @apply h-4 bg-base-300 rounded;
+  }
+  
+  /* Responsive utilities */
+  @media (max-width: 768px) {
+    .dashboard-sidebar {
+      @apply -translate-x-full;
+    }
+    
+    .dashboard-main {
+      @apply ml-0;
+    }
+    
+    .mobile-sidebar-open .dashboard-sidebar {
+      @apply translate-x-0;
+    }
+  }
+}
+
+@layer utilities {
+  /* Custom scrollbar */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.base-300') theme('colors.base-100');
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: theme('colors.base-100');
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: theme('colors.base-300');
+    border-radius: 3px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: theme('colors.base-400');
+  }
+}

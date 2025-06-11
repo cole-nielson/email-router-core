@@ -81,3 +81,13 @@ email_cache/
 # 📊 MONITORING & ANALYTICS
 monitoring/
 analytics/
+
+# 🌐 NODE.JS & UI DEPENDENCIES
+ui/node_modules/
+ui/.svelte-kit/
+ui/build/
+ui/dist/
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
