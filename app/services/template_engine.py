@@ -1,12 +1,15 @@
 """
 Template engine for AI prompt composition with client-specific context.
 🎨 Composes prompts by injecting client data into template files.
+Enhanced with professional email template support and branding integration.
 """
 
 import logging
 import re
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from string import Template
+import yaml
+from pathlib import Path
 
 from ..services.client_manager import ClientManager
 from ..utils.client_loader import load_ai_prompt, load_fallback_responses, ClientLoadError
@@ -14,28 +17,176 @@ from ..models.client_config import ClientConfig
 
 logger = logging.getLogger(__name__)
 
+class ValidationResult:
+    """Template validation result."""
+    def __init__(self, is_valid: bool = True, errors: List[str] = None, warnings: List[str] = None):
+        self.is_valid = is_valid
+        self.errors = errors or []
+        self.warnings = warnings or []
 
-class TemplateEngine:
+class EnhancedTemplateEngine:
     """
-    AI prompt template engine with client-specific data injection.
+    Enhanced AI prompt template engine with client-specific data injection.
     
-    Loads prompt templates and injects client configuration data
-    to create personalized AI prompts for each client.
+    Features:
+    - Standardized {{variable}} syntax only
+    - Dynamic client branding injection
+    - Template validation and caching
+    - Fallback value support: {{variable|default:"fallback"}}
+    - Nested variable access: {{client.branding.primary_color}}
     """
     
     def __init__(self, client_manager: ClientManager):
         """
-        Initialize template engine.
+        Initialize enhanced template engine.
         
         Args:
             client_manager: ClientManager instance for accessing client data
         """
         self.client_manager = client_manager
         self._template_cache: Dict[str, str] = {}
+        self._branding_cache: Dict[str, Dict[str, Any]] = {}
+        self.validation_rules = {
+            'required_variables': ['client.name'],
+            'max_template_size': 50000,  # 50KB max template size
+            'allowed_html_tags': ['div', 'p', 'h1', 'h2', 'h3', 'span', 'strong', 'em', 'br', 'img', 'a']
+        }
     
+    def _load_client_branding(self, client_id: str) -> Dict[str, Any]:
+        """
+        Load client branding configuration including colors.
+        
+        Args:
+            client_id: Client identifier
+            
+        Returns:
+            Complete branding configuration
+        """
+        cache_key = f"branding_{client_id}"
+        
+        # Check cache first
+        if cache_key in self._branding_cache:
+            return self._branding_cache[cache_key]
+        
+        try:
+            client_config = self.client_manager.get_client_config(client_id)
+            
+            # Load colors from branding/colors.yaml
+            colors_file = Path(f"clients/active/{client_id}/branding/colors.yaml")
+            colors = {}
+            if colors_file.exists():
+                with open(colors_file, 'r') as f:
+                    colors = yaml.safe_load(f) or {}
+            
+            # Enhanced branding context
+            branding = {
+                'company_name': client_config.branding.company_name,
+                'email_signature': client_config.branding.email_signature,
+                'primary_color': client_config.branding.primary_color,
+                'secondary_color': client_config.branding.secondary_color,
+                'logo_url': client_config.branding.logo_url or '',
+                'footer_text': getattr(client_config.branding, 'footer_text', ''),
+                
+                # Enhanced color palette from colors.yaml
+                'colors': colors,
+                
+                # Template-ready color variables
+                'header_gradient': colors.get('email', {}).get('header_background', 
+                    f"linear-gradient(135deg, {client_config.branding.primary_color}, {client_config.branding.secondary_color})"),
+                'header_text_color': colors.get('email', {}).get('header_text', '#ffffff'),
+                'body_background': colors.get('email', {}).get('body_background', '#ffffff'),
+                'body_text_color': colors.get('email', {}).get('body_text', '#374151'),
+                'accent_background': colors.get('email', {}).get('accent_background', '#f8f9ff'),
+                'accent_border_color': colors.get('email', {}).get('accent_border', client_config.branding.primary_color),
+                'footer_background': colors.get('email', {}).get('footer_background', '#f8f9fa'),
+                'footer_text_color': colors.get('email', {}).get('footer_text', '#6b7280'),
+                'link_color': colors.get('email', {}).get('link_color', client_config.branding.primary_color),
+            }
+            
+            # Cache the result
+            self._branding_cache[cache_key] = branding
+            return branding
+            
+        except Exception as e:
+            logger.error(f"Failed to load client branding for {client_id}: {e}")
+            # Return minimal branding fallback
+            return {
+                'company_name': 'Email Router',
+                'primary_color': '#667eea',
+                'secondary_color': '#764ba2',
+                'header_gradient': 'linear-gradient(135deg, #667eea, #764ba2)',
+                'header_text_color': '#ffffff',
+                'body_background': '#ffffff',
+                'body_text_color': '#374151',
+                'logo_url': ''
+            }
+    
+    def validate_template(self, template_content: str, client_id: str = None) -> ValidationResult:
+        """
+        Validate template content for syntax and structure.
+        
+        Args:
+            template_content: Template content to validate
+            client_id: Optional client ID for client-specific validation
+            
+        Returns:
+            ValidationResult with validation status and messages
+        """
+        errors = []
+        warnings = []
+        
+        try:
+            # Check template size
+            if len(template_content) > self.validation_rules['max_template_size']:
+                errors.append(f"Template exceeds maximum size of {self.validation_rules['max_template_size']} bytes")
+            
+            # Validate variable syntax - only {{}} allowed
+            # Find single braces that are NOT part of double braces
+            old_syntax_matches = re.findall(r'(?<!\{)\{([^{][^}]*)\}(?!\})', template_content)
+            if old_syntax_matches:
+                warnings.append(f"Found {len(old_syntax_matches)} old-style {{variable}} patterns. Use {{{{variable}}}} syntax instead.")
+            
+            # Check for properly formed {{}} variables
+            variable_matches = re.findall(r'\{\{([^}]+)\}\}', template_content)
+            for var in variable_matches:
+                # Check for default value syntax: {{variable|default:"value"}}
+                if '|default:' in var:
+                    var_name, default_part = var.split('|default:', 1)
+                    if not (default_part.startswith('"') and default_part.endswith('"')):
+                        errors.append(f"Invalid default syntax for variable {var_name}. Use: {{{{variable|default:\"value\"}}}}")
+            
+            # Check for required variables if client_id provided
+            if client_id:
+                for required_var in self.validation_rules['required_variables']:
+                    pattern = required_var.replace('.', r'\.')
+                    if not re.search(rf'\{{{{{pattern}(\|[^}}]*)?}}}}', template_content):
+                        warnings.append(f"Missing recommended variable: {{{{{required_var}}}}}")
+            
+            # Basic HTML validation for email templates
+            if '<html>' in template_content or '<div>' in template_content:
+                # Check for balanced tags
+                for tag in ['div', 'p', 'h1', 'h2', 'h3', 'span']:
+                    open_tags = len(re.findall(rf'<{tag}[^>]*>', template_content))
+                    close_tags = len(re.findall(rf'</{tag}>', template_content))
+                    if open_tags != close_tags:
+                        errors.append(f"Unbalanced {tag} tags: {open_tags} opening, {close_tags} closing")
+            
+            return ValidationResult(
+                is_valid=(len(errors) == 0),
+                errors=errors,
+                warnings=warnings
+            )
+            
+        except Exception as e:
+            logger.error(f"Template validation failed: {e}")
+            return ValidationResult(
+                is_valid=False,
+                errors=[f"Validation error: {str(e)}"]
+            )
+
     def _load_template(self, client_id: str, template_type: str) -> str:
         """
-        Load prompt template for a client.
+        Load prompt template for a client with validation.
         
         Args:
             client_id: Client identifier
@@ -55,6 +206,16 @@ class TemplateEngine:
         
         try:
             template_content = load_ai_prompt(client_id, template_type)
+            
+            # Validate template
+            validation = self.validate_template(template_content, client_id)
+            if not validation.is_valid:
+                logger.warning(f"Template validation failed for {client_id}/{template_type}: {validation.errors}")
+                # Still cache and use template, but log warnings
+            
+            if validation.warnings:
+                logger.info(f"Template warnings for {client_id}/{template_type}: {validation.warnings}")
+            
             self._template_cache[cache_key] = template_content
             return template_content
             
@@ -64,7 +225,7 @@ class TemplateEngine:
     
     def _prepare_template_context(self, client_id: str, email_data: Dict[str, Any] = None) -> Dict[str, Any]:
         """
-        Prepare context data for template injection.
+        Prepare enhanced context data for template injection.
         
         Args:
             client_id: Client identifier
@@ -76,8 +237,9 @@ class TemplateEngine:
         try:
             client_config = self.client_manager.get_client_config(client_id)
             routing_rules = self.client_manager.get_routing_rules(client_id)
+            branding = self._load_client_branding(client_id)
             
-            # Base context with client configuration
+            # Enhanced context with full branding support
             context = {
                 'client': {
                     'id': client_config.client.id,
@@ -86,12 +248,7 @@ class TemplateEngine:
                     'timezone': client_config.client.timezone,
                     'business_hours': client_config.client.business_hours,
                 },
-                'branding': {
-                    'company_name': client_config.branding.company_name,
-                    'email_signature': client_config.branding.email_signature,
-                    'primary_color': client_config.branding.primary_color,
-                    'secondary_color': client_config.branding.secondary_color,
-                },
+                'branding': branding,
                 'response_times': {
                     'support': client_config.response_times.support,
                     'billing': client_config.response_times.billing,
@@ -123,7 +280,12 @@ class TemplateEngine:
     
     def _inject_template_variables(self, template: str, context: Dict[str, Any]) -> str:
         """
-        Inject variables into template using both {{}} and {} syntax.
+        Enhanced variable injection with standardized {{}} syntax only.
+        
+        Supports:
+        - Simple variables: {{client.name}}
+        - Nested access: {{client.branding.primary_color}}
+        - Default values: {{variable|default:"fallback"}}
         
         Args:
             template: Template string with variables
@@ -133,22 +295,29 @@ class TemplateEngine:
             Template with variables injected
         """
         try:
-            # First pass: Handle {{client.name}} style variables
-            def replace_double_braces(match):
-                var_path = match.group(1)
-                return self._get_nested_value(context, var_path)
+            def replace_variable(match):
+                var_expression = match.group(1).strip()
+                
+                # Handle default values: variable|default:"value"
+                if '|default:' in var_expression:
+                    var_path, default_part = var_expression.split('|default:', 1)
+                    var_path = var_path.strip()
+                    
+                    # Extract default value (remove quotes)
+                    default_value = default_part.strip()
+                    if default_value.startswith('"') and default_value.endswith('"'):
+                        default_value = default_value[1:-1]
+                    
+                    # Get variable value or use default
+                    value = self._get_nested_value(context, var_path, default_value)
+                else:
+                    # No default value
+                    value = self._get_nested_value(context, var_expression)
+                
+                return str(value)
             
-            # Replace {{variable.path}} patterns
-            template = re.sub(r'\{\{([^}]+)\}\}', replace_double_braces, template)
-            
-            # Second pass: Handle {variable} style variables using string.Template
-            template_obj = Template(template)
-            
-            # Flatten context for simple variable substitution
-            flat_context = self._flatten_context(context)
-            
-            # Use safe_substitute to avoid KeyError for missing variables
-            result = template_obj.safe_substitute(flat_context)
+            # Replace all {{variable}} patterns
+            result = re.sub(r'\{\{([^}]+)\}\}', replace_variable, template)
             
             return result
             
@@ -156,16 +325,17 @@ class TemplateEngine:
             logger.error(f"Error injecting template variables: {e}")
             return template  # Return original template if injection fails
     
-    def _get_nested_value(self, data: Dict[str, Any], path: str) -> str:
+    def _get_nested_value(self, data: Dict[str, Any], path: str, default: str = None) -> str:
         """
-        Get nested value from dictionary using dot notation.
+        Get nested value from dictionary using dot notation with default support.
         
         Args:
             data: Dictionary to search
-            path: Dot-separated path (e.g., 'client.name')
+            path: Dot-separated path (e.g., 'client.branding.primary_color')
+            default: Default value if path not found
             
         Returns:
-            Value as string, or original path if not found
+            Value as string, default if provided, or placeholder if not found
         """
         try:
             keys = path.split('.')
@@ -175,36 +345,17 @@ class TemplateEngine:
                 if isinstance(value, dict) and key in value:
                     value = value[key]
                 else:
-                    # Return original path if not found
-                    return f"{{{{{path}}}}}"
+                    # Path not found
+                    if default is not None:
+                        return default
+                    return f"{{{{MISSING: {path}}}}}"
             
             return str(value)
             
         except Exception:
-            return f"{{{{{path}}}}}"
-    
-    def _flatten_context(self, context: Dict[str, Any], prefix: str = '') -> Dict[str, str]:
-        """
-        Flatten nested dictionary for simple template substitution.
-        
-        Args:
-            context: Nested dictionary to flatten
-            prefix: Prefix for keys
-            
-        Returns:
-            Flattened dictionary with string values
-        """
-        flat = {}
-        
-        for key, value in context.items():
-            new_key = f"{prefix}{key}" if prefix else key
-            
-            if isinstance(value, dict):
-                flat.update(self._flatten_context(value, f"{new_key}_"))
-            else:
-                flat[new_key] = str(value)
-        
-        return flat
+            if default is not None:
+                return default
+            return f"{{{{ERROR: {path}}}}}"
     
     def compose_classification_prompt(self, client_id: str, email_data: Dict[str, Any]) -> str:
         """
@@ -390,6 +541,12 @@ Please review the original message and respond accordingly.
             return "Email received and being processed."
     
     def clear_cache(self):
-        """Clear template cache."""
+        """Clear template and branding caches."""
         self._template_cache.clear()
-        logger.info("Template cache cleared") 
+        self._branding_cache.clear()
+        logger.info("Template and branding caches cleared")
+
+# Backward compatibility - maintain the original TemplateEngine class
+class TemplateEngine(EnhancedTemplateEngine):
+    """Backward compatible template engine."""
+    pass 

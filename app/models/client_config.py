@@ -50,6 +50,7 @@ class DomainConfig(BaseModel):
     primary: str = Field(..., description="Primary company domain")
     support: EmailStr = Field(..., description="Support email address")
     mailgun: str = Field(..., description="Mailgun domain for sending")
+    aliases: Optional[List[str]] = Field(default=None, description="Additional domain aliases")
 
 
 class BrandingConfig(BaseModel):
@@ -58,6 +59,8 @@ class BrandingConfig(BaseModel):
     email_signature: str
     primary_color: str = "#667eea"
     secondary_color: str = "#764ba2"
+    logo_url: Optional[str] = Field(default="", description="Company logo URL")
+    footer_text: Optional[str] = Field(default="", description="Custom footer text")
     
     @field_validator('primary_color', 'secondary_color')
     @classmethod  

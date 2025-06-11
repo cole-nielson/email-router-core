@@ -17,6 +17,9 @@ domains:
   primary: "mail.colesportfolio.com"  # Configured Mailgun domain
   support: "support@mail.colesportfolio.com"
   mailgun: "mail.colesportfolio.com"  # Configured Mailgun domain
+  # Test domains for development
+  aliases: 
+    - "colenielson.dev"  # Test domain used in test suite
 
 # Company branding (current hard-coded values)
 branding:

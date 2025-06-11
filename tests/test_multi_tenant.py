@@ -39,7 +39,7 @@ def test_load_client_config():
     config = load_client_config('client-001-cole-nielson')
     assert config.client.id == 'client-001-cole-nielson'
     assert config.client.name == 'Cole Nielson Email Router'
-    assert config.domains.primary == 'colenielson.dev'
+    assert config.domains.primary == 'mail.colesportfolio.com'
     
 
 def test_enhanced_client_manager_domain_resolution():

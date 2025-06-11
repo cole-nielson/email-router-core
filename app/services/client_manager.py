@@ -124,6 +124,19 @@ class EnhancedClientManager:
                         self._domain_to_client_cache[variant] = client_id
                         client_domains.add(variant)
                 
+                # Alias domains
+                if hasattr(client_config.domains, 'aliases') and client_config.domains.aliases:
+                    for alias_domain in client_config.domains.aliases:
+                        alias_domain = normalize_domain(alias_domain)
+                        if alias_domain and alias_domain not in [primary_domain, support_domain, mailgun_domain]:
+                            self._domain_to_client_cache[alias_domain] = client_id
+                            client_domains.add(alias_domain)
+                            
+                            # Add variants for alias domain
+                            for variant in get_domain_variants(alias_domain):
+                                self._domain_to_client_cache[variant] = client_id
+                                client_domains.add(variant)
+                
                 # Store client domains for reverse lookup
                 self._client_to_domains_cache[client_id] = client_domains
                 
