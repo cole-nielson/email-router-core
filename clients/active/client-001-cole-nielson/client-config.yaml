@@ -21,7 +21,7 @@ domains:
   aliases: 
     - "colenielson.dev"  # Test domain used in test suite
 
-# Company branding (current hard-coded values)
+# Company branding (consolidated from branding/colors.yaml)
 branding:
   company_name: "Cole Nielson Email Router"
   primary_color: "#667eea"  # Current template color
@@ -29,13 +29,97 @@ branding:
   logo_url: ""  # Not currently set
   email_signature: "AI Email Router Support Team"
   footer_text: "© 2024 Cole Nielson Email Router. Automated email processing."
+  
+  # Extended color palette (merged from branding/colors.yaml)
+  colors:
+    # Primary brand colors
+    primary:
+      main: "#667eea"           # Primary brand color
+      light: "#a5b4fc"          # Lighter variant
+      dark: "#4338ca"           # Darker variant
+      contrast: "#ffffff"       # Text color on primary background
+    
+    # Secondary brand colors  
+    secondary:
+      main: "#764ba2"           # Secondary/accent color
+      light: "#c084fc"          # Lighter variant
+      dark: "#581c87"           # Darker variant
+      contrast: "#ffffff"       # Text color on secondary background
+    
+    # Semantic colors for different message types
+    semantic:
+      success: "#22c55e"        # Success messages
+      warning: "#f59e0b"        # Warning messages
+      error: "#ef4444"          # Error messages
+      info: "#3b82f6"           # Information messages
+    
+    # Neutral colors for backgrounds and text
+    neutral:
+      white: "#ffffff"
+      gray_50: "#f9fafb"
+      gray_100: "#f3f4f6"
+      gray_200: "#e5e7eb"
+      gray_300: "#d1d5db"
+      gray_400: "#9ca3af"
+      gray_500: "#6b7280"
+      gray_600: "#4b5563"
+      gray_700: "#374151"
+      gray_800: "#1f2937"
+      gray_900: "#111827"
+      black: "#000000"
+    
+    # Email template specific colors
+    email:
+      header_background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+      header_text: "#ffffff"
+      body_background: "#ffffff"
+      body_text: "#374151"
+      accent_background: "#f8f9ff"
+      accent_border: "#667eea"
+      footer_background: "#f8f9fa"
+      footer_text: "#6b7280"
+      link_color: "#667eea"
+      link_hover: "#4338ca"
+    
+    # Category-specific colors (for email classification)
+    categories:
+      support: "#3b82f6"        # Blue for support
+      billing: "#22c55e"        # Green for billing
+      sales: "#f59e0b"          # Orange for sales
+      general: "#6b7280"        # Gray for general
+      urgent: "#ef4444"         # Red for urgent
+      complaint: "#dc2626"      # Dark red for complaints
 
-# Response time commitments (migrated from templates)
+# Response time commitments and SLA configuration
 response_times:
-  support: "within 4 hours"
-  billing: "within 24 hours"
-  sales: "within 2 hours"
-  general: "within 24 hours"
+  support: 
+    target: "within 4 hours"
+    business_hours_only: true
+  billing:
+    target: "within 24 hours"
+    business_hours_only: false
+  sales:
+    target: "within 2 hours"
+    business_hours_only: true
+  general:
+    target: "within 24 hours"
+    business_hours_only: false
+  urgent:
+    target: "within 1 hour"
+    business_hours_only: false
+
+# Business hours and SLA settings
+business_hours:
+  timezone: "America/Mountain"
+  workdays: ["monday", "tuesday", "wednesday", "thursday", "friday"]
+  start_time: "09:00"
+  end_time: "17:00"
+
+# SLA tracking and escalation
+sla:
+  escalation_enabled: true
+  escalate_after_percentage: 80  # Escalate at 80% of SLA time
+  track_metrics: true
 
 # Contact information (from hard-coded routing)
 contacts:
@@ -49,4 +133,58 @@ settings:
   team_forwarding_enabled: true
   ai_classification_enabled: true
   escalation_enabled: true
-  monitoring_enabled: true 
+  monitoring_enabled: true
+
+# =============================================================================
+# ROUTING CONFIGURATION (consolidated from routing-rules.yaml)
+# =============================================================================
+
+# Primary routing rules: category -> team member email
+routing:
+  support: "colenielson.re@gmail.com"
+  billing: "colenielson8@gmail.com"
+  sales: "colenielson@u.boisestate.edu"
+  technical: "colenielson.re@gmail.com"
+  complaint: "colenielson8@gmail.com"
+  general: "colenielson.re@gmail.com"
+
+# Escalation rules: when to escalate and to whom
+escalation:
+  # Time-based escalation (if no response within X hours)
+  time_based:
+    support: 
+      - hours: 4
+        escalate_to: "colenielson8@gmail.com"
+    billing:
+      - hours: 8
+        escalate_to: "colenielson.re@gmail.com"
+    sales:
+      - hours: 2
+        escalate_to: "colenielson.re@gmail.com"
+  
+  # Keyword-based escalation (immediate escalation)
+  keyword_based:
+    urgent: "colenielson.re@gmail.com"
+    vip: "colenielson.re@gmail.com"
+    refund: "colenielson8@gmail.com"
+    cancellation: "colenielson8@gmail.com"
+    legal: "colenielson.re@gmail.com"
+
+# Backup routing (if primary contact unavailable)
+backup_routing:
+  support: "colenielson8@gmail.com"
+  billing: "colenielson.re@gmail.com"
+  sales: "colenielson.re@gmail.com"
+  general: "colenielson8@gmail.com"
+
+# Special rules
+special_rules:
+  # VIP customers (none currently defined)
+  vip_domains: []
+  vip_route_to: "colenielson.re@gmail.com"
+  
+  # Out of hours routing
+  after_hours_route_to: "colenielson.re@gmail.com"
+  
+  # Weekend routing
+  weekend_route_to: "colenielson.re@gmail.com" 

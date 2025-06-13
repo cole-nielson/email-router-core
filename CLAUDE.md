@@ -62,6 +62,64 @@ mypy app/
 
 ## Architecture
 
+### Service Dependency Graph
+
+**Core Service Dependencies** (post-Milestone 2 service consolidation):
+```
+┌─────────────────┐
+│   main.py       │ ← FastAPI application entry point
+│   (FastAPI)     │
+└────────┬────────┘
+         │
+    ┌────▼────┐         ┌─────────────────┐
+    │ Routers │         │   Middleware    │
+    └────┬────┘         └─────────────────┘
+         │                       │
+    ┌────▼────────────────────────▼────┐
+    │          Services               │
+    │                                 │
+    │  ┌─────────────────────────────┐ │
+    │  │     client_manager.py       │ │ ← Central dependency
+    │  │   (Multi-tenant core)      │ │
+    │  └──────────┬──────────────────┘ │
+    │            │                    │
+    │  ┌─────────▼─────────┐          │
+    │  │   ai_classifier    │          │
+    │  │   email_service    │          │
+    │  │   routing_engine   │          │
+    │  │   email_sender     │          │
+    │  └─────────┬─────────┘          │
+    └────────────┼────────────────────┘
+                 │
+    ┌────────────▼────────────┐
+    │        Utils            │
+    │                         │
+    │  client_loader.py       │ ← YAML config loading
+    │  domain_resolver.py     │ ← Domain matching
+    │  config.py             │ ← Environment config
+    └─────────────────────────┘
+```
+
+**Dependency Injection Pattern:**
+- All services use FastAPI `Depends()` for injection
+- `client_manager` is singleton - single instance across app
+- Services depend on `client_manager` but not each other
+- Utils are stateless and imported directly
+
+**Data Flow:**
+```
+Webhook → Client Identification → AI Classification → Email Generation → Delivery
+   ↓              ↓                      ↓                 ↓            ↓
+webhooks.py → client_manager → ai_classifier → email_service → email_sender
+```
+
+**Consolidation Results (Milestone 2):**
+- **Services reduced**: 12 → 9 files (25% reduction)
+- **Code consolidation**: 4,273 → 4,044 lines (5% reduction with enhanced functionality)
+- **Eliminated redundancy**: Merged email_composer + template_engine → email_service
+- **Unified AI logic**: Combined dynamic_classifier + classifier → ai_classifier
+- **Preserved functionality**: All core features intact with cleaner architecture
+
 ### Multi-Tenant Core Components
 
 **FastAPI Application Structure:**

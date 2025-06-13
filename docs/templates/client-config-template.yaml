@@ -1,0 +1,207 @@
+# =============================================================================
+# CLIENT CONFIGURATION TEMPLATE - CONSOLIDATED FORMAT (Milestone 5)
+# Copy this template and customize for new clients
+# =============================================================================
+
+client:
+  id: "client-001-{client-name}"  # REQUIRED: Must start with "client-"
+  name: "{Company Name} Email Router"  # REQUIRED: Company display name
+  industry: "Technology"  # REQUIRED: Technology|Healthcare|Finance|Education|Other
+  timezone: "America/New_York"  # REQUIRED: Valid timezone identifier
+  business_hours: "9-17"  # Standard business hours
+  created_at: "2024-12-13T00:00:00Z"  # ISO timestamp
+  status: "active"  # active|inactive|pending
+
+# Email domains (customize for client's email setup)
+domains:
+  primary: "mail.{client-domain}.com"  # REQUIRED: Primary domain for Mailgun
+  support: "support@mail.{client-domain}.com"  # REQUIRED: Main support email
+  mailgun: "mail.{client-domain}.com"  # REQUIRED: Configured Mailgun domain
+  aliases:  # Optional: Additional domains to recognize
+    - "{client-domain}.dev"  # Development domain
+    - "staging.{client-domain}.com"  # Staging domain
+
+# Company branding (customize colors and company info)
+branding:
+  company_name: "{Company Name}"  # REQUIRED: Company name for emails
+  primary_color: "#667eea"  # REQUIRED: Primary brand color (hex)
+  secondary_color: "#764ba2"  # REQUIRED: Secondary brand color (hex)
+  logo_url: "https://{client-domain}.com/logo.png"  # Optional: Company logo URL
+  email_signature: "{Company Name} Support Team"  # REQUIRED: Email signature
+  footer_text: "© 2024 {Company Name}. All rights reserved."  # Optional: Footer text
+  
+  # Extended color palette (customize to match brand)
+  colors:
+    # Primary brand colors
+    primary:
+      main: "#667eea"           # Primary brand color
+      light: "#a5b4fc"          # Lighter variant (auto-generated or custom)
+      dark: "#4338ca"           # Darker variant (auto-generated or custom)
+      contrast: "#ffffff"       # Text color on primary background
+    
+    # Secondary brand colors  
+    secondary:
+      main: "#764ba2"           # Secondary/accent color
+      light: "#c084fc"          # Lighter variant
+      dark: "#581c87"           # Darker variant
+      contrast: "#ffffff"       # Text color on secondary background
+    
+    # Semantic colors (standard across all clients)
+    semantic:
+      success: "#22c55e"        # Success messages (green)
+      warning: "#f59e0b"        # Warning messages (orange)
+      error: "#ef4444"          # Error messages (red)
+      info: "#3b82f6"           # Information messages (blue)
+    
+    # Neutral colors (standard palette)
+    neutral:
+      white: "#ffffff"
+      gray_50: "#f9fafb"
+      gray_100: "#f3f4f6"
+      gray_200: "#e5e7eb"
+      gray_300: "#d1d5db"
+      gray_400: "#9ca3af"
+      gray_500: "#6b7280"
+      gray_600: "#4b5563"
+      gray_700: "#374151"
+      gray_800: "#1f2937"
+      gray_900: "#111827"
+      black: "#000000"
+    
+    # Email template specific colors (customize to brand)
+    email:
+      header_background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+      header_text: "#ffffff"
+      body_background: "#ffffff"
+      body_text: "#374151"
+      accent_background: "#f8f9ff"  # Light background for highlights
+      accent_border: "#667eea"      # Border color for accent boxes
+      footer_background: "#f8f9fa"
+      footer_text: "#6b7280"
+      link_color: "#667eea"         # Link color in emails
+      link_hover: "#4338ca"         # Link hover color
+    
+    # Category-specific colors (for email classification UI)
+    categories:
+      support: "#3b82f6"        # Blue for support
+      billing: "#22c55e"        # Green for billing
+      sales: "#f59e0b"          # Orange for sales
+      general: "#6b7280"        # Gray for general
+      urgent: "#ef4444"         # Red for urgent
+      complaint: "#dc2626"      # Dark red for complaints
+
+# Response time commitments (customize based on client SLA)
+response_times:
+  support: 
+    target: "within 4 hours"    # Standard support response time
+    business_hours_only: true   # Only count business hours
+  billing:
+    target: "within 24 hours"   # Billing inquiries
+    business_hours_only: false  # 24/7 counting
+  sales:
+    target: "within 2 hours"    # Sales response (high priority)
+    business_hours_only: true   # Business hours only
+  general:
+    target: "within 24 hours"   # General inquiries
+    business_hours_only: false  # 24/7 counting
+  urgent:
+    target: "within 1 hour"     # Urgent issues
+    business_hours_only: false  # 24/7 response
+
+# Business hours and timezone (customize for client location)
+business_hours:
+  timezone: "America/New_York"  # REQUIRED: Client's timezone
+  workdays: ["monday", "tuesday", "wednesday", "thursday", "friday"]  # Standard workweek
+  start_time: "09:00"           # Business day start (24h format)
+  end_time: "17:00"             # Business day end (24h format)
+
+# SLA tracking and escalation settings
+sla:
+  escalation_enabled: true      # Enable automatic escalation
+  escalate_after_percentage: 80 # Escalate at 80% of SLA time
+  track_metrics: true           # Track SLA performance metrics
+
+# Contact information (REQUIRED: Set all contacts for client)
+contacts:
+  primary_contact: "admin@{client-domain}.com"      # REQUIRED: Primary admin contact
+  escalation_contact: "manager@{client-domain}.com" # REQUIRED: Escalation contact
+  billing_contact: "billing@{client-domain}.com"    # REQUIRED: Billing contact
+
+# Feature flags and settings (customize based on client needs)
+settings:
+  auto_reply_enabled: true      # Enable automatic customer replies
+  team_forwarding_enabled: true # Forward emails to team members
+  ai_classification_enabled: true # Use AI for email classification
+  escalation_enabled: true     # Enable automatic escalation
+  monitoring_enabled: true     # Enable monitoring and analytics
+
+# =============================================================================
+# ROUTING CONFIGURATION (customize team email addresses)
+# =============================================================================
+
+# Primary routing rules: category → team member email
+routing:
+  support: "support@{client-domain}.com"     # REQUIRED: Technical support team
+  billing: "billing@{client-domain}.com"     # REQUIRED: Billing/accounting team
+  sales: "sales@{client-domain}.com"         # REQUIRED: Sales team
+  technical: "tech@{client-domain}.com"      # Optional: Advanced technical team
+  complaint: "manager@{client-domain}.com"   # REQUIRED: Complaint handling
+  general: "info@{client-domain}.com"        # REQUIRED: General inquiries
+
+# Escalation rules: when to escalate and to whom
+escalation:
+  # Time-based escalation (if no response within X hours)
+  time_based:
+    support: 
+      - hours: 4                              # Escalate support after 4 hours
+        escalate_to: "manager@{client-domain}.com"
+    billing:
+      - hours: 8                              # Escalate billing after 8 hours
+        escalate_to: "admin@{client-domain}.com"
+    sales:
+      - hours: 2                              # Escalate sales after 2 hours
+        escalate_to: "sales-manager@{client-domain}.com"
+  
+  # Keyword-based escalation (immediate escalation for specific words)
+  keyword_based:
+    urgent: "manager@{client-domain}.com"     # Immediate escalation for "urgent"
+    vip: "admin@{client-domain}.com"          # VIP customer escalation
+    refund: "billing@{client-domain}.com"    # Refund requests
+    cancellation: "billing@{client-domain}.com" # Cancellation requests
+    legal: "legal@{client-domain}.com"       # Legal issues
+
+# Backup routing (if primary contact unavailable)
+backup_routing:
+  support: "admin@{client-domain}.com"
+  billing: "admin@{client-domain}.com"
+  sales: "admin@{client-domain}.com"
+  general: "admin@{client-domain}.com"
+
+# Special routing rules
+special_rules:
+  # VIP customers (add important client domains)
+  vip_domains: 
+    - "important-client.com"
+    - "enterprise-partner.com"
+  vip_route_to: "admin@{client-domain}.com"
+  
+  # Out of hours routing (when business is closed)
+  after_hours_route_to: "oncall@{client-domain}.com"
+  
+  # Weekend routing (Saturday/Sunday)
+  weekend_route_to: "oncall@{client-domain}.com"
+
+# =============================================================================
+# CONFIGURATION NOTES
+# =============================================================================
+
+# 1. Replace all {client-name} and {client-domain} placeholders
+# 2. Customize email addresses to match client's team structure
+# 3. Adjust response times based on client's SLA requirements
+# 4. Update branding colors to match client's brand guidelines
+# 5. Configure timezone and business hours for client's location
+# 6. Set up VIP domains if client has important partners/customers
+# 7. Validate configuration using: python -m pytest tests/test_config_validation.py
+
+# Template version: 1.0 (Milestone 5)
+# Last updated: December 13, 2024

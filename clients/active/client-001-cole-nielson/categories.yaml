@@ -32,9 +32,7 @@ categories:
     priority: "low"
     keywords: ["question", "inquiry", "feedback", "suggestion"]
     confidence_threshold: 0.6
-
-# Additional specialized categories (optional)
-specialized_categories:
+    
   technical:
     name: "Advanced Technical"
     description: "Complex technical issues requiring specialist knowledge"
@@ -48,6 +46,9 @@ specialized_categories:
     priority: "urgent"
     keywords: ["complaint", "dissatisfied", "unhappy", "terrible", "awful"]
     confidence_threshold: 0.8
+
+# Additional specialized categories (optional)
+specialized_categories:
     
   feature_request:
     name: "Feature Requests"

@@ -5,48 +5,53 @@ Enhanced with logo support and dynamic color injection.
 """
 
 import logging
-from typing import Dict, Any, Tuple, Optional
+from typing import Any, Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
+
 
 def generate_ticket_id() -> str:
     """Generate a simple ticket ID"""
     import random
     import string
-    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
-def create_customer_template(draft_response: str, classification: dict, branding: dict = None) -> tuple[str, str]:
+    return "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
+
+
+def create_customer_template(
+    draft_response: str, classification: dict, branding: dict = None
+) -> tuple[str, str]:
     """
     Create customer-facing auto-reply with client-specific branding (text + HTML).
-    
+
     Args:
         draft_response: AI-generated response content
         classification: Email classification result
         branding: Client branding configuration with colors and logo
-        
+
     Returns:
         Tuple of (text_body, html_body)
     """
-    
-    category = classification.get('category', 'general')
-    
+
+    category = classification.get("category", "general")
+
     # Determine response time based on category
     response_times = {
         "support": "within 4 hours",
-        "billing": "within 24 hours", 
+        "billing": "within 24 hours",
         "sales": "within 2 hours",
-        "general": "within 24 hours"
+        "general": "within 24 hours",
     }
     response_time = response_times.get(category, "within 24 hours")
     ticket_id = generate_ticket_id()
-    
+
     # Get branding or use defaults
     if not branding:
         branding = _get_default_branding()
-    
-    company_name = branding.get('company_name', 'Support Team')
-    logo_url = branding.get('logo_url', '')
-    
+
+    company_name = branding.get("company_name", "Support Team")
+    logo_url = branding.get("logo_url", "")
+
     # Plain text version with client branding
     text_body = f"""
 {draft_response}
@@ -64,7 +69,7 @@ This is an automated acknowledgment. A team member will follow up personally.
     # Enhanced HTML version with dynamic branding
     # Hide logo if URL is empty
     logo_style = "display: none;" if not logo_url else ""
-    
+
     html_body = f"""
 <!DOCTYPE html>
 <html>
@@ -125,33 +130,36 @@ This is an automated acknowledgment. A team member will follow up personally.
 </body>
 </html>
 """
-    
+
     return text_body, html_body
 
-def create_team_template(email_data: dict, classification: dict, draft_response: str, branding: dict = None) -> tuple[str, str]:
+
+def create_team_template(
+    email_data: dict, classification: dict, draft_response: str, branding: dict = None
+) -> tuple[str, str]:
     """
     Create team-facing forwarded email with client-specific branding (text + HTML).
-    
+
     Args:
         email_data: Original email data from webhook
-        classification: AI classification result  
+        classification: AI classification result
         draft_response: AI-generated response draft
         branding: Client branding configuration
-        
+
     Returns:
         Tuple of (text_body, html_body)
     """
-    
-    category = classification.get('category', 'general')
-    confidence = classification.get('confidence', 0.0)
-    reasoning = classification.get('reasoning', 'No reasoning provided')
-    
+
+    category = classification.get("category", "general")
+    confidence = classification.get("confidence", 0.0)
+    reasoning = classification.get("reasoning", "No reasoning provided")
+
     # Get branding or use defaults
     if not branding:
         branding = _get_default_branding()
-    
-    company_name = branding.get('company_name', 'Support Team')
-    
+
+    company_name = branding.get("company_name", "Support Team")
+
     # Plain text version with client branding
     text_body = f"""
 🤖 AI EMAIL ROUTER - {company_name.upper()}
@@ -178,17 +186,19 @@ The customer has already received an automated acknowledgment.
 """
 
     # Enhanced HTML with client branding
-    analysis_html = draft_response.replace('\n', '<br>')
-    email_body_html = (email_data['stripped_text'] or email_data['body_text']).replace('\n', '<br>')
-    
+    analysis_html = draft_response.replace("\n", "<br>")
+    email_body_html = (email_data["stripped_text"] or email_data["body_text"]).replace("\n", "<br>")
+
     # Dynamic confidence color based on percentage
-    confidence_color = "#16a34a" if confidence >= 0.8 else "#f59e0b" if confidence >= 0.6 else "#ef4444"
+    confidence_color = (
+        "#16a34a" if confidence >= 0.8 else "#f59e0b" if confidence >= 0.6 else "#ef4444"
+    )
     confidence_text = "HIGH" if confidence >= 0.8 else "MEDIUM" if confidence >= 0.6 else "LOW"
-    
+
     # Hide logo if URL is empty
-    logo_url = branding.get('logo_url', '')
+    logo_url = branding.get("logo_url", "")
     logo_style = "display: none;" if not logo_url else ""
-    
+
     html_body = f"""
 <!DOCTYPE html>
 <html>
@@ -275,67 +285,69 @@ The customer has already received an automated acknowledgment.
 </body>
 </html>
 """
-    
+
     return text_body, html_body
 
-def create_branded_template(template_type: str, context: dict, branding: dict = None) -> tuple[str, str]:
+
+def create_branded_template(
+    template_type: str, context: dict, branding: dict = None
+) -> tuple[str, str]:
     """
     Create branded email template with client-specific styling.
-    
+
     Args:
         template_type: Type of template ('customer_reply', 'team_forward', 'notification')
         context: Template context with email data and variables
         branding: Client branding configuration
-        
+
     Returns:
         Tuple of (text_body, html_body)
     """
-    
+
     if not branding:
         branding = _get_default_branding()
-    
-    if template_type == 'customer_reply':
+
+    if template_type == "customer_reply":
         return create_customer_template(
-            context.get('draft_response', ''),
-            context.get('classification', {}),
-            branding
+            context.get("draft_response", ""), context.get("classification", {}), branding
         )
-    elif template_type == 'team_forward':
+    elif template_type == "team_forward":
         return create_team_template(
-            context.get('email_data', {}),
-            context.get('classification', {}),
-            context.get('draft_response', ''),
-            branding
+            context.get("email_data", {}),
+            context.get("classification", {}),
+            context.get("draft_response", ""),
+            branding,
         )
     else:
         # Fallback for unknown template types
         logger.warning(f"Unknown template type: {template_type}")
         return create_customer_template(
-            context.get('draft_response', 'Thank you for contacting us.'),
-            context.get('classification', {}),
-            branding
+            context.get("draft_response", "Thank you for contacting us."),
+            context.get("classification", {}),
+            branding,
         )
+
 
 def _get_default_branding() -> dict:
     """
     Get default branding configuration when client branding is not available.
-    
+
     Returns:
         Default branding dictionary
     """
     return {
-        'company_name': 'Email Router',
-        'primary_color': '#667eea',
-        'secondary_color': '#764ba2',
-        'header_gradient': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        'header_text_color': '#ffffff',
-        'body_background': '#ffffff',
-        'body_text_color': '#374151',
-        'accent_background': '#f8f9ff',
-        'accent_border_color': '#667eea',
-        'footer_background': '#f8f9fa',
-        'footer_text_color': '#6b7280',
-        'link_color': '#667eea',
-        'logo_url': '',
-        'footer_text': ''
-    } 
+        "company_name": "Email Router",
+        "primary_color": "#667eea",
+        "secondary_color": "#764ba2",
+        "header_gradient": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        "header_text_color": "#ffffff",
+        "body_background": "#ffffff",
+        "body_text_color": "#374151",
+        "accent_background": "#f8f9ff",
+        "accent_border_color": "#667eea",
+        "footer_background": "#f8f9fa",
+        "footer_text_color": "#6b7280",
+        "link_color": "#667eea",
+        "logo_url": "",
+        "footer_text": "",
+    }

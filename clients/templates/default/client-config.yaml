@@ -27,12 +27,36 @@ branding:
   email_signature: "Company Support Team"
   footer_text: "© 2024 Company Name Inc. All rights reserved."
 
-# Response time commitments (SLA)
+# Response time commitments and SLA configuration
 response_times:
-  support: "within 4 hours"          # Technical support
-  billing: "within 24 hours"         # Billing inquiries
-  sales: "within 2 hours"            # Sales inquiries
-  general: "within 24 hours"         # General inquiries
+  support: 
+    target: "within 4 hours"
+    business_hours_only: true
+  billing:
+    target: "within 24 hours"
+    business_hours_only: false
+  sales:
+    target: "within 2 hours"
+    business_hours_only: true
+  general:
+    target: "within 24 hours"
+    business_hours_only: false
+  urgent:
+    target: "within 1 hour"
+    business_hours_only: false
+
+# Business hours and SLA settings
+business_hours:
+  timezone: "America/New_York"
+  workdays: ["monday", "tuesday", "wednesday", "thursday", "friday"]
+  start_time: "09:00"
+  end_time: "17:00"
+
+# SLA tracking and escalation
+sla:
+  escalation_enabled: true
+  escalate_after_percentage: 80  # Escalate at 80% of SLA time
+  track_metrics: true
 
 # Contact information
 contacts:

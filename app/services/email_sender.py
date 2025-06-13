@@ -4,21 +4,26 @@ Email sending service using Mailgun with multi-tenant support.
 """
 
 import logging
-import httpx
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
+import httpx
+
+from ..services.client_manager import ClientManager, get_client_manager
 from ..utils.config import get_config
 from ..utils.email_templates import create_customer_template, create_team_template
-from ..services.client_manager import ClientManager, get_client_manager
 
 logger = logging.getLogger(__name__)
 
 
-async def send_auto_reply(email_data: Dict[str, Any], classification: Dict[str, Any], 
-                         draft_response: str, client_id: Optional[str] = None):
+async def send_auto_reply(
+    email_data: Dict[str, Any],
+    classification: Dict[str, Any],
+    draft_response: str,
+    client_id: Optional[str] = None,
+):
     """
     📤 Send personalized auto-reply to customer with client-specific branding.
-    
+
     Args:
         email_data: Original email data from Mailgun webhook
         classification: AI classification result
@@ -28,25 +33,25 @@ async def send_auto_reply(email_data: Dict[str, Any], classification: Dict[str, 
     try:
         # Get client manager
         client_manager = get_client_manager()
-        
+
         # Identify client if not provided
         if not client_id:
             client_id = client_manager.identify_client_by_email(
-                email_data.get('to') or email_data.get('recipient', '')
+                email_data.get("to") or email_data.get("recipient", "")
             )
-        
+
         # Get client-specific branding and configuration
         if client_id:
             try:
                 client_config = client_manager.get_client_config(client_id)
                 sender_name = client_config.branding.company_name
                 sender_signature = client_config.branding.email_signature
-                
+
                 # Check if auto-reply is enabled for this client
                 if not client_config.settings.auto_reply_enabled:
                     logger.info(f"Auto-reply disabled for client {client_id}, skipping")
                     return
-                
+
             except Exception as e:
                 logger.warning(f"Failed to load client config for {client_id}: {e}")
                 sender_name = "AI Email Router"
@@ -55,10 +60,10 @@ async def send_auto_reply(email_data: Dict[str, Any], classification: Dict[str, 
             # No client identified, use generic branding
             sender_name = "AI Email Router"
             sender_signature = "Support Team"
-        
+
         # Create customer-facing email content
         subject = f"Re: {email_data.get('subject', 'Your inquiry')}"
-        
+
         # Use client-specific template if available
         if client_id:
             text_body, html_body = create_client_customer_template(
@@ -66,10 +71,10 @@ async def send_auto_reply(email_data: Dict[str, Any], classification: Dict[str, 
             )
         else:
             text_body, html_body = create_customer_template(draft_response, classification)
-        
+
         # Send email with client-specific sender
         result = await _send_email(
-            to=email_data.get('from', ''),
+            to=email_data.get("from", ""),
             subject=subject,
             text=text_body,
             html=html_body,
@@ -77,27 +82,34 @@ async def send_auto_reply(email_data: Dict[str, Any], classification: Dict[str, 
             client_id=client_id,
             headers={
                 "X-Auto-Reply": "true",
-                "X-Classification": classification.get('category', 'general'),
+                "X-Classification": classification.get("category", "general"),
                 "X-Client-ID": client_id or "unknown",
-                "In-Reply-To": email_data.get('message_id', ''),
-                "References": email_data.get('message_id', '')
-            }
+                "In-Reply-To": email_data.get("message_id", ""),
+                "References": email_data.get("message_id", ""),
+            },
         )
-        
-        logger.info(f"📨 Auto-reply sent to {email_data.get('from', '')} "
-                   f"(Client: {client_id or 'unknown'}, ID: {result.get('id', 'unknown')})")
-        
+
+        logger.info(
+            f"📨 Auto-reply sent to {email_data.get('from', '')} "
+            f"(Client: {client_id or 'unknown'}, ID: {result.get('id', 'unknown')})"
+        )
+
     except Exception as e:
         logger.error(f"❌ Auto-reply failed: {e}")
 
 
-async def forward_to_team(email_data: Dict[str, Any], forward_to: str, classification: Dict[str, Any], 
-                         draft_response: str, client_id: Optional[str] = None):
+async def forward_to_team(
+    email_data: Dict[str, Any],
+    forward_to: str,
+    classification: Dict[str, Any],
+    draft_response: str,
+    client_id: Optional[str] = None,
+):
     """
     📨 Forward email with AI draft to team member using client-specific configuration.
-    
+
     Args:
-        email_data: Original email data from Mailgun webhook  
+        email_data: Original email data from Mailgun webhook
         forward_to: Team member email address
         classification: AI classification result
         draft_response: AI-generated response draft
@@ -106,36 +118,36 @@ async def forward_to_team(email_data: Dict[str, Any], forward_to: str, classific
     try:
         # Get client manager
         client_manager = get_client_manager()
-        
+
         # Identify client if not provided
         if not client_id:
             client_id = client_manager.identify_client_by_email(
-                email_data.get('to') or email_data.get('recipient', '')
+                email_data.get("to") or email_data.get("recipient", "")
             )
-        
+
         # Get client-specific branding and configuration
         if client_id:
             try:
                 client_config = client_manager.get_client_config(client_id)
                 sender_name = f"{client_config.branding.company_name} Email Router"
-                
+
                 # Check if team forwarding is enabled for this client
                 if not client_config.settings.team_forwarding_enabled:
                     logger.info(f"Team forwarding disabled for client {client_id}, skipping")
                     return
-                
+
             except Exception as e:
                 logger.warning(f"Failed to load client config for {client_id}: {e}")
                 sender_name = "AI Email Router"
         else:
             # No client identified, use generic branding
             sender_name = "AI Email Router"
-        
+
         # Create team-facing email content
-        category = classification.get('category', 'general')
-        confidence = classification.get('confidence', 0.5)
+        category = classification.get("category", "general")
+        confidence = classification.get("confidence", 0.5)
         subject = f"[{category.upper()}] {email_data.get('subject', 'Email Inquiry')}"
-        
+
         # Use client-specific template if available
         if client_id:
             text_body, html_body = create_client_team_template(
@@ -143,7 +155,7 @@ async def forward_to_team(email_data: Dict[str, Any], forward_to: str, classific
             )
         else:
             text_body, html_body = create_team_template(email_data, classification, draft_response)
-        
+
         # Send email with client-specific sender
         result = await _send_email(
             to=forward_to,
@@ -153,51 +165,57 @@ async def forward_to_team(email_data: Dict[str, Any], forward_to: str, classific
             sender_name=sender_name,
             client_id=client_id,
             headers={
-                "X-Original-From": email_data.get('from', ''),
+                "X-Original-From": email_data.get("from", ""),
                 "X-Classification": category,
                 "X-Confidence": str(confidence),
                 "X-Client-ID": client_id or "unknown",
-                "Reply-To": email_data.get('from', '')  # Allow direct replies to customer
-            }
+                "Reply-To": email_data.get("from", ""),  # Allow direct replies to customer
+            },
         )
-        
-        logger.info(f"📨 Email forwarded to {forward_to} "
-                   f"(Client: {client_id or 'unknown'}, ID: {result.get('id', 'unknown')})")
-        
+
+        logger.info(
+            f"📨 Email forwarded to {forward_to} "
+            f"(Client: {client_id or 'unknown'}, ID: {result.get('id', 'unknown')})"
+        )
+
     except Exception as e:
         logger.error(f"❌ Email forwarding failed: {e}")
 
 
-def create_client_customer_template(client_id: str, draft_response: str, classification: Dict[str, Any],
-                                  client_manager: ClientManager) -> tuple[str, str]:
+def create_client_customer_template(
+    client_id: str,
+    draft_response: str,
+    classification: Dict[str, Any],
+    client_manager: ClientManager,
+) -> tuple[str, str]:
     """
     Create customer template with client-specific branding.
-    
+
     Args:
         client_id: Client identifier
         draft_response: AI-generated response content
         classification: Email classification result
         client_manager: ClientManager instance
-        
+
     Returns:
         Tuple of (text_body, html_body) with client branding
     """
     try:
         client_config = client_manager.get_client_config(client_id)
-        
+
         # Get client-specific values
         company_name = client_config.branding.company_name
         email_signature = client_config.branding.email_signature
         primary_color = client_config.branding.primary_color
         secondary_color = client_config.branding.secondary_color
-        
+
         # Get response time for this category
-        category = classification.get('category', 'general')
+        category = classification.get("category", "general")
         response_time = client_manager.get_response_time(client_id, category)
-        
+
         # Generate ticket ID
         ticket_id = _generate_ticket_id()
-        
+
         # Create text version with client branding
         text_body = f"""
 {draft_response}
@@ -211,7 +229,7 @@ Best regards,
 Ticket #: {ticket_id}
 This is an automated acknowledgment from {company_name}. A team member will follow up personally.
 """
-        
+
         # Create HTML version with client branding
         html_body = f"""
 <!DOCTYPE html>
@@ -260,42 +278,47 @@ This is an automated acknowledgment from {company_name}. A team member will foll
 </body>
 </html>
 """
-        
+
         return text_body, html_body
-        
+
     except Exception as e:
         logger.error(f"Failed to create client-specific customer template for {client_id}: {e}")
         # Fall back to generic template
         return create_customer_template(draft_response, classification)
 
 
-def create_client_team_template(client_id: str, email_data: Dict[str, Any], classification: Dict[str, Any],
-                               draft_response: str, client_manager: ClientManager) -> tuple[str, str]:
+def create_client_team_template(
+    client_id: str,
+    email_data: Dict[str, Any],
+    classification: Dict[str, Any],
+    draft_response: str,
+    client_manager: ClientManager,
+) -> tuple[str, str]:
     """
     Create team template with client-specific context.
-    
+
     Args:
         client_id: Client identifier
         email_data: Original email data
         classification: Email classification result
         draft_response: AI-generated analysis
         client_manager: ClientManager instance
-        
+
     Returns:
         Tuple of (text_body, html_body) with client context
     """
     try:
         client_config = client_manager.get_client_config(client_id)
-        
+
         # Get client-specific values
         company_name = client_config.branding.company_name
-        category = classification.get('category', 'general')
-        confidence = classification.get('confidence', 0.0)
-        reasoning = classification.get('reasoning', 'No reasoning provided')
-        
+        category = classification.get("category", "general")
+        confidence = classification.get("confidence", 0.0)
+        reasoning = classification.get("reasoning", "No reasoning provided")
+
         # Get routing destination
         routing_destination = client_manager.get_routing_destination(client_id, category)
-        
+
         # Create text version with client context
         text_body = f"""
 🤖 {company_name} EMAIL ROUTER - FORWARDED MESSAGE
@@ -322,11 +345,13 @@ Reply to this email to respond to the original sender.
 The customer has already received an automated acknowledgment.
 Routing destination: {routing_destination}
 """
-        
+
         # Create enhanced HTML with client context
-        analysis_html = draft_response.replace('\n', '<br>')
-        email_body_html = (email_data.get('stripped_text') or email_data.get('body_text', '')).replace('\n', '<br>')
-        
+        analysis_html = draft_response.replace("\n", "<br>")
+        email_body_html = (
+            email_data.get("stripped_text") or email_data.get("body_text", "")
+        ).replace("\n", "<br>")
+
         html_body = f"""
 <!DOCTYPE html>
 <html>
@@ -399,20 +424,27 @@ Routing destination: {routing_destination}
 </body>
 </html>
 """
-        
+
         return text_body, html_body
-        
+
     except Exception as e:
         logger.error(f"Failed to create client-specific team template for {client_id}: {e}")
         # Fall back to generic template
         return create_team_template(email_data, classification, draft_response)
 
 
-async def _send_email(to: str, subject: str, text: str, html: str, sender_name: str = "AI Email Router",
-                     client_id: Optional[str] = None, headers: Dict[str, str] = None) -> Dict[str, Any]:
+async def _send_email(
+    to: str,
+    subject: str,
+    text: str,
+    html: str,
+    sender_name: str = "AI Email Router",
+    client_id: Optional[str] = None,
+    headers: Dict[str, str] = None,
+) -> Dict[str, Any]:
     """
     🔧 Internal email sending via Mailgun API with client-specific sender.
-    
+
     Args:
         to: Recipient email address
         subject: Email subject
@@ -421,44 +453,44 @@ async def _send_email(to: str, subject: str, text: str, html: str, sender_name: 
         sender_name: Sender name for branding
         client_id: Optional client ID for tracking
         headers: Optional custom headers
-        
+
     Returns:
         Mailgun API response
     """
     config = get_config()
-    
+
     # Prepare email data with client-specific sender
     data = {
         "from": f"{sender_name} <admin@{config.mailgun_domain}>",
         "to": to,
         "subject": subject,
         "text": text,
-        "html": html
+        "html": html,
     }
-    
+
     # Add custom headers
     if headers:
         for key, value in headers.items():
             data[f"h:{key}"] = value
-    
+
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"https://api.mailgun.net/v3/{config.mailgun_domain}/messages",
                 auth=("api", config.mailgun_api_key),
                 data=data,
-                timeout=30.0
+                timeout=30.0,
             )
-            
+
             response.raise_for_status()
             result = response.json()
-            
+
             logger.debug(f"📬 Mailgun response: {result}")
             return result
-            
+
     except httpx.HTTPError as e:
         logger.error(f"❌ Mailgun API error: {e}")
-        if hasattr(e, 'response') and e.response:
+        if hasattr(e, "response") and e.response:
             logger.error(f"Response: {e.response.text}")
         raise
     except Exception as e:
@@ -470,4 +502,5 @@ def _generate_ticket_id() -> str:
     """Generate a simple ticket ID"""
     import random
     import string
-    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8)) 
+
+    return "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
