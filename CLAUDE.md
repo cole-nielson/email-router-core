@@ -23,6 +23,13 @@ This is a **production-ready enterprise multi-tenant AI email router** built wit
 - **Status**: All components healthy
 - **Client**: client-001-cole-nielson active and processing emails
 
+## Important Notes
+
+**Git Commit Guidelines:**
+- NEVER include Claude as co-author in commits
+- Do not add "Co-Authored-By: Claude <noreply@anthropic.com>" to commit messages
+- Keep commit messages focused on the actual changes made
+
 ## Development Commands
 
 ### Local Development
