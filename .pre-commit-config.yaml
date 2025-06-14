@@ -59,7 +59,7 @@ repos:
 
   # Documentation and comments
   - repo: https://github.com/pycqa/pydocstyle
-    rev: 6.5.0
+    rev: 6.3.0
     hooks:
       - id: pydocstyle
         args: [--convention=google, --add-ignore=D100,D101,D102,D103,D104,D105]
