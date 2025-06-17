@@ -64,13 +64,21 @@ async def send_auto_reply(
         # Create customer-facing email content
         subject = f"Re: {email_data.get('subject', 'Your inquiry')}"
 
-        # Use client-specific template if available
-        if client_id:
-            text_body, html_body = create_client_customer_template(
-                client_id, draft_response, classification, client_manager
-            )
+        # Check if draft_response contains automation disclaimer (human-like response)
+        if "automated acknowledgment" in draft_response.lower():
+            # Use human-like response as-is (plain text only)
+            text_body = draft_response.strip()
+            html_body = None  # No HTML formatting for human-like responses
+            logger.info(f"📤 Sending human-like plain text response ({len(text_body)} chars)")
         else:
-            text_body, html_body = create_customer_template(draft_response, classification)
+            # Fallback to template system for legacy responses
+            logger.warning(f"📧 Using template fallback for response without disclaimer")
+            if client_id:
+                text_body, html_body = create_client_customer_template(
+                    client_id, draft_response, classification, client_manager
+                )
+            else:
+                text_body, html_body = create_customer_template(draft_response, classification)
 
         # Send email with client-specific sender
         result = await _send_email(
@@ -241,18 +249,18 @@ This is an automated acknowledgment from {company_name}. A team member will foll
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background-color: #f8f9fa;">
     <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-        
+
         <!-- Header with client branding -->
         <div style="background: linear-gradient(135deg, {primary_color} 0%, {secondary_color} 100%); padding: 30px; text-align: center;">
             <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">Thank You for Contacting {company_name}</h1>
         </div>
-        
+
         <!-- Main Content -->
         <div style="padding: 40px 30px;">
             <div style="background-color: #f8f9ff; border-left: 4px solid {primary_color}; padding: 20px; margin-bottom: 30px; border-radius: 0 6px 6px 0;">
                 <p style="margin: 0; color: #2d3748; line-height: 1.6; font-size: 16px;">{draft_response}</p>
             </div>
-            
+
             <div style="background-color: #f0f9ff; border: 1px solid #e0f2fe; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
                 <div style="display: flex; align-items: center; margin-bottom: 10px;">
                     <span style="color: #0369a1; font-size: 18px; margin-right: 8px;">⏱️</span>
@@ -260,20 +268,20 @@ This is an automated acknowledgment from {company_name}. A team member will foll
                 </div>
                 <p style="margin: 0; color: #075985; font-size: 16px; font-weight: 600;">{response_time}</p>
             </div>
-            
+
             <div style="text-align: center; color: #64748b; font-size: 14px; line-height: 1.5;">
                 <p>Ticket #: <strong>{ticket_id}</strong></p>
                 <p>Best regards,<br><strong>{email_signature}</strong></p>
             </div>
         </div>
-        
+
         <!-- Footer -->
         <div style="background-color: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #e2e8f0;">
             <p style="margin: 0; color: #64748b; font-size: 12px;">
                 🤖 This is an automated acknowledgment from {company_name}. A team member will follow up personally.
             </p>
         </div>
-        
+
     </div>
 </body>
 </html>
@@ -362,13 +370,13 @@ Routing destination: {routing_destination}
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background-color: #f8f9fa;">
     <div style="max-width: 800px; margin: 0 auto; background-color: #ffffff;">
-        
+
         <!-- Header -->
         <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 25px; color: white;">
             <h1 style="margin: 0; font-size: 22px; font-weight: 600;">🤖 {company_name} Email Analysis</h1>
             <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 14px;">Client: {client_id}</p>
         </div>
-        
+
         <!-- Classification Card -->
         <div style="margin: 20px; background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%); border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px;">
             <div style="margin-bottom: 15px;">
@@ -378,7 +386,7 @@ Routing destination: {routing_destination}
             </div>
             <p style="margin: 0; color: #166534; font-weight: 500;">{reasoning}</p>
         </div>
-        
+
         <!-- Original Email Card -->
         <div style="margin: 20px; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
             <div style="background: #f9fafb; padding: 15px; border-bottom: 1px solid #e5e7eb;">
@@ -394,7 +402,7 @@ Routing destination: {routing_destination}
                 </div>
             </div>
         </div>
-        
+
         <!-- AI Analysis Card -->
         <div style="margin: 20px; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
             <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); padding: 15px; border-bottom: 1px solid #93c5fd;">
@@ -404,7 +412,7 @@ Routing destination: {routing_destination}
                 <div style="color: #1e293b; line-height: 1.7;">{analysis_html}</div>
             </div>
         </div>
-        
+
         <!-- Action Buttons -->
         <div style="margin: 20px; text-align: center; padding: 20px;">
             <p style="color: #6b7280; margin-bottom: 15px; font-size: 14px;">
@@ -419,7 +427,7 @@ Routing destination: {routing_destination}
                 </p>
             </div>
         </div>
-        
+
     </div>
 </body>
 </html>
@@ -465,8 +473,14 @@ async def _send_email(
         "to": to,
         "subject": subject,
         "text": text,
-        "html": html,
     }
+
+    # Only include HTML if provided (for plain text only emails)
+    if html is not None:
+        data["html"] = html
+        logger.debug(f"📧 Sending multipart email (text + HTML) to {to}")
+    else:
+        logger.info(f"📧 Sending plain text only email to {to}")
 
     # Add custom headers
     if headers:

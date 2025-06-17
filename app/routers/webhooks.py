@@ -10,11 +10,17 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 
+from ..middleware.dual_auth import DualAuthUser, get_dual_auth_user
 from ..services.ai_classifier import DynamicClassifier, get_dynamic_classifier
 from ..services.client_manager import ClientManager, get_client_manager
 from ..services.dashboard_service import DashboardService, get_dashboard_service
 from ..services.email_sender import forward_to_team, send_auto_reply
-from ..services.email_service import generate_customer_acknowledgment, generate_team_analysis
+from ..services.email_service import (
+    EmailService,
+    generate_customer_acknowledgment,
+    generate_team_analysis,
+    get_email_service,
+)
 from ..services.routing_engine import RoutingEngine, get_routing_engine
 from ..utils.config import get_config
 
@@ -66,6 +72,7 @@ async def mailgun_inbound_webhook(
     dynamic_classifier: Annotated[DynamicClassifier, Depends(get_dynamic_classifier)],
     routing_engine: Annotated[RoutingEngine, Depends(get_routing_engine)],
     dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
+    email_service: Annotated[EmailService, Depends(get_email_service)],
 ):
     """
     🎯 CORE MVP ENDPOINT: Receive inbound emails from Mailgun with multi-tenant support
@@ -99,7 +106,9 @@ async def mailgun_inbound_webhook(
 
         # Verify Mailgun signature if we have the webhook signing key
         if config.mailgun_webhook_signing_key:
-            if not verify_mailgun_signature(timestamp, token, signature, config.mailgun_webhook_signing_key):
+            if not verify_mailgun_signature(
+                timestamp, token, signature, config.mailgun_webhook_signing_key
+            ):
                 logger.warning(
                     f"❌ Invalid Mailgun signature from {request.client.host if request.client else 'unknown'}"
                 )
@@ -111,7 +120,9 @@ async def mailgun_inbound_webhook(
                 )
             logger.info("✅ Mailgun signature verified successfully")
         else:
-            logger.warning("⚠️ Mailgun signature verification skipped - no webhook signing key configured")
+            logger.warning(
+                "⚠️ Mailgun signature verification skipped - no webhook signing key configured"
+            )
 
         # Extract email data from Mailgun webhook
         email_data = {
@@ -149,6 +160,7 @@ async def mailgun_inbound_webhook(
             client_manager,
             routing_engine,
             dashboard_service,
+            email_service,
         )
 
         return {"status": "received", "message": "Email processing started", "client_id": client_id}
@@ -171,6 +183,7 @@ async def process_email_pipeline(
     client_manager,
     routing_engine,
     dashboard_service,
+    email_service,
 ):
     """
     🔄 Background task: Complete multi-tenant email processing pipeline
@@ -255,18 +268,15 @@ async def process_email_pipeline(
             forward_to = "admin@example.com"  # TODO: Make this configurable
             logger.warning("Using fallback routing for unknown client")
 
-        # Step 3: Generate customer acknowledgment with client branding
-        customer_acknowledgment = await generate_customer_acknowledgment(
+        # Step 3: Generate human-like plain text customer response and HTML team analysis
+        customer_response, team_analysis = await email_service.generate_plain_text_emails(
             email_data, classification, client_id
         )
 
-        # Step 4: Generate team analysis with client context
-        team_analysis = await generate_team_analysis(email_data, classification, client_id)
+        # Step 4: Send plain text customer acknowledgment (human-like)
+        await send_auto_reply(email_data, classification, customer_response, client_id)
 
-        # Step 5: Send customer acknowledgment with client branding
-        await send_auto_reply(email_data, classification, customer_acknowledgment, client_id)
-
-        # Step 6: Forward to team with detailed analysis
+        # Step 5: Forward HTML team analysis to team
         await forward_to_team(email_data, forward_to, classification, team_analysis, client_id)
 
         # Record successful completion
@@ -377,7 +387,10 @@ Please review this email manually.
 
 
 @router.get("/status", response_model=None)
-async def webhook_status(client_manager: Annotated[ClientManager, Depends(get_client_manager)]):
+async def webhook_status(
+    client_manager: Annotated[ClientManager, Depends(get_client_manager)],
+    current_user: Annotated[Optional[DualAuthUser], Depends(get_dual_auth_user)] = None,
+):
     """
     Get webhook processing status and client information.
 
@@ -412,12 +425,23 @@ async def webhook_status(client_manager: Annotated[ClientManager, Depends(get_cl
                 logger.warning(f"Failed to load details for client {client_id}: {e}")
                 client_details.append({"id": client_id, "error": str(e)})
 
-        return {
+        response = {
             "status": "active",
             "webhook_endpoint": "/webhooks/mailgun/inbound",
             "total_clients": len(available_clients),
             "clients": client_details,
         }
+
+        # Include auth info if authenticated
+        if current_user:
+            response["authenticated_as"] = {
+                "username": current_user.username,
+                "auth_type": current_user.auth_type,
+                "client_id": current_user.client_id,
+                "role": current_user.role,
+            }
+
+        return response
 
     except Exception as e:
         logger.error(f"Failed to get webhook status: {e}")
@@ -481,6 +505,37 @@ async def test_webhook(
     except Exception as e:
         logger.error(f"❌ Test webhook failed: {e}")
         return {"status": "error", "message": str(e)}
+
+
+@router.get("/mailgun/env-check", response_model=None)
+async def check_environment_variables():
+    """
+    🔧 ENV CHECK: Verify which environment variables are actually loaded in production
+    """
+    try:
+        config = get_config()
+
+        env_status = {
+            "anthropic_api_key": "SET" if config.anthropic_api_key else "MISSING",
+            "mailgun_api_key": "SET" if config.mailgun_api_key else "MISSING",
+            "mailgun_domain": config.mailgun_domain or "MISSING",
+            "mailgun_webhook_signing_key": (
+                "SET" if config.mailgun_webhook_signing_key else "MISSING"
+            ),
+            "ai_service_available": config.ai_service_available,
+            "email_service_available": config.email_service_available,
+            "environment": config.environment,
+        }
+
+        return {
+            "status": "env_check_complete",
+            "environment_variables": env_status,
+            "timestamp": "2024-06-14T20:00:00Z",
+        }
+
+    except Exception as e:
+        logger.error(f"🔧 ENV CHECK failed: {e}")
+        return {"status": "env_check_error", "message": str(e)}
 
 
 @router.post("/mailgun/debug", response_model=None)

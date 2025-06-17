@@ -10,7 +10,7 @@ This is a **production-ready enterprise multi-tenant AI email router** built wit
 
 **Completed:**
 - ✅ All FastAPI dependency injection issues resolved
-- ✅ Multi-tenant client isolation and domain matching (1.00 confidence)  
+- ✅ Multi-tenant client isolation and domain matching (1.00 confidence)
 - ✅ Claude 3.5 Sonnet AI classification working (95%+ accuracy)
 - ✅ Mailgun email delivery validated (100% success rate)
 - ✅ Complete end-to-end workflow (5-7 second processing)
@@ -37,6 +37,9 @@ This is a **production-ready enterprise multi-tenant AI email router** built wit
 # Install dependencies
 pip install -r requirements.txt
 
+# Create initial admin user (required for JWT auth)
+python scripts/simple_create_admin.py
+
 # Start development server with auto-reload
 python -m uvicorn app.main:app --port 8080 --reload
 
@@ -49,11 +52,19 @@ python -m app.main
 # Run all tests
 python -m pytest tests/ -v
 
+# Run authentication tests
+python -m pytest tests/test_authentication.py -v
+
 # Run specific test file
 python -m pytest tests/test_webhook.py -v
 
 # Test health endpoint
 curl http://localhost:8080/health
+
+# Test authentication endpoint
+curl -X POST http://localhost:8080/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "your_password"}'
 ```
 
 ### Code Quality
@@ -193,9 +204,11 @@ special_rules:
 
 ## Deployment
 
-### Google Cloud Run (Primary)
+⚠️ **IMPORTANT:** See [DEPLOYMENT.md](./DEPLOYMENT.md) for comprehensive deployment instructions, troubleshooting, and environment variable management.
+
+### Quick Deploy (after sourcing .env)
 ```bash
-gcloud run deploy email-router \
+source .env && gcloud run deploy email-router \
   --source . \
   --platform managed \
   --region us-central1 \
@@ -222,12 +235,32 @@ When deploying for new clients, customize:
 - `POST /webhooks/test` - Test endpoint for development and debugging
 - `GET /webhooks/status` - Webhook processing status with client information
 
+### Authentication & User Management
+- `POST /auth/login` - User login with JWT token generation
+- `POST /auth/refresh` - Refresh access token using refresh token
+- `POST /auth/logout` - Logout user by revoking tokens
+- `GET /auth/me` - Get current user information
+- `PUT /auth/me/password` - Change current user password
+- `POST /auth/register` - Register new user (admin only)
+- `GET /auth/users` - List users (admin only)
+- `DELETE /auth/users/{user_id}` - Delete user (super admin only)
+- `GET /auth/sessions` - List active sessions for current user
+- `DELETE /auth/sessions/{session_id}` - Revoke specific session
+
 ### Client Management API (v1)
 - `GET /api/v1/status` - Comprehensive system status and client metrics
 - `GET /api/v1/clients` - List all clients with pagination and filtering
 - `GET /api/v1/clients/{client_id}` - Get specific client details and configuration
 - `POST /api/v1/clients/{client_id}/validate` - Validate client setup and configuration
 - `POST /api/v1/domain/resolve` - Test domain resolution and client identification
+
+### Configuration Management API (v2)
+- `GET /api/v2/clients/{client_id}` - Get client configuration (JWT required)
+- `PUT /api/v2/clients/{client_id}` - Update client configuration (JWT required)
+- `GET /api/v2/clients/{client_id}/routing` - Get routing rules (JWT required)
+- `PUT /api/v2/clients/{client_id}/routing/{category}` - Update routing rule (JWT required)
+- `GET /api/v2/clients/{client_id}/branding` - Get branding configuration (JWT required)
+- `PUT /api/v2/clients/{client_id}/branding` - Update branding (JWT required)
 
 ### Health & Monitoring
 - `GET /health` - Basic health check with component status
@@ -353,7 +386,72 @@ All critical issues **successfully resolved** and the email router is **100% ope
 ### **System Status: PRODUCTION READY WITH PROFESSIONAL EMAIL TEMPLATES** 🚀
 The email router is now fully functional with enterprise-grade email templates and ready for deployment with professional client communications.
 
-## 🚀 Milestone 2: Web UI Implementation (Ready to Start)
+## ✅ Milestone 2: AUTHENTICATION & AUTHORIZATION - COMPLETED (June 2024)
+
+### **🎉 Major Achievement: Enterprise-Grade Authentication System**
+All authentication and authorization requirements **successfully implemented** with production-ready JWT and API key support.
+
+### **Authentication Features Implemented:**
+
+1. **✅ JWT Authentication System**
+   - Secure token generation and validation with HS256 signing
+   - Access tokens (30 min) and refresh tokens (30 days)
+   - Session management with audit trails and revocation
+   - Client-scoped tokens for multi-tenant isolation
+   - Automatic token refresh flows
+
+2. **✅ Role-Based Access Control (RBAC)**
+   - Three-tier role system: super_admin, client_admin, client_user
+   - Fine-grained permission system: resource:action format
+   - Client-scoped permissions for data isolation
+   - Permission checking middleware and decorators
+
+3. **✅ Dual Authentication System**
+   - JWT tokens for human users (web apps, mobile)
+   - API keys for automated systems (webhooks, bots)
+   - Automatic authentication method selection
+   - Middleware integration with priority handling
+
+4. **✅ User Management System**
+   - Complete user lifecycle management
+   - Password security with bcrypt hashing
+   - Account lockout and security features
+   - Admin user creation and management tools
+
+5. **✅ Comprehensive API Endpoints**
+   - `/auth/*` - Full authentication API
+   - Login, logout, registration, password management
+   - Session management and token revocation
+   - User administration (super admin only)
+
+### **Security Features Implemented:**
+- **🔐 Password Security**: bcrypt hashing, complexity requirements, rate limiting
+- **🛡️ Token Security**: JWT signing, session tracking, automatic revocation
+- **🔑 API Key Security**: Client-scoped access, usage tracking, easy rotation
+- **👥 Multi-tenant Isolation**: Client-scoped data access and permissions
+- **📊 Audit Trails**: Session tracking, login attempts, security events
+
+### **Files Created in Milestone 2:**
+- `app/database/models.py` - User, session, and permission models
+- `app/services/auth_service.py` - Complete JWT authentication service
+- `app/services/rbac.py` - Role-based access control system
+- `app/middleware/jwt_auth.py` - JWT authentication middleware
+- `app/middleware/dual_auth.py` - Dual authentication system
+- `app/routers/auth.py` - Authentication API endpoints
+- `app/routers/api/v2.py` - Configuration API with JWT auth
+- `scripts/create_admin_user.py` - Comprehensive admin creation
+- `scripts/simple_create_admin.py` - Simple admin creation tool
+
+### **Testing Suite Implemented:**
+- `tests/test_authentication.py` - Complete authentication test matrix (50+ tests)
+- `tests/test_jwt_service.py` - JWT token security and validation tests
+- `tests/test_dual_auth_middleware.py` - Dual authentication middleware tests
+- **📊 Test Coverage**: JWT generation/validation, RBAC, user management, security features
+
+### **System Status: PRODUCTION-GRADE AUTHENTICATION** 🔐
+The email router now features enterprise-grade authentication and authorization suitable for production deployment with complete security features.
+
+## 🚀 Milestone 3: Web UI Implementation (Ready to Start)
 
 ### **Objectives (4-6 weeks):**
 1. **Admin Dashboard Development**
@@ -381,5 +479,5 @@ The email router is now fully functional with enterprise-grade email templates a
    - Advanced alerting and notification system
 
 ### **Future Milestones:**
-- **Milestone 3**: Enterprise Features (2-4 weeks) - Analytics dashboard, multi-channel integration, enhanced security
-- **Milestone 4**: Platform Evolution (1-2 months) - Database migration, microservices architecture, advanced AI orchestration
+- **Milestone 4**: Enterprise Features (2-4 weeks) - Analytics dashboard, multi-channel integration, enhanced security
+- **Milestone 5**: Platform Evolution (1-2 months) - Database migration, microservices architecture, advanced AI orchestration

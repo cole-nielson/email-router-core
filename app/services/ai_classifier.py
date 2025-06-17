@@ -186,7 +186,9 @@ class AIClassifier:
                 return classification
 
             except json.JSONDecodeError as e:
-                logger.error(f"❌ Failed to parse AI response as JSON. Response: {ai_response[:500]}")
+                logger.error(
+                    f"❌ Failed to parse AI response as JSON. Response: {ai_response[:500]}"
+                )
                 logger.error(f"JSON decode error: {e}")
                 raise ValueError(f"Invalid AI response format: {e}")
 

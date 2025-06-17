@@ -164,14 +164,14 @@ class EmailService:
             logger.error(f"Team analysis generation failed: {e}")
             return self._get_hard_fallback_team_analysis(classification)
 
-    async def generate_branded_email_templates(
+    async def generate_plain_text_emails(
         self,
         email_data: Dict[str, Any],
         classification: Dict[str, Any],
         client_id: Optional[str] = None,
     ) -> Tuple[str, str]:
         """
-        Generate both customer acknowledgment and team analysis with branding.
+        Generate human-like plain text customer response and HTML team analysis.
 
         Args:
             email_data: Email data from webhook
@@ -179,32 +179,22 @@ class EmailService:
             client_id: Optional client ID
 
         Returns:
-            Tuple of (customer_template, team_template) with HTML branding
+            Tuple of (plain_text_customer_response, html_team_analysis)
         """
         try:
-            # Generate content
+            # Generate human-like plain text customer response
             customer_content = await self.generate_customer_acknowledgment(
                 email_data, classification, client_id
             )
+
+            # Generate team analysis (keep as structured content for internal use)
             team_content = await self.generate_team_analysis(email_data, classification, client_id)
 
-            # Apply branding
+            # For team analysis, apply HTML branding for internal readability
             if client_id:
                 branding = self._load_client_branding(client_id)
             else:
                 branding = _get_default_branding()
-
-            # Create branded templates
-            customer_template = create_branded_template(
-                content=customer_content,
-                branding=branding,
-                context={
-                    "email_type": "customer_acknowledgment",
-                    "classification": classification,
-                    "sender": email_data.get("from", ""),
-                    "subject": email_data.get("subject", "Your Email"),
-                },
-            )
 
             team_template = create_branded_template(
                 content=team_content,
@@ -222,12 +212,38 @@ class EmailService:
                 },
             )
 
-            return customer_template, team_template
+            # Customer gets plain text, team gets HTML
+            return customer_content, team_template
 
         except Exception as e:
-            logger.error(f"Branded email template generation failed: {e}")
-            # Return basic templates as fallback
-            return customer_content, team_content
+            logger.error(f"Plain text email generation failed: {e}")
+            # Return basic fallback responses
+            customer_fallback = self._get_hard_fallback_acknowledgment(classification)
+            team_fallback = self._get_hard_fallback_team_analysis(classification)
+            return customer_fallback, team_fallback
+
+    async def generate_branded_email_templates(
+        self,
+        email_data: Dict[str, Any],
+        classification: Dict[str, Any],
+        client_id: Optional[str] = None,
+    ) -> Tuple[str, str]:
+        """
+        DEPRECATED: Use generate_plain_text_emails() for human-like responses.
+        Generate both customer acknowledgment and team analysis with branding.
+
+        Args:
+            email_data: Email data from webhook
+            classification: Email classification result
+            client_id: Optional client ID
+
+        Returns:
+            Tuple of (customer_template, team_template) with HTML branding
+        """
+        logger.warning(
+            "generate_branded_email_templates is deprecated, use generate_plain_text_emails"
+        )
+        return await self.generate_plain_text_emails(email_data, classification, client_id)
 
     # =============================================================================
     # TEMPLATE ENGINE FUNCTIONALITY
@@ -247,19 +263,21 @@ class EmailService:
         try:
             logger.debug(f"Loading classification template for {client_id}")
             template = self._load_template(client_id, "classification")
-            
+
             logger.debug(f"Preparing template context for {client_id}")
             context = self._prepare_template_context(client_id, email_data)
-            
+
             logger.debug(f"Injecting template variables for {client_id}")
             prompt = self._inject_template_variables(template, context)
-            
+
             # Check for any remaining MISSING values in the final prompt
-            missing_vars = re.findall(r'MISSING: ([^}]+)', prompt)
+            missing_vars = re.findall(r"MISSING: ([^}]+)", prompt)
             if missing_vars:
-                logger.warning(f"Template contains missing variables for {client_id}: {missing_vars}")
+                logger.warning(
+                    f"Template contains missing variables for {client_id}: {missing_vars}"
+                )
                 logger.debug(f"Full template context keys: {list(context.keys())}")
-            
+
             logger.info(f"✅ Composed classification prompt for {client_id} ({len(prompt)} chars)")
             logger.debug(f"Classification prompt preview: {prompt[:200]}...")
             return prompt
@@ -291,12 +309,14 @@ class EmailService:
             context = self._prepare_template_context(client_id, email_data)
 
             # Add classification context
+            category = classification.get("category", "general")
             context.update(
                 {
-                    "category": classification.get("category", "general"),
+                    "category": category,
                     "priority": classification.get("priority", "medium"),
                     "confidence": classification.get("confidence", 0.5),
                     "reasoning": classification.get("reasoning", ""),
+                    "response_time_target": self._get_response_time_target(client_id, category),
                 }
             )
 
@@ -328,18 +348,18 @@ class EmailService:
             context = self._prepare_template_context(client_id, email_data)
 
             # Add classification and routing context
-            routing_destination = self.client_manager.get_routing_destination(
-                client_id, classification.get("category", "general")
-            )
+            category = classification.get("category", "general")
+            routing_destination = self.client_manager.get_routing_destination(client_id, category)
 
             context.update(
                 {
-                    "category": classification.get("category", "general"),
+                    "category": category,
                     "priority": classification.get("priority", "medium"),
                     "confidence": classification.get("confidence", 0.5),
                     "reasoning": classification.get("reasoning", ""),
                     "routing_destination": routing_destination,
                     "suggested_actions": classification.get("suggested_actions", []),
+                    "response_time_target": self._get_response_time_target(client_id, category),
                 }
             )
 
@@ -614,6 +634,7 @@ class EmailService:
         Returns:
             Template with variables injected
         """
+        missing_variables = []
 
         def replace_variable(match):
             var_expression = match.group(1).strip()
@@ -625,14 +646,33 @@ class EmailService:
                 default_value = default_expr.strip().strip("\"'")
             else:
                 var_name = var_expression
-                default_value = f"MISSING: {var_name}"
+                default_value = f"[{var_name}]"  # Less disruptive placeholder
 
             # Get nested value
             value = self._get_nested_value(context, var_name, default_value)
+
+            # Track missing variables for logging
+            if value == default_value and not "|default:" in var_expression:
+                missing_variables.append(var_name)
+                logger.warning(f"Missing template variable: {var_name}")
+
             return str(value)
 
         # Replace all {{variable}} patterns
         result = re.sub(r"{{\s*([^}]+)\s*}}", replace_variable, template)
+
+        # Log missing variables
+        if missing_variables:
+            logger.warning(
+                f"Template processing completed with {len(missing_variables)} missing variables: {missing_variables}"
+            )
+
+        # Check for any remaining MISSING: patterns that would break AI
+        if "MISSING:" in result:
+            logger.error(
+                f"Template still contains MISSING: patterns after processing - this will break AI prompts"
+            )
+
         return result
 
     def _get_nested_value(self, data: Dict[str, Any], path: str, default: str = None) -> str:
@@ -674,6 +714,17 @@ class EmailService:
         """
         config = get_config()
 
+        # Log prompt quality issues before sending to AI
+        if "MISSING:" in prompt:
+            logger.error(
+                f"🚨 CRITICAL: Sending malformed prompt to AI with MISSING: variables - this will fail!"
+            )
+            logger.error(f"Prompt preview: {prompt[:200]}...")
+        elif "[" in prompt and "]" in prompt:
+            logger.warning(f"⚠️ Prompt contains placeholder brackets - may affect AI quality")
+
+        logger.debug(f"📤 Sending prompt to Claude API ({len(prompt)} characters)")
+
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 "https://api.anthropic.com/v1/messages",
@@ -694,7 +745,16 @@ class EmailService:
             response.raise_for_status()
             result = response.json()
 
-            return result["content"][0]["text"]
+            ai_response = result["content"][0]["text"]
+            logger.debug(f"📥 Received AI response ({len(ai_response)} characters)")
+
+            # Log if AI response looks like it's explaining template issues
+            if "template" in ai_response.lower() or "placeholder" in ai_response.lower():
+                logger.warning(
+                    f"⚠️ AI response mentions templates/placeholders - prompt may have been malformed"
+                )
+
+            return ai_response
 
     async def _generate_generic_acknowledgment(
         self, email_data: Dict[str, Any], classification: Dict[str, Any]
@@ -703,10 +763,10 @@ class EmailService:
         category = classification.get("category", "general")
 
         prompt = f"""Generate a brief, professional email acknowledgment for a {category} inquiry.
-        
+
         Original email subject: {email_data.get('subject', 'No subject')}
         From: {email_data.get('from', 'Unknown sender')}
-        
+
         Requirements:
         - Keep it under 100 words
         - Be warm and professional
@@ -729,12 +789,12 @@ class EmailService:
         confidence = classification.get("confidence", 0.5)
 
         prompt = f"""Analyze this email for team routing and response.
-        
+
         Classification: {category} (confidence: {confidence:.2f})
         From: {email_data.get('from', 'Unknown')}
         Subject: {email_data.get('subject', 'No subject')}
         Content: {email_data.get('stripped_text', email_data.get('body_text', ''))[:500]}...
-        
+
         Provide:
         1. Summary of the issue/request
         2. Suggested response approach
@@ -749,14 +809,51 @@ class EmailService:
             return self._get_hard_fallback_team_analysis(classification)
 
     def _get_hard_fallback_acknowledgment(self, classification: Dict[str, Any]) -> str:
-        """Get hard-coded fallback acknowledgment."""
+        """Get hard-coded fallback acknowledgment - used only when AI is completely unavailable."""
         category = classification.get("category", "general")
 
+        # Human-like fallback responses with automation disclaimer
         fallbacks = {
-            "support": "Thank you for contacting our support team. We've received your message and will respond within 4 hours during business hours.",
-            "billing": "Thank you for your billing inquiry. Our billing team will review your message and respond within 24 hours.",
-            "sales": "Thank you for your interest in our services. A sales representative will contact you within 2 hours during business hours.",
-            "general": "Thank you for contacting us. We've received your message and will respond within 24 hours.",
+            "support": """Hi!
+
+I got your tech support message and I can see you're having some trouble. I've flagged this for our technical team and they'll dig into it for you.
+
+You should hear back within 4 business hours - they're pretty quick with these things.
+
+Thanks for reaching out!
+
+---
+This is an automated acknowledgment, but a real person will review your message and respond personally.""",
+            "billing": """Hey there!
+
+Thanks for getting in touch about the billing question. I can see this is important to you, so I've sent it straight to our accounting folks who handle all the payment stuff.
+
+They'll take a look and get back to you within 24 hours with an answer.
+
+Appreciate your patience!
+
+---
+This is an automated acknowledgment, but a real person will review your message and respond personally.""",
+            "sales": """Hi!
+
+Great to hear from you! I can see you're interested in learning more about what we offer.
+
+I've let our sales team know you reached out and they'll be in touch within 2 business hours to chat about your needs and see how we can help.
+
+Looking forward to connecting!
+
+---
+This is an automated acknowledgment, but a real person will review your message and respond personally.""",
+            "general": """Hi there!
+
+Thanks for your message! I've received it and made sure it gets to the right people for a proper response.
+
+You should hear back within 24 hours.
+
+Thanks for taking the time to reach out!
+
+---
+This is an automated acknowledgment, but a real person will review your message and respond personally.""",
         }
 
         return fallbacks.get(category, fallbacks["general"])
@@ -812,6 +909,36 @@ Check for any special handling requirements or escalation needs.
         else:
             return f"Email classified as {category.upper()} inquiry. Please review and respond accordingly."
 
+    def _get_response_time_target(self, client_id: str, category: str) -> str:
+        """Get response time target for a category."""
+        try:
+            client_config = self.client_manager.get_client_config(client_id)
+
+            # Check if response_times exists in config
+            if hasattr(client_config, "response_times") and client_config.response_times:
+                response_times = client_config.response_times
+
+                # Get the specific category target
+                if hasattr(response_times, category):
+                    category_config = getattr(response_times, category)
+                    if hasattr(category_config, "target"):
+                        return category_config.target
+
+            # Fallback targets based on category
+            fallback_targets = {
+                "support": "within 4 hours",
+                "billing": "within 24 hours",
+                "sales": "within 2 hours",
+                "urgent": "within 1 hour",
+                "general": "within 24 hours",
+            }
+
+            return fallback_targets.get(category, "within 24 hours")
+
+        except Exception as e:
+            logger.debug(f"Could not get response time target for {client_id}:{category}: {e}")
+            return "within 24 hours"
+
 
 # =============================================================================
 # DEPENDENCY INJECTION FUNCTION
@@ -854,11 +981,17 @@ async def generate_team_analysis(
 async def generate_branded_email_templates(
     email_data: Dict[str, Any], classification: Dict[str, Any], client_id: Optional[str] = None
 ) -> Tuple[str, str]:
-    """Backward compatibility function."""
+    """Backward compatibility function - now returns plain text for customers."""
     email_service = get_email_service()
-    return await email_service.generate_branded_email_templates(
-        email_data, classification, client_id
-    )
+    return await email_service.generate_plain_text_emails(email_data, classification, client_id)
+
+
+async def generate_plain_text_emails(
+    email_data: Dict[str, Any], classification: Dict[str, Any], client_id: Optional[str] = None
+) -> Tuple[str, str]:
+    """Generate human-like plain text customer response and HTML team analysis."""
+    email_service = get_email_service()
+    return await email_service.generate_plain_text_emails(email_data, classification, client_id)
 
 
 async def generate_response_draft(

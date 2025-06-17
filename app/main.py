@@ -28,9 +28,12 @@ except ImportError:
     print("⚠️ python-dotenv not installed, using system environment variables")
 
 from .middleware.api_key_auth import APIKeyMiddleware
+from .middleware.dual_auth import DualAuthMiddleware
 from .middleware.rate_limiter import RateLimiterMiddleware
 from .models.schemas import APIInfo, HealthResponse
 from .routers.api.v1 import router as api_v1_router
+from .routers.api.v2 import router as api_v2_router
+from .routers.auth import router as auth_router
 from .routers.dashboard import router as dashboard_router
 from .routers.webhooks import router as webhook_router
 from .services.monitoring import MetricsCollector
@@ -51,9 +54,9 @@ app = FastAPI(
     title="Email Router SaaS API",
     description="""
     ## Multi-Tenant AI Email Router API
-    
+
     A powerful SaaS platform for intelligent email classification and routing using Claude 3.5 Sonnet AI.
-    
+
     ### 🎯 Key Features
     - **Multi-tenant architecture** with client-specific configurations
     - **AI-powered classification** using advanced language models
@@ -61,23 +64,23 @@ app = FastAPI(
     - **Personalized responses** with client branding
     - **Real-time webhooks** for instant email processing
     - **Advanced domain resolution** with fuzzy matching
-    
+
     ### 🔐 Authentication
     - **API Key Authentication**: Include `X-API-Key` header
     - **Webhook Signatures**: Mailgun signature verification
     - **Rate Limiting**: Configurable per-client quotas
-    
+
     ### 📊 Monitoring
     - **Health Checks**: `/health` and `/health/detailed`
     - **Metrics**: `/metrics` (Prometheus format)
     - **Status Dashboard**: `/api/v1/status`
-    
+
     ### 🚀 Getting Started
     1. Obtain API key from your dashboard
     2. Configure webhook endpoints
     3. Set up client domains and routing rules
     4. Start receiving intelligent email routing!
-    
+
     ### 📚 Documentation
     - **Interactive Docs**: `/docs` (Swagger UI)
     - **Alternative Docs**: `/redoc` (ReDoc)
@@ -107,8 +110,9 @@ app = FastAPI(
 # Security scheme
 security = HTTPBearer()
 
-# Add security middleware
-app.add_middleware(APIKeyMiddleware)
+# Add security middleware - order matters (last added = first executed)
+app.add_middleware(DualAuthMiddleware)  # JWT + API key authentication
+app.add_middleware(APIKeyMiddleware)  # Legacy API key support
 app.add_middleware(RateLimiterMiddleware, calls_per_minute=300, burst_limit=50)
 
 # Add trusted host middleware for production
@@ -155,8 +159,20 @@ def custom_openapi():
             "description": "Mailgun webhook endpoints for email processing",
         },
         {
+            "name": "Authentication",
+            "description": "User authentication, JWT tokens, and session management",
+        },
+        {
             "name": "Client Management",
             "description": "Multi-tenant client configuration and management",
+        },
+        {
+            "name": "Configuration Management",
+            "description": "Self-service configuration management API v2",
+        },
+        {
+            "name": "Dashboard",
+            "description": "Real-time dashboard and analytics endpoints",
         },
         {
             "name": "Health & Monitoring",
@@ -189,9 +205,25 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
+
+# Database startup
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database and other startup tasks."""
+    try:
+        from .database.connection import init_database
+
+        init_database()
+        logger.info("✅ Database initialized successfully")
+    except Exception as e:
+        logger.error(f"❌ Database initialization failed: {e}")
+
+
 # Include routers with API versioning
 app.include_router(webhook_router, prefix="/webhooks", tags=["Webhooks"])
+app.include_router(auth_router, tags=["Authentication"])
 app.include_router(api_v1_router, prefix="/api/v1", tags=["Client Management"])
+app.include_router(api_v2_router, prefix="/api/v2", tags=["Configuration Management"])
 app.include_router(dashboard_router, prefix="/api/v1/dashboard", tags=["Dashboard"])
 
 
