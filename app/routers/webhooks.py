@@ -25,34 +25,34 @@ router = APIRouter()
 def verify_mailgun_signature(timestamp: str, token: str, signature: str, api_key: str) -> bool:
     """
     Verify Mailgun webhook signature using HMAC-SHA256.
-    
+
     Args:
         timestamp: Mailgun timestamp
         token: Mailgun token
         signature: Mailgun signature
         api_key: Mailgun API key
-        
+
     Returns:
         True if signature is valid, False otherwise
     """
     if not all([timestamp, token, signature, api_key]):
         logger.warning("Missing required signature parameters")
         return False
-    
+
     try:
         # Create the signing string as per Mailgun documentation
         signing_string = f"{timestamp}{token}"
-        
+
         # Create HMAC signature
         expected_signature = hmac.new(
-            key=api_key.encode('utf-8'),
-            msg=signing_string.encode('utf-8'),
-            digestmod=hashlib.sha256
+            key=api_key.encode("utf-8"),
+            msg=signing_string.encode("utf-8"),
+            digestmod=hashlib.sha256,
         ).hexdigest()
-        
+
         # Compare signatures using constant-time comparison
         return hmac.compare_digest(signature, expected_signature)
-        
+
     except Exception as e:
         logger.error(f"Error verifying Mailgun signature: {e}")
         return False
@@ -82,31 +82,36 @@ async def mailgun_inbound_webhook(
     try:
         # Extract form data from Mailgun webhook
         form_data = await request.form()
-        
+
         # Log all received data for debugging
-        logger.info(f"🔍 Webhook received from {request.client.host if request.client else 'unknown'}")
+        logger.info(
+            f"🔍 Webhook received from {request.client.host if request.client else 'unknown'}"
+        )
         logger.info(f"📋 Form fields: {list(form_data.keys())}")
-        
+
         # Extract Mailgun signature verification fields
         timestamp = form_data.get("timestamp", "")
         token = form_data.get("token", "")
         signature = form_data.get("signature", "")
-        
+
         # Get Mailgun API key for signature verification
         config = get_config()
-        
-        # Verify Mailgun signature if we have the API key
-        if config.mailgun_api_key:
-            if not verify_mailgun_signature(timestamp, token, signature, config.mailgun_api_key):
-                logger.warning(f"❌ Invalid Mailgun signature from {request.client.host if request.client else 'unknown'}")
-                logger.warning(f"🔐 Signature details - timestamp: {timestamp}, token: {token[:8]}..., signature: {signature[:8]}...")
+
+        # Verify Mailgun signature if we have the webhook signing key
+        if config.mailgun_webhook_signing_key:
+            if not verify_mailgun_signature(timestamp, token, signature, config.mailgun_webhook_signing_key):
+                logger.warning(
+                    f"❌ Invalid Mailgun signature from {request.client.host if request.client else 'unknown'}"
+                )
+                logger.warning(
+                    f"🔐 Signature details - timestamp: {timestamp}, token: {token[:8]}..., signature: {signature[:8]}..."
+                )
                 raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid webhook signature"
+                    status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature"
                 )
             logger.info("✅ Mailgun signature verified successfully")
         else:
-            logger.warning("⚠️ Mailgun signature verification skipped - no API key configured")
+            logger.warning("⚠️ Mailgun signature verification skipped - no webhook signing key configured")
 
         # Extract email data from Mailgun webhook
         email_data = {
@@ -120,7 +125,9 @@ async def mailgun_inbound_webhook(
             "message_id": form_data.get("Message-Id", ""),
         }
 
-        logger.info(f"📧 Received email from {email_data['from']} to {email_data['to']}: {email_data['subject']}")
+        logger.info(
+            f"📧 Received email from {email_data['from']} to {email_data['to']}: {email_data['subject']}"
+        )
 
         # Identify client from recipient domain
         identification_result = client_manager.identify_client_by_email(email_data["to"])
@@ -153,7 +160,7 @@ async def mailgun_inbound_webhook(
         logger.error(f"❌ Webhook processing failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Webhook processing failed: {str(e)}"
+            detail=f"Webhook processing failed: {str(e)}",
         )
 
 
@@ -480,21 +487,21 @@ async def test_webhook(
 async def mailgun_debug_webhook(request: Request):
     """
     🚧 DEBUG ENDPOINT: Capture and log all Mailgun webhook data for troubleshooting.
-    
-    This endpoint logs all incoming data without processing to help identify 
+
+    This endpoint logs all incoming data without processing to help identify
     what Mailgun is actually sending vs what we expect.
     """
     try:
         # Get client info
         client_host = request.client.host if request.client else "unknown"
         user_agent = request.headers.get("user-agent", "unknown")
-        
+
         logger.info(f"🐛 DEBUG: Webhook received from {client_host}")
         logger.info(f"🐛 DEBUG: User-Agent: {user_agent}")
-        
+
         # Log all headers
         logger.info(f"🐛 DEBUG: Headers: {dict(request.headers)}")
-        
+
         # Try to get form data
         try:
             form_data = await request.form()
@@ -502,23 +509,25 @@ async def mailgun_debug_webhook(request: Request):
             logger.info(f"🐛 DEBUG: Form data: {dict(form_data)}")
         except Exception as form_error:
             logger.warning(f"🐛 DEBUG: Failed to parse form data: {form_error}")
-        
+
         # Try to get raw body
         try:
             body = await request.body()
             logger.info(f"🐛 DEBUG: Raw body length: {len(body)} bytes")
-            logger.info(f"🐛 DEBUG: Raw body (first 500 chars): {body[:500].decode('utf-8', errors='ignore')}")
+            logger.info(
+                f"🐛 DEBUG: Raw body (first 500 chars): {body[:500].decode('utf-8', errors='ignore')}"
+            )
         except Exception as body_error:
             logger.warning(f"🐛 DEBUG: Failed to get raw body: {body_error}")
-        
+
         return {
             "status": "debug_received",
             "message": "Debug data logged - check server logs",
             "client_host": client_host,
             "user_agent": user_agent,
-            "timestamp": "2024-06-14T20:00:00Z"  # Static for debugging
+            "timestamp": "2024-06-14T20:00:00Z",  # Static for debugging
         }
-        
+
     except Exception as e:
         logger.error(f"🐛 DEBUG: Debug endpoint failed: {e}")
         return {"status": "debug_error", "message": str(e)}

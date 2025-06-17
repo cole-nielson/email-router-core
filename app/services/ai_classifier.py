@@ -173,6 +173,7 @@ class AIClassifier:
             ai_response = result["content"][0]["text"]
 
             try:
+                logger.debug(f"Parsing AI response: {ai_response[:100]}...")
                 classification = json.loads(ai_response)
 
                 # Validate required fields
@@ -181,10 +182,12 @@ class AIClassifier:
                 if "confidence" not in classification:
                     classification["confidence"] = 0.5
 
+                logger.debug(f"✅ Successfully parsed AI classification: {classification}")
                 return classification
 
             except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse AI response as JSON: {ai_response}")
+                logger.error(f"❌ Failed to parse AI response as JSON. Response: {ai_response[:500]}")
+                logger.error(f"JSON decode error: {e}")
                 raise ValueError(f"Invalid AI response format: {e}")
 
     def _classify_with_keywords(self, client_id: str, email_data: Dict[str, Any]) -> Dict[str, Any]:

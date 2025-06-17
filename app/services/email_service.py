@@ -245,17 +245,31 @@ class EmailService:
             Composed classification prompt
         """
         try:
+            logger.debug(f"Loading classification template for {client_id}")
             template = self._load_template(client_id, "classification")
+            
+            logger.debug(f"Preparing template context for {client_id}")
             context = self._prepare_template_context(client_id, email_data)
+            
+            logger.debug(f"Injecting template variables for {client_id}")
             prompt = self._inject_template_variables(template, context)
-
-            logger.debug(f"Composed classification prompt for {client_id} ({len(prompt)} chars)")
+            
+            # Check for any remaining MISSING values in the final prompt
+            missing_vars = re.findall(r'MISSING: ([^}]+)', prompt)
+            if missing_vars:
+                logger.warning(f"Template contains missing variables for {client_id}: {missing_vars}")
+                logger.debug(f"Full template context keys: {list(context.keys())}")
+            
+            logger.info(f"✅ Composed classification prompt for {client_id} ({len(prompt)} chars)")
+            logger.debug(f"Classification prompt preview: {prompt[:200]}...")
             return prompt
 
         except Exception as e:
-            logger.error(f"Failed to compose classification prompt for {client_id}: {e}")
+            logger.error(f"❌ Failed to compose classification prompt for {client_id}: {e}")
+            logger.debug(f"Exception details: {str(e)}", exc_info=True)
 
             # Fallback to basic classification prompt
+            logger.warning(f"Using fallback classification prompt for {client_id}")
             return self._get_fallback_classification_prompt(email_data)
 
     def compose_acknowledgment_prompt(

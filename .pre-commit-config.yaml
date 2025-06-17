@@ -37,12 +37,12 @@ repos:
       - id: check-merge-conflict
       - id: check-added-large-files
         args: [--maxkb=1000]
-      
+
       # YAML and JSON validation
       - id: check-yaml
         exclude: ^clients/
       - id: check-json
-      
+
       # Python specific
       - id: check-ast
       - id: debug-statements

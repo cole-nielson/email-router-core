@@ -19,6 +19,7 @@ class Config:
     # Mailgun (Optional for API management mode)
     mailgun_api_key: Optional[str]
     mailgun_domain: Optional[str]
+    mailgun_webhook_signing_key: Optional[str]
 
     # Google Cloud (Optional for production)
     google_project_id: Optional[str] = None
@@ -58,6 +59,7 @@ def get_config() -> Config:
     anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY")
     mailgun_api_key = os.environ.get("MAILGUN_API_KEY")
     mailgun_domain = os.environ.get("MAILGUN_DOMAIN")
+    mailgun_webhook_signing_key = os.environ.get("MAILGUN_WEBHOOK_SIGNING_KEY")
 
     ai_service_available = bool(anthropic_api_key)
     email_service_available = bool(mailgun_api_key and mailgun_domain)
@@ -85,6 +87,7 @@ def get_config() -> Config:
         anthropic_api_key=anthropic_api_key,
         mailgun_api_key=mailgun_api_key,
         mailgun_domain=mailgun_domain,
+        mailgun_webhook_signing_key=mailgun_webhook_signing_key,
         # Optional with defaults
         anthropic_model=os.environ.get("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022"),
         google_project_id=os.environ.get("GOOGLE_CLOUD_PROJECT"),
