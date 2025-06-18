@@ -5,9 +5,8 @@ Code Quality Metrics Dashboard
 """
 
 import subprocess
-import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 
 
 def run_command(command: str) -> Tuple[str, int]:

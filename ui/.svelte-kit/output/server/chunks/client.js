@@ -1,5 +1,5 @@
 import "./exports.js";
-import { w as onMount } from "./ssr.js";
+import { q as onMount } from "./ssr.js";
 function get(key, parse = JSON.parse) {
   try {
     return parse(sessionStorage[key]);
@@ -23,4 +23,12 @@ if (is_legacy) {
 }
 get(SCROLL_KEY) ?? {};
 get(SNAPSHOT_KEY) ?? {};
+function goto(url, opts = {}) {
+  {
+    throw new Error("Cannot call goto(...) on the server");
+  }
+}
+export {
+  goto as g
+};
 //# sourceMappingURL=client.js.map

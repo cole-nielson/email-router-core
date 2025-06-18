@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Generator
 
 from sqlalchemy import create_engine, event
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from .models import Base
@@ -71,8 +70,13 @@ def get_database_session() -> Session:
     """Get database session for dependency injection."""
     if SessionLocal is None:
         init_database()
+        if SessionLocal is None:
+             raise RuntimeError("Database not initialized, SessionLocal is None.")
 
-    return SessionLocal()
+    db = SessionLocal()
+    if db is None:
+        raise RuntimeError("Failed to create a database session.")
+    return db
 
 
 @contextmanager
@@ -88,6 +92,17 @@ def get_db_session() -> Generator[Session, None, None]:
         raise
     finally:
         session.close()
+
+
+def get_db() -> Generator[Session, None, None]:
+    """FastAPI dependency to get a managed database session."""
+    db = None
+    try:
+        db = get_database_session()
+        yield db
+    finally:
+        if db:
+            db.close()
 
 
 def reset_database():
@@ -109,11 +124,11 @@ def reset_database():
 
 def backup_database(backup_path: Path = None):
     """Create database backup."""
-    if backup_path is None:
-        backup_path = DATABASE_PATH.with_suffix(f".backup.{int(time.time())}.db")
-
     import shutil
     import time
+    
+    if backup_path is None:
+        backup_path = DATABASE_PATH.with_suffix(f".backup.{int(time.time())}.db")
 
     if DATABASE_PATH.exists():
         shutil.copy2(DATABASE_PATH, backup_path)

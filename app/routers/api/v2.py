@@ -4,9 +4,9 @@ API v2 Router for self-service configuration management.
 """
 
 import logging
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Annotated, Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, EmailStr
 
 from ...middleware.jwt_auth import require_authenticated_user

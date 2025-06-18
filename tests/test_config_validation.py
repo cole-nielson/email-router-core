@@ -4,15 +4,13 @@ Configuration validation tests for all client configurations.
 """
 
 from pathlib import Path
-from typing import Any, Dict, List
 
 import pytest
 import yaml
 from pydantic import ValidationError
 
-from app.models.client_config import BrandingConfig, ClientConfig, DomainConfig, SettingsConfig
+from app.models.client_config import ClientConfig
 from app.services.client_manager import ClientManager
-from app.utils.client_loader import ClientLoadError, load_client_config
 
 
 class TestClientConfigValidation:

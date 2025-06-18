@@ -35,7 +35,13 @@ gunicorn==21.2.0
 
 # Testing (for development)
 pytest==7.4.0
-pytest-asyncio==0.21.1
+pytest-asyncio==0.23.7
 
 # CLI tools
 tabulate==0.9.0
+
+# Performance monitoring
+psutil==5.9.8
+
+# Database migrations
+alembic==1.16.2

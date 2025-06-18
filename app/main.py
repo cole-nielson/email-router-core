@@ -8,14 +8,13 @@ import logging
 import os
 import time
 from datetime import datetime
-from typing import Dict, List
 
-from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, status
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer
 
 # Load environment variables from .env file
@@ -27,7 +26,6 @@ try:
 except ImportError:
     print("⚠️ python-dotenv not installed, using system environment variables")
 
-from .middleware.api_key_auth import APIKeyMiddleware
 from .middleware.dual_auth import DualAuthMiddleware
 from .middleware.rate_limiter import RateLimiterMiddleware
 from .models.schemas import APIInfo, HealthResponse
@@ -112,7 +110,6 @@ security = HTTPBearer()
 
 # Add security middleware - order matters (last added = first executed)
 app.add_middleware(DualAuthMiddleware)  # JWT + API key authentication
-app.add_middleware(APIKeyMiddleware)  # Legacy API key support
 app.add_middleware(RateLimiterMiddleware, calls_per_minute=300, burst_limit=50)
 
 # Add trusted host middleware for production
@@ -211,12 +208,22 @@ app.openapi = custom_openapi
 async def startup_event():
     """Initialize database and other startup tasks."""
     try:
+        # Run startup validation first
+        from .utils.startup_validator import validate_startup
+        validation_results = validate_startup()
+        logger.info(f"✅ Startup validation passed: {validation_results['checks_passed']}/{validation_results['total_checks']} checks")
+        
+        # Initialize database
         from .database.connection import init_database
-
         init_database()
         logger.info("✅ Database initialized successfully")
+        
+        # Log startup completion
+        logger.info("🚀 Email Router SaaS API v2.0 started successfully")
+        
     except Exception as e:
-        logger.error(f"❌ Database initialization failed: {e}")
+        logger.error(f"❌ Startup failed: {e}")
+        raise e  # Re-raise to prevent app from starting with invalid configuration
 
 
 # Include routers with API versioning
@@ -298,7 +305,8 @@ async def root():
     available endpoints, documentation links, and system status.
     """
     try:
-        config = get_config()
+        # Config loaded for service status validation
+        get_config()
 
         return APIInfo(
             name="Email Router SaaS API",

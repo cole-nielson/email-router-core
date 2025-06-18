@@ -7,14 +7,10 @@ Unified email service for AI-powered response generation and template processing
 import logging
 import re
 from datetime import datetime
-from pathlib import Path
-from string import Template
 from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
-import yaml
 
-from ..models.client_config import ClientConfig
 from ..services.client_manager import ClientManager
 from ..utils.client_loader import ClientLoadError, load_ai_prompt, load_fallback_responses
 from ..utils.config import get_config
@@ -652,7 +648,7 @@ class EmailService:
             value = self._get_nested_value(context, var_name, default_value)
 
             # Track missing variables for logging
-            if value == default_value and not "|default:" in var_expression:
+            if value == default_value and "|default:" not in var_expression:
                 missing_variables.append(var_name)
                 logger.warning(f"Missing template variable: {var_name}")
 
@@ -670,7 +666,7 @@ class EmailService:
         # Check for any remaining MISSING: patterns that would break AI
         if "MISSING:" in result:
             logger.error(
-                f"Template still contains MISSING: patterns after processing - this will break AI prompts"
+                "Template still contains MISSING: patterns after processing - this will break AI prompts"
             )
 
         return result
@@ -717,11 +713,11 @@ class EmailService:
         # Log prompt quality issues before sending to AI
         if "MISSING:" in prompt:
             logger.error(
-                f"🚨 CRITICAL: Sending malformed prompt to AI with MISSING: variables - this will fail!"
+                "🚨 CRITICAL: Sending malformed prompt to AI with MISSING: variables - this will fail!"
             )
             logger.error(f"Prompt preview: {prompt[:200]}...")
         elif "[" in prompt and "]" in prompt:
-            logger.warning(f"⚠️ Prompt contains placeholder brackets - may affect AI quality")
+            logger.warning("⚠️ Prompt contains placeholder brackets - may affect AI quality")
 
         logger.debug(f"📤 Sending prompt to Claude API ({len(prompt)} characters)")
 
@@ -751,7 +747,7 @@ class EmailService:
             # Log if AI response looks like it's explaining template issues
             if "template" in ai_response.lower() or "placeholder" in ai_response.lower():
                 logger.warning(
-                    f"⚠️ AI response mentions templates/placeholders - prompt may have been malformed"
+                    "⚠️ AI response mentions templates/placeholders - prompt may have been malformed"
                 )
 
             return ai_response

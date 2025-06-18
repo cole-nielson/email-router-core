@@ -4,17 +4,17 @@ Authentication API Router for multi-tenant email router.
 """
 
 import logging
-from typing import Annotated, Dict, List, Optional
+from typing import Annotated, List, Optional
+from sqlalchemy.orm import Session
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel, EmailStr
 
-from ..database.connection import SessionLocal
-from ..middleware.jwt_auth import get_current_user_from_token, require_authenticated_user
+from ..database.connection import get_db
+from ..middleware.jwt_auth import require_authenticated_user
 from ..services.auth_service import (
     AuthenticatedUser,
-    AuthService,
     LoginRequest,
     TokenResponse,
     get_auth_service,
@@ -84,7 +84,7 @@ class LogoutRequest(BaseModel):
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(request: LoginRequest, req: Request):
+async def login(request: LoginRequest, req: Request, db: Session = Depends(get_db)):
     """User login with JWT token generation."""
     try:
         # Get client metadata
@@ -92,8 +92,9 @@ async def login(request: LoginRequest, req: Request):
         user_agent = req.headers.get("User-Agent")
 
         # Get auth service
-        db = SessionLocal()
         auth_service = get_auth_service(db)
+        if not auth_service:
+            raise HTTPException(status_code=500, detail="Could not initialize authentication service.")
 
         # Perform login
         token_response = auth_service.login(request, ip_address, user_agent)
@@ -109,16 +110,15 @@ async def login(request: LoginRequest, req: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error during login",
         )
-    finally:
-        db.close()
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(request: RefreshTokenRequest):
+async def refresh_token(request: RefreshTokenRequest, db: Session = Depends(get_db)):
     """Refresh access token using refresh token."""
     try:
-        db = SessionLocal()
         auth_service = get_auth_service(db)
+        if not auth_service:
+            raise HTTPException(status_code=500, detail="Could not initialize authentication service.")
 
         token_response = auth_service.refresh_access_token(request.refresh_token)
         if not token_response:
@@ -136,16 +136,18 @@ async def refresh_token(request: RefreshTokenRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error during token refresh",
         )
-    finally:
-        db.close()
 
 
 @router.post("/logout")
-async def logout(current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)]):
+async def logout(
+    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    db: Session = Depends(get_db)
+):
     """Logout user by revoking current token."""
     try:
-        db = SessionLocal()
         auth_service = get_auth_service(db)
+        if not auth_service:
+            raise HTTPException(status_code=500, detail="Could not initialize authentication service.")
 
         # Extract token from request (this would need to be improved)
         # For now, we'll revoke all user tokens as a secure logout
@@ -161,8 +163,6 @@ async def logout(current_user: Annotated[AuthenticatedUser, Depends(require_auth
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error during logout",
         )
-    finally:
-        db.close()
 
 
 # =============================================================================
@@ -174,14 +174,16 @@ async def logout(current_user: Annotated[AuthenticatedUser, Depends(require_auth
 async def register_user(
     request: UserRegistrationRequest,
     current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    db: Session = Depends(get_db)
 ):
     """Register a new user (admin only)."""
     try:
         # Check permissions - only super admin can create users
         RBACService.check_permission(current_user, "users:write")
 
-        db = SessionLocal()
         auth_service = get_auth_service(db)
+        if not auth_service:
+            raise HTTPException(status_code=500, detail="Could not initialize authentication service.")
 
         # Import User model dynamically
         from ..database.models import User, UserRole, UserStatus
@@ -246,17 +248,15 @@ async def register_user(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error during user registration",
         )
-    finally:
-        db.close()
 
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
     current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    db: Session = Depends(get_db)
 ):
     """Get current user information."""
     try:
-        db = SessionLocal()
 
         # Import User model dynamically
         from ..database.models import User
@@ -284,19 +284,19 @@ async def get_current_user_info(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error"
         )
-    finally:
-        db.close()
 
 
 @router.put("/me/password")
 async def change_password(
     request: PasswordChangeRequest,
     current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    db: Session = Depends(get_db)
 ):
     """Change current user password."""
     try:
-        db = SessionLocal()
         auth_service = get_auth_service(db)
+        if not auth_service:
+            raise HTTPException(status_code=500, detail="Could not initialize authentication service.")
 
         # Import User model dynamically
         from ..database.models import User
@@ -331,8 +331,6 @@ async def change_password(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error during password change",
         )
-    finally:
-        db.close()
 
 
 # =============================================================================
@@ -346,13 +344,12 @@ async def list_users(
     client_id: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
+    db: Session = Depends(get_db)
 ):
     """List users (admin only)."""
     try:
         # Check permissions
         RBACService.check_permission(current_user, "users:read")
-
-        db = SessionLocal()
 
         # Import User model dynamically
         from ..database.models import User
@@ -389,13 +386,13 @@ async def list_users(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error"
         )
-    finally:
-        db.close()
 
 
 @router.delete("/users/{user_id}")
 async def delete_user(
-    user_id: int, current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)]
+    user_id: int, 
+    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    db: Session = Depends(get_db)
 ):
     """Delete user (super admin only)."""
     try:
@@ -413,8 +410,9 @@ async def delete_user(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete your own account"
             )
 
-        db = SessionLocal()
         auth_service = get_auth_service(db)
+        if not auth_service:
+            raise HTTPException(status_code=500, detail="Could not initialize authentication service.")
 
         # Import User model dynamically
         from ..database.models import User
@@ -442,8 +440,6 @@ async def delete_user(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error during user deletion",
         )
-    finally:
-        db.close()
 
 
 # =============================================================================
@@ -454,17 +450,17 @@ async def delete_user(
 @router.get("/sessions")
 async def list_active_sessions(
     current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    db: Session = Depends(get_db)
 ):
     """List active sessions for current user."""
     try:
-        db = SessionLocal()
 
         # Import models dynamically
         from ..database.models import UserSession
 
         sessions = (
             db.query(UserSession)
-            .filter(UserSession.user_id == current_user.id, UserSession.is_active == True)
+            .filter(UserSession.user_id == current_user.id, UserSession.is_active)
             .order_by(UserSession.created_at.desc())
             .all()
         )
@@ -491,18 +487,19 @@ async def list_active_sessions(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error"
         )
-    finally:
-        db.close()
 
 
 @router.delete("/sessions/{session_id}")
 async def revoke_session(
-    session_id: str, current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)]
+    session_id: str, 
+    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    db: Session = Depends(get_db)
 ):
     """Revoke a specific session."""
     try:
-        db = SessionLocal()
         auth_service = get_auth_service(db)
+        if not auth_service:
+            raise HTTPException(status_code=500, detail="Could not initialize authentication service.")
 
         # Import models dynamically
         from ..database.models import UserSession
@@ -533,5 +530,3 @@ async def revoke_session(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error"
         )
-    finally:
-        db.close()

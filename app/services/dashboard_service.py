@@ -3,25 +3,19 @@ Dashboard Service - Aggregates data from email processing and client configurati
 to provide comprehensive dashboard metrics and analytics.
 """
 
-import asyncio
-import json
 import logging
-import os
 import uuid
-from collections import Counter, defaultdict
+from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from ..models.dashboard_schemas import (
     ActivityType,
     AlertSeverity,
     AutomationStatus,
     ClientInfo,
-    DashboardAnalytics,
     DashboardMetrics,
     IntegrationHealth,
-    MetricChange,
-    MetricTrend,
     ProcessingActivity,
     SystemAlert,
     SystemStatus,
@@ -260,7 +254,7 @@ class DashboardService:
             ),
             "delivery_complete": (
                 ActivityType.EMAIL_PROCESSED,
-                f"✅ Email processing complete" if success else "❌ Email processing failed",
+                "✅ Email processing complete" if success else "❌ Email processing failed",
                 f"Completed processing '{subject}' in {email_data.get('processing_time_ms', 0)}ms",
             ),
             "processing_error": (

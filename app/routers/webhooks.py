@@ -17,8 +17,6 @@ from ..services.dashboard_service import DashboardService, get_dashboard_service
 from ..services.email_sender import forward_to_team, send_auto_reply
 from ..services.email_service import (
     EmailService,
-    generate_customer_acknowledgment,
-    generate_team_analysis,
     get_email_service,
 )
 from ..services.routing_engine import RoutingEngine, get_routing_engine

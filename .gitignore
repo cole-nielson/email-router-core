@@ -74,6 +74,11 @@ temp/
 tmp/
 .cache/
 
+# 🗄️ DATABASE FILES (development)
+*.db
+*.db-shm
+*.db-wal
+
 # 📧 EMAIL PROCESSING ARTIFACTS
 processed_emails/
 email_cache/
@@ -85,9 +90,21 @@ analytics/
 # 🌐 NODE.JS & UI DEPENDENCIES
 ui/node_modules/
 ui/.svelte-kit/
+ui/.vercel/
 ui/build/
 ui/dist/
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# 🔧 DEVELOPMENT CACHE & TYPE CHECKING
+.mypy_cache/
+.ruff_cache/
+.black_cache/
+.isort_cache/
+
+# 🧪 TEST DATABASES & ARTIFACTS
+test_auth.db
+test_*.db
+*.test.db

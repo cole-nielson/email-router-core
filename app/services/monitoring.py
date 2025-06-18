@@ -7,8 +7,8 @@ import logging
 import threading
 import time
 from collections import defaultdict, deque
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, TypedDict
+from datetime import datetime
+from typing import Dict, Optional, TypedDict
 
 logger = logging.getLogger(__name__)
 
@@ -324,28 +324,28 @@ class MetricsCollector:
             # System metrics
             metrics.extend(
                 [
-                    f"# HELP email_router_requests_total Total number of requests",
-                    f"# TYPE email_router_requests_total counter",
+                    "# HELP email_router_requests_total Total number of requests",
+                    "# TYPE email_router_requests_total counter",
                     f"email_router_requests_total {self.total_requests}",
                     "",
-                    f"# HELP email_router_requests_successful_total Total number of successful requests",
-                    f"# TYPE email_router_requests_successful_total counter",
+                    "# HELP email_router_requests_successful_total Total number of successful requests",
+                    "# TYPE email_router_requests_successful_total counter",
                     f"email_router_requests_successful_total {self.successful_requests}",
                     "",
-                    f"# HELP email_router_requests_failed_total Total number of failed requests",
-                    f"# TYPE email_router_requests_failed_total counter",
+                    "# HELP email_router_requests_failed_total Total number of failed requests",
+                    "# TYPE email_router_requests_failed_total counter",
                     f"email_router_requests_failed_total {self.failed_requests}",
                     "",
-                    f"# HELP email_router_response_time_seconds Average response time",
-                    f"# TYPE email_router_response_time_seconds gauge",
+                    "# HELP email_router_response_time_seconds Average response time",
+                    "# TYPE email_router_response_time_seconds gauge",
                     f"email_router_response_time_seconds {self.get_avg_response_time()}",
                     "",
-                    f"# HELP email_router_error_rate_percent Error rate percentage",
-                    f"# TYPE email_router_error_rate_percent gauge",
+                    "# HELP email_router_error_rate_percent Error rate percentage",
+                    "# TYPE email_router_error_rate_percent gauge",
                     f"email_router_error_rate_percent {self.get_error_rate()}",
                     "",
-                    f"# HELP email_router_uptime_seconds System uptime",
-                    f"# TYPE email_router_uptime_seconds gauge",
+                    "# HELP email_router_uptime_seconds System uptime",
+                    "# TYPE email_router_uptime_seconds gauge",
                     f"email_router_uptime_seconds {int(time.time() - self.start_time)}",
                 ]
             )
@@ -354,16 +354,16 @@ class MetricsCollector:
             metrics.extend(
                 [
                     "",
-                    f"# HELP email_router_emails_processed_total Total emails processed",
-                    f"# TYPE email_router_emails_processed_total counter",
+                    "# HELP email_router_emails_processed_total Total emails processed",
+                    "# TYPE email_router_emails_processed_total counter",
                     f"email_router_emails_processed_total {self.emails_processed}",
                     "",
-                    f"# HELP email_router_emails_classified_total Total emails classified",
-                    f"# TYPE email_router_emails_classified_total counter",
+                    "# HELP email_router_emails_classified_total Total emails classified",
+                    "# TYPE email_router_emails_classified_total counter",
                     f"email_router_emails_classified_total {self.emails_classified}",
                     "",
-                    f"# HELP email_router_ai_requests_total Total AI classification requests",
-                    f"# TYPE email_router_ai_requests_total counter",
+                    "# HELP email_router_ai_requests_total Total AI classification requests",
+                    "# TYPE email_router_ai_requests_total counter",
                     f"email_router_ai_requests_total {self.ai_requests}",
                 ]
             )

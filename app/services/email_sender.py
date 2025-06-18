@@ -72,7 +72,7 @@ async def send_auto_reply(
             logger.info(f"📤 Sending human-like plain text response ({len(text_body)} chars)")
         else:
             # Fallback to template system for legacy responses
-            logger.warning(f"📧 Using template fallback for response without disclaimer")
+            logger.warning("📧 Using template fallback for response without disclaimer")
             if client_id:
                 text_body, html_body = create_client_customer_template(
                     client_id, draft_response, classification, client_manager

@@ -6,18 +6,16 @@ API v1 Router for client management and system operations.
 import logging
 import time
 from datetime import datetime
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Annotated, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
-from ...middleware.api_key_auth import get_api_key_info, get_current_user
+from ...middleware.dual_auth import DualAuthUser, require_dual_auth
 from ...models.schemas import (
-    APIKeyInfo,
     APIStatusResponse,
     ClientListResponse,
     ClientSummary,
     DomainResolutionResult,
-    ErrorResponse,
     SystemMetrics,
 )
 from ...services.client_manager import ClientManager, get_client_manager
@@ -77,7 +75,7 @@ async def get_api_status(client_manager: Annotated[ClientManager, Depends(get_cl
             "personalized_responses",
             "advanced_domain_resolution",
             "rate_limiting",
-            "api_key_authentication",
+            "dual_authentication",
             "comprehensive_monitoring",
             "webhook_processing",
         ]
@@ -127,7 +125,7 @@ async def get_api_status(client_manager: Annotated[ClientManager, Depends(get_cl
 @router.get("/clients", response_model=ClientListResponse, tags=["Client Management"])
 async def list_clients(
     client_manager: Annotated[ClientManager, Depends(get_client_manager)],
-    current_user: Annotated[Dict, Depends(get_current_user)],
+    current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
     limit: int = Query(default=50, ge=1, le=100, description="Maximum number of clients to return"),
     offset: int = Query(default=0, ge=0, description="Number of clients to skip"),
     status_filter: Optional[str] = Query(default=None, description="Filter by client status"),
@@ -230,7 +228,7 @@ async def list_clients(
 @router.get("/clients/{client_id}", response_model=ClientSummary, tags=["Client Management"])
 async def get_client(
     client_manager: Annotated[ClientManager, Depends(get_client_manager)],
-    current_user: Annotated[Dict, Depends(get_current_user)],
+    current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
     client_id: str = Path(..., description="Client identifier"),
 ):
     """
@@ -284,14 +282,14 @@ async def get_client(
         logger.error(f"Failed to get client {client_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve client information",
+            detail="Failed to retrieve client information",
         )
 
 
 @router.post("/clients/{client_id}/validate", tags=["Client Management"])
 async def validate_client(
     client_manager: Annotated[ClientManager, Depends(get_client_manager)],
-    current_user: Annotated[Dict, Depends(get_current_user)],
+    current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
     client_id: str = Path(..., description="Client identifier"),
 ):
     """
@@ -328,7 +326,7 @@ async def validate_client(
 
         try:
             # Test client config loading
-            client_config = client_manager.get_client_config(client_id)
+            client_manager.get_client_config(client_id)
             validation_results["checks_performed"].append("client_config_load")
 
             # Test routing rules loading
@@ -379,7 +377,7 @@ async def validate_client(
 @router.post("/domain/resolve", response_model=DomainResolutionResult, tags=["Domain Resolution"])
 async def resolve_domain(
     client_manager: Annotated[ClientManager, Depends(get_client_manager)],
-    current_user: Annotated[Dict, Depends(get_current_user)],
+    current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
     domain: str = Query(..., description="Domain to resolve"),
 ):
     """
@@ -434,7 +432,7 @@ async def resolve_domain(
 
 
 @router.get("/metrics/summary", tags=["System Metrics"])
-async def get_metrics_summary(current_user: Annotated[Dict, Depends(get_current_user)]):
+async def get_metrics_summary(current_user: Annotated[DualAuthUser, Depends(require_dual_auth)]):
     """
     Get comprehensive system metrics summary.
 
@@ -472,7 +470,7 @@ async def get_metrics_summary(current_user: Annotated[Dict, Depends(get_current_
 @router.post("/clients/{client_id}/refresh", tags=["Client Management"])
 async def refresh_client_config(
     client_manager: Annotated[ClientManager, Depends(get_client_manager)],
-    current_user: Annotated[Dict, Depends(get_current_user)],
+    current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
     client_id: str = Path(..., description="Client identifier"),
 ):
     """
@@ -524,7 +522,7 @@ def _get_client_status(client_manager: ClientManager, client_id: str) -> str:
     try:
         config = client_manager.get_client_config(client_id)
         return config.client.status
-    except:
+    except Exception:
         return "error"
 
 
@@ -533,5 +531,5 @@ def _get_client_industry(client_manager: ClientManager, client_id: str) -> str:
     try:
         config = client_manager.get_client_config(client_id)
         return config.client.industry
-    except:
+    except Exception:
         return "unknown"

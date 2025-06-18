@@ -6,8 +6,6 @@ Dual Authentication Middleware Tests
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import Request
-from fastapi.testclient import TestClient
 
 from app.middleware.dual_auth import (
     APIKeyUser,
@@ -325,7 +323,10 @@ class TestDualAuthMiddleware:
 
     def test_middleware_initialization(self):
         """Test middleware initialization."""
-        middleware = DualAuthMiddleware()
+        from unittest.mock import MagicMock
+
+        mock_app = MagicMock()
+        middleware = DualAuthMiddleware(mock_app)
         assert middleware.auth_cache == {}
 
     @pytest.mark.asyncio

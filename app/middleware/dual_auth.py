@@ -7,11 +7,13 @@ import logging
 from typing import Annotated, Optional, Union
 
 from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import HTTPBearer
+from starlette.middleware.base import BaseHTTPMiddleware
 
-# Note: We'll implement our own API key extraction since it's a private method
-from ..middleware.jwt_auth import get_current_user_from_token, get_jwt_token
+from ..database.connection import get_database_session
+from ..middleware.jwt_auth import _get_user_from_token_logic
 from ..services.auth_service import AuthenticatedUser
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -65,50 +67,11 @@ class DualAuthUser:
 # =============================================================================
 
 
-async def get_dual_auth_user(
-    request: Request,
-    credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(bearer_scheme)],
-) -> Optional[DualAuthUser]:
+async def get_dual_auth_user(request: Request) -> Optional[DualAuthUser]:
     """
-    Get authenticated user from either JWT token or API key.
-    Tries JWT first, then falls back to API key.
+    Get authenticated user from request state set by DualAuthMiddleware.
     """
-    # First, try JWT authentication
-    if credentials and credentials.scheme.lower() == "bearer":
-        try:
-            # Try to get user from JWT token
-            jwt_user = await get_current_user_from_token(credentials.credentials)
-            if jwt_user:
-                logger.debug(f"JWT authentication successful for user: {jwt_user.username}")
-                return DualAuthUser(jwt_user, "jwt")
-        except HTTPException:
-            # JWT failed, continue to API key check
-            logger.debug("JWT authentication failed, trying API key")
-            pass
-        except Exception as e:
-            logger.debug(f"JWT authentication error: {e}")
-            pass
-
-    # Try API key authentication
-    try:
-        api_key = extract_api_key_from_request(request)
-        if api_key:
-            # For now, we'll use a simple API key validation
-            # In a real system, you'd look this up in a database
-            if api_key.startswith("sk-"):  # Example API key format
-                # Extract client_id from API key or use a lookup
-                # For demo purposes, we'll use a default client
-                client_id = extract_client_from_api_key(api_key)
-                if client_id:
-                    api_user = APIKeyUser(client_id, "webhook_key")
-                    logger.debug(f"API key authentication successful for client: {client_id}")
-                    return DualAuthUser(api_user, "api_key")
-    except Exception as e:
-        logger.debug(f"API key authentication error: {e}")
-        pass
-
-    # No valid authentication found
-    return None
+    return getattr(request.state, "current_user", None)
 
 
 async def require_dual_auth(
@@ -202,8 +165,8 @@ def extract_api_key_from_request(request: Request) -> Optional[str]:
         return api_key
 
     # Try Authorization header with Bearer scheme for API keys
-    auth_header = request.headers.get("Authorization", "")
-    if auth_header.startswith("Bearer sk-"):
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer sk-"):
         return auth_header[7:]  # Remove "Bearer " prefix
 
     return None
@@ -253,13 +216,14 @@ def get_auth_type_for_endpoint(path: str) -> str:
 # =============================================================================
 
 
-class DualAuthMiddleware:
+class DualAuthMiddleware(BaseHTTPMiddleware):
     """Middleware that automatically applies the right auth strategy per endpoint."""
 
-    def __init__(self):
+    def __init__(self, app):
+        super().__init__(app)
         self.auth_cache = {}
 
-    async def __call__(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next):
         """Apply appropriate authentication strategy based on endpoint."""
         path = request.url.path
         auth_strategy = get_auth_type_for_endpoint(path)
@@ -270,20 +234,23 @@ class DualAuthMiddleware:
             return response
 
         # Try to authenticate and add to request state
+        db = None
         try:
+            db = get_database_session()
+            user = None
             if auth_strategy == "api_key_preferred":
                 # For webhooks, try API key first
-                user = await self._try_api_key_auth(request)
+                user = await self._try_api_key_auth(request, db)
                 if not user:
-                    user = await self._try_jwt_auth(request)
+                    user = await self._try_jwt_auth(request, db)
             elif auth_strategy == "jwt_required":
                 # For config endpoints, require JWT
-                user = await self._try_jwt_auth(request)
+                user = await self._try_jwt_auth(request, db)
             else:
                 # For other endpoints, try both
-                user = await self._try_jwt_auth(request)
+                user = await self._try_jwt_auth(request, db)
                 if not user:
-                    user = await self._try_api_key_auth(request)
+                    user = await self._try_api_key_auth(request, db)
 
             if user:
                 request.state.current_user = user
@@ -291,25 +258,28 @@ class DualAuthMiddleware:
                 logger.debug(f"Auth success: {user.username} via {user.auth_type}")
 
         except Exception as e:
-            logger.debug(f"Auth middleware error: {e}")
+            logger.warning(f"Auth middleware error: {e}")
+        finally:
+            if db:
+                db.close()
 
         response = await call_next(request)
         return response
 
-    async def _try_jwt_auth(self, request: Request) -> Optional[DualAuthUser]:
+    async def _try_jwt_auth(self, request: Request, db: Session) -> Optional[DualAuthUser]:
         """Try JWT authentication."""
         try:
             auth_header = request.headers.get("Authorization")
             if auth_header and auth_header.startswith("Bearer "):
                 token = auth_header.split(" ", 1)[1]
-                jwt_user = await get_current_user_from_token(token)
+                jwt_user = await _get_user_from_token_logic(token, db)
                 if jwt_user:
                     return DualAuthUser(jwt_user, "jwt")
         except Exception:
             pass
         return None
 
-    async def _try_api_key_auth(self, request: Request) -> Optional[DualAuthUser]:
+    async def _try_api_key_auth(self, request: Request, db: Session) -> Optional[DualAuthUser]:
         """Try API key authentication."""
         try:
             api_key = extract_api_key_from_request(request)
