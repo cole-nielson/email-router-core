@@ -4,8 +4,6 @@ AI Email Router - Production SaaS FastAPI Application
 🚀 Multi-tenant AI-powered email classification and routing system with advanced API management.
 """
 
-import logging
-import os
 import time
 from datetime import datetime
 
@@ -26,6 +24,15 @@ try:
 except ImportError:
     print("⚠️ python-dotenv not installed, using system environment variables")
 
+# Initialize unified configuration system
+from .core import get_app_config, get_config_manager
+from .utils.logger import configure_logging, get_logger
+
+# Get configuration and set up logging
+config = get_app_config()
+configure_logging(level=config.server.log_level.value, format_string=config.server.log_format)
+logger = get_logger(__name__)
+
 from .middleware.dual_auth import DualAuthMiddleware
 from .middleware.rate_limiter import RateLimiterMiddleware
 from .models.schemas import APIInfo, HealthResponse
@@ -36,20 +43,13 @@ from .routers.dashboard import router as dashboard_router
 from .routers.webhooks import router as webhook_router
 from .services.monitoring import MetricsCollector
 from .services.websocket_manager import get_websocket_manager
-from .utils.config import get_config
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
 
 # Initialize metrics collector
 metrics = MetricsCollector()
 
 # Create FastAPI app with enhanced metadata
 app = FastAPI(
-    title="Email Router SaaS API",
+    title=config.app_name,
     description="""
     ## Multi-Tenant AI Email Router API
 
@@ -84,7 +84,7 @@ app = FastAPI(
     - **Alternative Docs**: `/redoc` (ReDoc)
     - **OpenAPI Spec**: `/openapi.json`
     """,
-    version="2.0.0",
+    version=config.app_version,
     terms_of_service="https://emailrouter.ai/terms",
     contact={
         "name": "Email Router Support",
@@ -98,11 +98,12 @@ app = FastAPI(
     servers=[
         {"url": "https://api.emailrouter.ai", "description": "Production server"},
         {"url": "https://staging-api.emailrouter.ai", "description": "Staging server"},
-        {"url": "http://localhost:8080", "description": "Development server"},
+        {"url": f"http://localhost:{config.server.port}", "description": "Development server"},
     ],
     docs_url=None,  # We'll create custom docs
     redoc_url=None,  # We'll create custom redoc
     openapi_url="/openapi.json",
+    debug=config.debug,
 )
 
 # Security scheme
@@ -110,29 +111,29 @@ security = HTTPBearer()
 
 # Add security middleware - order matters (last added = first executed)
 app.add_middleware(DualAuthMiddleware)  # JWT + API key authentication
-app.add_middleware(RateLimiterMiddleware, calls_per_minute=300, burst_limit=50)
+
+# Add rate limiting middleware with configuration
+app.add_middleware(
+    RateLimiterMiddleware,
+    calls_per_minute=config.security.api_rate_limit_per_minute,
+    burst_limit=50,
+)
 
 # Add trusted host middleware for production
-app.add_middleware(
-    TrustedHostMiddleware, allowed_hosts=["*"]  # Configure with actual domains in production
-)
+if config.is_production():
+    app.add_middleware(
+        TrustedHostMiddleware, allowed_hosts=config.security.trusted_proxies or ["*"]
+    )
 
-# Add CORS middleware with production settings
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://emailrouter.ai",
-        "https://*.emailrouter.ai",
-        "http://localhost:3000",  # For local development
-        "http://localhost:3001",  # Alternative frontend port
-        "http://localhost:8080",
-        "http://127.0.0.1:3000",  # Explicit localhost IPs
-        "http://127.0.0.1:3001",
-    ],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["*"],
-)
+# Add CORS middleware with configuration
+if config.security.enable_cors:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=config.security.allowed_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE"],
+        allow_headers=["*"],
+    )
 
 
 # Custom OpenAPI schema
@@ -210,17 +211,21 @@ async def startup_event():
     try:
         # Run startup validation first
         from .utils.startup_validator import validate_startup
+
         validation_results = validate_startup()
-        logger.info(f"✅ Startup validation passed: {validation_results['checks_passed']}/{validation_results['total_checks']} checks")
-        
+        logger.info(
+            f"✅ Startup validation passed: {validation_results['checks_passed']}/{validation_results['total_checks']} checks"
+        )
+
         # Initialize database
         from .database.connection import init_database
+
         init_database()
         logger.info("✅ Database initialized successfully")
-        
+
         # Log startup completion
         logger.info("🚀 Email Router SaaS API v2.0 started successfully")
-        
+
     except Exception as e:
         logger.error(f"❌ Startup failed: {e}")
         raise e  # Re-raise to prevent app from starting with invalid configuration
@@ -306,11 +311,11 @@ async def root():
     """
     try:
         # Config loaded for service status validation
-        get_config()
+        config_manager = get_config_manager()
 
         return APIInfo(
-            name="Email Router SaaS API",
-            version="2.0.0",
+            name=config.app_name,
+            version=config.app_version,
             description="Multi-tenant AI-powered email classification and routing",
             status="operational",
             timestamp=datetime.utcnow(),
@@ -359,13 +364,13 @@ async def health_check():
     """
     try:
         start_time = time.time()
-        config = get_config()
+        config_manager = get_config_manager()
 
         # Test AI service
-        ai_status = "healthy" if config.anthropic_api_key else "degraded"
+        ai_status = "healthy" if config_manager.is_service_available("anthropic") else "degraded"
 
         # Test email service
-        email_status = "healthy" if config.mailgun_api_key and config.mailgun_domain else "degraded"
+        email_status = "healthy" if config_manager.is_service_available("mailgun") else "degraded"
 
         # Calculate response time
         response_time_ms = int((time.time() - start_time) * 1000)
@@ -375,7 +380,7 @@ async def health_check():
                 "healthy" if ai_status == "healthy" and email_status == "healthy" else "degraded"
             ),
             timestamp=datetime.utcnow(),
-            version="2.0.0",
+            version=config.app_version,
             uptime_seconds=int(time.time() - metrics.start_time),
             response_time_ms=response_time_ms,
             components={
