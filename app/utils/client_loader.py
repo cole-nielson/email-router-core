@@ -4,15 +4,13 @@ Client configuration loader with YAML validation and caching.
 """
 
 import logging
-import os
-from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import yaml
 from pydantic import ValidationError
 
-from ..models.client_config import CategoriesConfig, ClientConfig, RoutingRules, SLAConfig
+from ..models.client_config import ClientConfig, RoutingRules
 
 logger = logging.getLogger(__name__)
 

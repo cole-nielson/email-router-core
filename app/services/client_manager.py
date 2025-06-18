@@ -4,10 +4,8 @@ Enhanced client manager service for advanced multi-tenant operations.
 """
 
 import logging
-from functools import lru_cache
 from typing import Dict, List, Optional, Set, Tuple
 
-from fastapi import Depends
 
 from ..models.client_config import ClientConfig, RoutingRules
 from ..utils.client_loader import (

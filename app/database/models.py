@@ -5,7 +5,6 @@ SQLAlchemy models for configuration storage.
 
 import enum
 from datetime import datetime
-from typing import Any, Dict, Optional
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.ext.declarative import declarative_base
@@ -78,9 +77,12 @@ class User(Base):
 
     # Relationships
     client = relationship("Client", back_populates="users")
-    creator = relationship("User", remote_side=[id])
+    creator = relationship("User", remote_side=[id], foreign_keys=[created_by])
     permissions = relationship(
-        "UserPermission", back_populates="user", cascade="all, delete-orphan"
+        "UserPermission",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        primaryjoin="User.id == UserPermission.user_id",
     )
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
 
@@ -107,7 +109,12 @@ class UserPermission(Base):
     granted_by = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     # Relationships
-    user = relationship("User", back_populates="permissions")
+    user = relationship(
+        "User",
+        back_populates="permissions",
+        foreign_keys=[user_id],
+        primaryjoin="UserPermission.user_id == User.id",
+    )
     client = relationship("Client")
     granter = relationship("User", foreign_keys=[granted_by])
 

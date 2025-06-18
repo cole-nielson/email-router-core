@@ -4,19 +4,16 @@ Interactive CLI onboarding wizard for new email router clients.
 🧙‍♂️ Guides users through creating client configurations with validation.
 """
 
-import os
 import sys
 import re
 import yaml
 from pathlib import Path
-from typing import Dict, List, Optional
-from datetime import datetime
+from typing import List
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.utils.domain_resolver import normalize_domain, is_valid_domain_format
-from app.models.client_config import ClientConfig
 
 
 class Colors:

@@ -7,15 +7,12 @@ CLI utility for managing email router clients and system status.
 import sys
 import argparse
 from pathlib import Path
-from typing import Dict, List
-import json
 from tabulate import tabulate
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.services.client_manager import EnhancedClientManager
-from app.utils.client_loader import get_available_clients
 from app.utils.domain_resolver import normalize_domain
 
 
@@ -102,7 +99,7 @@ class ClientManagerCLI:
             print(f"  Primary Domain: {summary['primary_domain']}")
             print(f"  Total Domains: {summary['total_domains']}")
             if summary['domains']:
-                print(f"  All Domains:")
+                print("  All Domains:")
                 for domain in sorted(summary['domains'])[:10]:  # Show first 10
                     print(f"    • {domain}")
                 if len(summary['domains']) > 10:
@@ -179,7 +176,7 @@ class ClientManagerCLI:
             # Test identification
             result = self.manager.identify_client_by_domain(domain)
             
-            print(f"\nIdentification Result:")
+            print("\nIdentification Result:")
             print(f"  Client ID: {result.client_id}")
             print(f"  Confidence: {result.confidence:.2f}")
             print(f"  Method: {result.method}")
@@ -190,11 +187,11 @@ class ClientManagerCLI:
             if not result.is_successful:
                 similar = self.manager.find_similar_clients(domain, limit=3)
                 if similar:
-                    print(f"\nSimilar clients:")
+                    print("\nSimilar clients:")
                     for client_id, similarity in similar:
                         print(f"  • {client_id} (similarity: {similarity:.2f})")
                 else:
-                    print(f"\nNo similar clients found.")
+                    print("\nNo similar clients found.")
             
         except Exception as e:
             print(f"{Colors.FAIL}Error testing domain resolution: {e}{Colors.ENDC}")
@@ -207,7 +204,7 @@ class ClientManagerCLI:
             
             result = self.manager.identify_client_by_email(email)
             
-            print(f"Identification Result:")
+            print("Identification Result:")
             print(f"  Client ID: {result.client_id}")
             print(f"  Confidence: {result.confidence:.2f}")
             print(f"  Method: {result.method}")
@@ -245,15 +242,15 @@ class ClientManagerCLI:
             print(f"Valid Clients: {valid_clients}/{len(clients)}")
             
             # Feature capabilities
-            print(f"\nSystem Capabilities:")
-            print(f"  ✅ Multi-tenant client identification")
-            print(f"  ✅ Advanced domain resolution")
-            print(f"  ✅ Fuzzy domain matching")
-            print(f"  ✅ Hierarchy-based routing")
-            print(f"  ✅ Confidence scoring")
+            print("\nSystem Capabilities:")
+            print("  ✅ Multi-tenant client identification")
+            print("  ✅ Advanced domain resolution")
+            print("  ✅ Fuzzy domain matching")
+            print("  ✅ Hierarchy-based routing")
+            print("  ✅ Confidence scoring")
             
             # Configuration health
-            print(f"\nConfiguration Health:")
+            print("\nConfiguration Health:")
             health_score = (valid_clients / len(clients)) * 100 if clients else 0
             if health_score >= 90:
                 health_status = f"{Colors.OKGREEN}Excellent"

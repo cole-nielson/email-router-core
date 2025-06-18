@@ -5,7 +5,6 @@ Enhanced with logo support and dynamic color injection.
 """
 
 import logging
-from typing import Any, Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 

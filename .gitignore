@@ -74,6 +74,11 @@ temp/
 tmp/
 .cache/
 
+# 🗄️ DATABASE FILES (development)
+*.db
+*.db-shm
+*.db-wal
+
 # 📧 EMAIL PROCESSING ARTIFACTS
 processed_emails/
 email_cache/

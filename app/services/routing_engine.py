@@ -4,7 +4,7 @@ Dynamic email routing engine using client-specific rules.
 """
 
 import logging
-from datetime import datetime, time, timedelta
+from datetime import datetime, time
 from typing import Any, Dict, List, Optional
 
 import pytz

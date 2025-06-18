@@ -3,7 +3,6 @@ Enhanced multi-tenant functionality tests.
 Tests the advanced client identification, domain resolution, and fuzzy matching capabilities.
 """
 
-from unittest.mock import MagicMock, patch
 
 import pytest
 

@@ -6,16 +6,14 @@ Service isolation tests to ensure no shared state between service instances.
 import asyncio
 import threading
 import time
-from typing import Any, Dict
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
 from app.services.ai_classifier import AIClassifier, get_ai_classifier
 from app.services.client_manager import ClientManager, get_client_manager
-from app.services.dashboard_service import DashboardService, get_dashboard_service
 from app.services.email_service import EmailService, get_email_service
-from app.services.routing_engine import RoutingEngine, get_routing_engine
+from app.services.routing_engine import RoutingEngine
 
 
 class TestServiceInstanceIsolation:

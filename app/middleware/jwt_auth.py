@@ -8,7 +8,9 @@ from typing import Annotated, Optional
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.orm import Session
 
+from ..database.connection import get_db
 from ..services.auth_service import AuthenticatedUser
 
 logger = logging.getLogger(__name__)
@@ -35,6 +37,7 @@ class JWTAuthMiddleware:
             return response
 
         # Extract and validate JWT token
+        db = None
         try:
             auth_header = request.headers.get("Authorization")
             if auth_header and auth_header.startswith("Bearer "):
@@ -42,10 +45,10 @@ class JWTAuthMiddleware:
 
                 # Initialize auth service if needed
                 if not self.auth_service:
-                    from ..database.connection import SessionLocal
+                    from ..database.connection import get_database_session
                     from ..services.auth_service import get_auth_service
 
-                    db = SessionLocal()
+                    db = get_database_session()
                     self.auth_service = get_auth_service(db)
 
                 # Validate token and get user
@@ -56,10 +59,13 @@ class JWTAuthMiddleware:
                     request.state.auth_token = token
 
                     # Log authentication success
-                    logger.debug(f"Authenticated user: {user.username} (role: {user.role.value})")
+                    logger.debug(f"Authenticated user: {user.username} (role: {user.role})")
 
         except Exception as e:
             logger.warning(f"JWT authentication error: {e}")
+        finally:
+            if db:
+                db.close()
 
         response = await call_next(request)
         return response
@@ -95,17 +101,21 @@ async def get_jwt_token(
     return credentials.credentials
 
 
-async def get_current_user_from_token(
-    token: Annotated[str, Depends(get_jwt_token)],
-) -> AuthenticatedUser:
-    """Get current authenticated user from JWT token."""
+async def _get_user_from_token_logic(token: str, db: Session) -> Optional[AuthenticatedUser]:
+    """Logic to get user from token, callable from other modules."""
     # Import auth service here to avoid circular imports
-    from ..database.connection import SessionLocal
     from ..services.auth_service import get_auth_service
 
-    db = SessionLocal()
     auth_service = get_auth_service(db)
-    user = auth_service.get_current_user(token)
+    return auth_service.get_current_user(token)
+
+
+async def get_current_user_from_token(
+    token: Annotated[str, Depends(get_jwt_token)],
+    db: Session = Depends(get_db),
+) -> AuthenticatedUser:
+    """Get current authenticated user from JWT token."""
+    user = await _get_user_from_token_logic(token, db)
 
     if not user:
         logger.warning("Invalid or expired JWT token")
@@ -118,7 +128,9 @@ async def get_current_user_from_token(
     return user
 
 
-async def get_current_user_optional(request: Request) -> Optional[AuthenticatedUser]:
+async def get_current_user_optional(
+    request: Request, db: Session = Depends(get_db)
+) -> Optional[AuthenticatedUser]:
     """Get current user if authenticated, None otherwise."""
     try:
         auth_header = request.headers.get("Authorization")
@@ -126,14 +138,8 @@ async def get_current_user_optional(request: Request) -> Optional[AuthenticatedU
             return None
 
         token = auth_header.split(" ", 1)[1]
-
-        # Import auth service here to avoid circular imports
-        from ..database.connection import SessionLocal
-        from ..services.auth_service import get_auth_service
-
-        db = SessionLocal()
-        auth_service = get_auth_service(db)
-        return auth_service.get_current_user(token)
+        user = await _get_user_from_token_logic(token, db)
+        return user
 
     except Exception as e:
         logger.debug(f"Optional authentication failed: {e}")
@@ -203,7 +209,7 @@ def require_client_access(client_id_param: str = "client_id"):
 
         if not client_id:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=f"Missing client ID in path"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Missing client ID in path"
             )
 
         # Super admin has access to all clients

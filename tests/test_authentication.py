@@ -3,8 +3,6 @@ Comprehensive Authentication System Tests
 🔐 Full test matrix for JWT, API keys, RBAC, and dual auth middleware.
 """
 
-import json
-from datetime import datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -482,7 +480,6 @@ class TestDualAuthentication:
 
     def test_dual_auth_user_wrapper(self):
         """Test DualAuthUser wrapper functionality."""
-        from app.middleware.dual_auth import DualAuthUser
         from app.services.auth_service import AuthenticatedUser
 
         # Create JWT user
@@ -506,7 +503,6 @@ class TestDualAuthentication:
 
     def test_api_key_user_creation(self):
         """Test API key user creation."""
-        from app.middleware.dual_auth import APIKeyUser
 
         api_user = APIKeyUser("test-client", "webhook_key")
 

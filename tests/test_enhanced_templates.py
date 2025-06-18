@@ -3,15 +3,11 @@ Tests for enhanced template engine and branded email templates.
 🧪 Validates template variable injection, branding integration, and template validation.
 """
 
-import os
-import tempfile
-from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
-import yaml
 
-from app.services.email_service import EmailService, ValidationResult
+from app.services.email_service import EmailService
 from app.utils.email_templates import _get_default_branding, create_branded_template
 
 

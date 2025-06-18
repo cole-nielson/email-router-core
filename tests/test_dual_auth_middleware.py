@@ -6,8 +6,6 @@ Dual Authentication Middleware Tests
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import Request
-from fastapi.testclient import TestClient
 
 from app.middleware.dual_auth import (
     APIKeyUser,

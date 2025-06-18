@@ -7,14 +7,14 @@ import asyncio
 import statistics
 import time
 from concurrent.futures import ThreadPoolExecutor
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 
-from app.services.ai_classifier import AIClassifier, get_ai_classifier
+from app.services.ai_classifier import get_ai_classifier
 from app.services.client_manager import ClientManager, get_client_manager
 from app.services.email_service import EmailService, get_email_service
-from app.services.routing_engine import RoutingEngine, get_routing_engine
+from app.services.routing_engine import get_routing_engine
 
 # import psutil  # Not available in this environment
 # import os
@@ -445,7 +445,7 @@ class TestPerformanceRegression:
             "context_preparation": context_time,
         }
 
-        print(f"Performance metrics:")
+        print("Performance metrics:")
         for metric, actual_time in actual_metrics.items():
             baseline = performance_baselines[metric]
             status = "✅" if actual_time <= baseline else "❌"
@@ -456,7 +456,7 @@ class TestPerformanceRegression:
                 actual_time <= baseline
             ), f"{metric} regression: {actual_time:.4f}s > {baseline:.4f}s baseline"
 
-        print(f"✅ All performance metrics within baseline thresholds")
+        print("✅ All performance metrics within baseline thresholds")
 
 
 if __name__ == "__main__":

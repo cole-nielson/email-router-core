@@ -10,7 +10,6 @@ Usage:
 
 import argparse
 import getpass
-import os
 import sys
 from pathlib import Path
 
@@ -68,69 +67,66 @@ def create_admin_user(username: str, email: str, password: str, full_name: str =
         init_database()
 
         # Import SessionLocal after initialization
-        from app.database.connection import SessionLocal
+        from app.database.connection import get_db_session
 
         # Create database session
-        db = SessionLocal()
-        auth_service = AuthService(db)
+        with get_db_session() as db:
+            auth_service = AuthService(db)
 
-        # Check if user already exists
-        existing_user = (
-            db.query(User).filter((User.username == username) | (User.email == email)).first()
-        )
+            # Check if user already exists
+            existing_user = (
+                db.query(User).filter((User.username == username) | (User.email == email)).first()
+            )
 
-        if existing_user:
-            print(f"❌ User with username '{username}' or email '{email}' already exists")
-            if existing_user.username == username:
-                print(f"   Existing username: {existing_user.username}")
-            if existing_user.email == email:
-                print(f"   Existing email: {existing_user.email}")
-            return False
+            if existing_user:
+                print(f"❌ User with username '{username}' or email '{email}' already exists")
+                if existing_user.username == username:
+                    print(f"   Existing username: {existing_user.username}")
+                if existing_user.email == email:
+                    print(f"   Existing email: {existing_user.email}")
+                return False
 
-        # Validate inputs
-        if not validate_email(email):
-            print(f"❌ Invalid email format: {email}")
-            return False
+            # Validate inputs
+            if not validate_email(email):
+                print(f"❌ Invalid email format: {email}")
+                return False
 
-        if not validate_password(password):
-            return False
+            if not validate_password(password):
+                return False
 
-        # Create user
-        print(f"👤 Creating super admin user: {username}")
+            # Create user
+            print(f"👤 Creating super admin user: {username}")
 
-        hashed_password = auth_service.hash_password(password)
+            hashed_password = auth_service.hash_password(password)
 
-        user = User(
-            username=username,
-            email=email,
-            password_hash=hashed_password,
-            full_name=full_name or f"Super Admin ({username})",
-            role=UserRole.SUPER_ADMIN,
-            client_id=None,  # Super admin is not tied to a specific client
-            status=UserStatus.ACTIVE,
-        )
+            user = User(
+                username=username,
+                email=email,
+                password_hash=hashed_password,
+                full_name=full_name or f"Super Admin ({username})",
+                role=UserRole.SUPER_ADMIN,
+                client_id=None,  # Super admin is not tied to a specific client
+                status=UserStatus.ACTIVE,
+            )
 
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+            db.add(user)
+            db.commit()
+            db.refresh(user)
 
-        print(f"✅ Super admin user created successfully!")
-        print(f"   ID: {user.id}")
-        print(f"   Username: {user.username}")
-        print(f"   Email: {user.email}")
-        print(f"   Full Name: {user.full_name}")
-        print(f"   Role: {user.role.value}")
-        print(f"   Status: {user.status.value}")
-        print(f"   Created: {user.created_at}")
+            print("✅ Super admin user created successfully!")
+            print(f"   ID: {user.id}")
+            print(f"   Username: {user.username}")
+            print(f"   Email: {user.email}")
+            print(f"   Full Name: {user.full_name}")
+            print(f"   Role: {user.role.value}")
+            print(f"   Status: {user.status.value}")
+            print(f"   Created: {user.created_at}")
 
         return True
 
     except Exception as e:
         print(f"❌ Error creating admin user: {e}")
         return False
-    finally:
-        if "db" in locals():
-            db.close()
 
 
 def interactive_mode():
@@ -171,11 +167,11 @@ def interactive_mode():
         print("❌ Passwords do not match")
 
     # Confirm creation
-    print(f"\n📋 Summary:")
+    print("\n📋 Summary:")
     print(f"   Username: {username}")
     print(f"   Email: {email}")
     print(f"   Full Name: {full_name}")
-    print(f"   Role: super_admin")
+    print("   Role: super_admin")
 
     confirm = input("\nCreate this admin user? (y/N): ").strip().lower()
     if confirm in ["y", "yes"]:
@@ -189,34 +185,30 @@ def list_existing_admins():
     """List existing admin users."""
     try:
         init_database()
-        from app.database.connection import SessionLocal
+        from app.database.connection import get_db_session
 
-        db = SessionLocal()
+        with get_db_session() as db:
+            admin_users = db.query(User).filter(User.role == UserRole.SUPER_ADMIN).all()
 
-        admin_users = db.query(User).filter(User.role == UserRole.SUPER_ADMIN).all()
+            if not admin_users:
+                print("📭 No super admin users found")
+                return
 
-        if not admin_users:
-            print("📭 No super admin users found")
-            return
-
-        print("👥 Existing Super Admin Users:")
-        print("-" * 40)
-        for user in admin_users:
-            status_icon = "✅" if user.status == UserStatus.ACTIVE else "❌"
-            print(f"{status_icon} {user.username} ({user.email})")
-            print(f"   ID: {user.id}")
-            print(f"   Full Name: {user.full_name}")
-            print(f"   Status: {user.status.value}")
-            print(f"   Created: {user.created_at}")
-            if user.last_login_at:
-                print(f"   Last Login: {user.last_login_at}")
-            print()
+            print("👥 Existing Super Admin Users:")
+            print("-" * 40)
+            for user in admin_users:
+                status_icon = "✅" if user.status == UserStatus.ACTIVE else "❌"
+                print(f"{status_icon} {user.username} ({user.email})")
+                print(f"   ID: {user.id}")
+                print(f"   Full Name: {user.full_name}")
+                print(f"   Status: {user.status.value}")
+                print(f"   Created: {user.created_at}")
+                if user.last_login_at:
+                    print(f"   Last Login: {user.last_login_at}")
+                print()
 
     except Exception as e:
         print(f"❌ Error listing admin users: {e}")
-    finally:
-        if "db" in locals():
-            db.close()
 
 
 def main():

@@ -5,7 +5,7 @@ Role-Based Access Control (RBAC) system for multi-tenant email router.
 
 import logging
 from functools import wraps
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union
 
 from fastapi import HTTPException, status
 

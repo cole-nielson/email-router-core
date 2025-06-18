@@ -2,7 +2,6 @@
 WebSocket Manager - Handles real-time connections and message broadcasting for dashboard updates.
 """
 
-import asyncio
 import json
 import logging
 from collections import defaultdict

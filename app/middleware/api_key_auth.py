@@ -3,13 +3,12 @@ API key authentication middleware.
 🔐 Validates API keys and manages authentication for protected endpoints.
 """
 
-import hashlib
 import logging
 import secrets
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set
+from datetime import datetime
+from typing import Dict, List, Optional
 
-from fastapi import HTTPException, Request, status
+from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -187,6 +186,8 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
             "/health",
             "/health/detailed",
             "/metrics",
+            "/auth/login",
+            "/auth/refresh",
         }
 
         # Define webhook endpoints (use different auth)

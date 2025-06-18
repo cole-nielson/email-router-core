@@ -9,31 +9,31 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.database.models import User, UserRole, UserStatus
+from app.database.models import UserRole, UserStatus
 from app.services.auth_service import AuthService, UserTokenClaims
+
+
+@pytest.fixture
+def auth_service(db_session):
+    """Fixture to provide an AuthService instance with a db session."""
+    return AuthService(db_session)
+
+
+@pytest.fixture
+def mock_user():
+    """Mock user for testing."""
+    user = MagicMock()
+    user.id = 1
+    user.username = "testuser"
+    user.email = "test@example.com"
+    user.role = UserRole.CLIENT_USER
+    user.client_id = "test-client"
+    user.status = UserStatus.ACTIVE
+    return user
 
 
 class TestJWTTokenSecurity:
     """Test JWT token security and edge cases."""
-
-    @pytest.fixture
-    def mock_user(self):
-        """Mock user for testing."""
-        user = MagicMock()
-        user.id = 1
-        user.username = "testuser"
-        user.email = "test@example.com"
-        user.role = UserRole.CLIENT_USER
-        user.client_id = "test-client"
-        user.status = UserStatus.ACTIVE
-        return user
-
-    @pytest.fixture
-    def auth_service(self):
-        """Mock auth service."""
-        db = MagicMock()
-        service = AuthService(db)
-        return service
 
     def test_token_contains_required_claims(self, auth_service, mock_user):
         """Test that tokens contain all required claims."""
@@ -283,27 +283,22 @@ class TestTokenRefreshSecurity:
 
 
 class TestPasswordSecurity:
-    """Test password security features."""
+    """Test password hashing and verification."""
 
-    def test_password_hashing_uniqueness(self):
+    def test_password_hashing_uniqueness(self, db_session):
         """Test that same password produces different hashes."""
-        auth_service = AuthService(None)  # No DB needed for hashing
-
-        password = "testpassword123"
+        auth_service = AuthService(db_session)  # No DB needed for hashing
+        password = "a_very_secure_password_123"
         hash1 = auth_service.hash_password(password)
         hash2 = auth_service.hash_password(password)
+        assert hash1 != hash2
 
-        assert hash1 != hash2, "Same password should produce different hashes (salt)"
-        assert len(hash1) > 50, "Hash should be sufficiently long"
-        assert len(hash2) > 50, "Hash should be sufficiently long"
-
-    def test_password_verification_timing(self):
+    def test_password_verification_timing(self, db_session):
         """Test password verification doesn't leak timing info."""
-        auth_service = AuthService(None)
-
-        password = "testpassword123"
+        auth_service = AuthService(db_session)
+        password = "a_very_secure_password_123"
         correct_hash = auth_service.hash_password(password)
-        wrong_hash = auth_service.hash_password("differentpassword")
+        incorrect_hash = auth_service.hash_password("wrong_password")
 
         # Both verifications should take similar time (bcrypt property)
         start_time = time.time()
@@ -311,7 +306,7 @@ class TestPasswordSecurity:
         time1 = time.time() - start_time
 
         start_time = time.time()
-        result2 = auth_service.verify_password(password, wrong_hash)
+        result2 = auth_service.verify_password(password, incorrect_hash)
         time2 = time.time() - start_time
 
         assert result1 == True

@@ -3,9 +3,7 @@ Configuration service for database-backed client management.
 🔧 CRUD operations for client configurations with YAML sync.
 """
 
-import json
 import logging
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import Depends
@@ -16,13 +14,10 @@ from ..database.models import (
     AIPrompt,
     Client,
     ClientBranding,
-    ClientDomain,
-    ClientSetting,
     ConfigurationChange,
     ResponseTime,
     RoutingRule,
 )
-from ..models.client_config import ClientConfig
 from ..utils.client_loader import load_client_config
 
 logger = logging.getLogger(__name__)

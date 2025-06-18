@@ -4,11 +4,11 @@ Dashboard API Router - Endpoints for client dashboard data and real-time updates
 
 import logging
 from datetime import datetime
-from typing import Annotated, Optional
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
-from ..middleware.api_key_auth import get_current_user
+from ..middleware.dual_auth import DualAuthUser, require_dual_auth
 from ..models.dashboard_schemas import (
     ActivityFeedResponse,
     AlertsResponse,
@@ -18,8 +18,6 @@ from ..models.dashboard_schemas import (
     DashboardResponse,
     IntegrationHealth,
     MetricsResponse,
-    ProcessingActivity,
-    SystemAlert,
 )
 from ..services.dashboard_service import DashboardService, get_dashboard_service
 
@@ -30,9 +28,9 @@ router = APIRouter()
 
 @router.get("/clients/{client_id}", response_model=ClientInfo, tags=["Dashboard"])
 async def get_client_info(
+    current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
+    dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
     client_id: str = Path(..., description="Client identifier"),
-    current_user: Annotated[dict, Depends(get_current_user)] = None,
-    dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)] = None,
 ):
     """
     Get basic client information for dashboard header.
@@ -53,10 +51,10 @@ async def get_client_info(
 
 @router.get("/clients/{client_id}/metrics", response_model=MetricsResponse, tags=["Dashboard"])
 async def get_client_metrics(
+    current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
+    dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
     client_id: str = Path(..., description="Client identifier"),
     timeframe: str = Query(default="24h", description="Time range (1h, 6h, 12h, 24h, 7d, 30d)"),
-    current_user: Annotated[dict, Depends(get_current_user)] = None,
-    dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)] = None,
 ):
     """
     Get aggregated system metrics for client dashboard.
@@ -94,11 +92,11 @@ async def get_client_metrics(
     "/clients/{client_id}/activity", response_model=ActivityFeedResponse, tags=["Dashboard"]
 )
 async def get_client_activity(
+    current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
+    dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
     client_id: str = Path(..., description="Client identifier"),
     limit: int = Query(default=50, ge=1, le=100, description="Maximum number of activities"),
     offset: int = Query(default=0, ge=0, description="Number of activities to skip"),
-    current_user: Annotated[dict, Depends(get_current_user)] = None,
-    dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)] = None,
 ):
     """
     Get recent processing activities for client dashboard feed.
@@ -130,9 +128,9 @@ async def get_client_activity(
 
 @router.get("/clients/{client_id}/alerts", response_model=AlertsResponse, tags=["Dashboard"])
 async def get_client_alerts(
+    current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
+    dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
     client_id: str = Path(..., description="Client identifier"),
-    current_user: Annotated[dict, Depends(get_current_user)] = None,
-    dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)] = None,
 ):
     """
     Get current system alerts for client dashboard.
@@ -164,10 +162,10 @@ async def get_client_alerts(
 
 @router.post("/clients/{client_id}/alerts/{alert_id}/resolve", tags=["Dashboard"])
 async def resolve_alert(
+    current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
+    dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
     client_id: str = Path(..., description="Client identifier"),
     alert_id: str = Path(..., description="Alert identifier"),
-    current_user: Annotated[dict, Depends(get_current_user)] = None,
-    dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)] = None,
 ):
     """
     Mark an alert as resolved.
@@ -175,7 +173,7 @@ async def resolve_alert(
     Updates alert status and records who resolved it and when.
     """
     try:
-        resolved_by = current_user.get("email", "unknown") if current_user else "system"
+        resolved_by = current_user.email if current_user else "system"
         success = await dashboard_service.resolve_alert(client_id, alert_id, resolved_by)
 
         if not success:
@@ -200,9 +198,9 @@ async def resolve_alert(
     "/clients/{client_id}/automations", response_model=list[AutomationStatus], tags=["Dashboard"]
 )
 async def get_client_automations(
+    current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
+    dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
     client_id: str = Path(..., description="Client identifier"),
-    current_user: Annotated[dict, Depends(get_current_user)] = None,
-    dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)] = None,
 ):
     """
     Get automation status for client dashboard.
@@ -226,9 +224,9 @@ async def get_client_automations(
     "/clients/{client_id}/integrations", response_model=list[IntegrationHealth], tags=["Dashboard"]
 )
 async def get_client_integrations(
+    current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
+    dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
     client_id: str = Path(..., description="Client identifier"),
-    current_user: Annotated[dict, Depends(get_current_user)] = None,
-    dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)] = None,
 ):
     """
     Get integration health status for client dashboard.
@@ -250,9 +248,9 @@ async def get_client_integrations(
 
 @router.get("/clients/{client_id}/dashboard", response_model=DashboardResponse, tags=["Dashboard"])
 async def get_dashboard_data(
+    current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
+    dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
     client_id: str = Path(..., description="Client identifier"),
-    current_user: Annotated[dict, Depends(get_current_user)] = None,
-    dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)] = None,
 ):
     """
     Get comprehensive dashboard data in a single request.
