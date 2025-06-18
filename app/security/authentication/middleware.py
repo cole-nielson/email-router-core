@@ -5,7 +5,7 @@ Unified Authentication Middleware
 
 import logging
 import time
-from typing import Callable
+from typing import Callable, Optional
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -16,6 +16,205 @@ from ..core.security_manager import SecurityManager
 from .handlers import AuthenticationManager
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# BACKWARD COMPATIBILITY CLASSES
+# =============================================================================
+
+
+class APIKeyUser:
+    """
+    Backward compatibility wrapper for API key authentication.
+
+    This class provides compatibility with legacy code that expects APIKeyUser objects.
+    """
+
+    def __init__(self, client_id: str, scope: str = "general"):
+        """Initialize API key user."""
+        self.client_id = client_id
+        self.scope = scope
+        self.auth_type = "api_key"
+
+    def __str__(self):
+        return f"APIKeyUser(client_id={self.client_id}, scope={self.scope})"
+
+
+class DualAuthUser:
+    """
+    Backward compatibility wrapper for dual authentication.
+
+    This class provides compatibility with legacy code that expects DualAuthUser objects.
+    """
+
+    def __init__(self, user, auth_type: str):
+        """Initialize dual auth user."""
+        self.user = user
+        self.auth_type = auth_type
+        self.client_id = getattr(user, "client_id", None)
+
+        # Copy common attributes from the underlying user
+        for attr in ["username", "email", "role", "permissions"]:
+            if hasattr(user, attr):
+                setattr(self, attr, getattr(user, attr))
+
+    def __str__(self):
+        return f"DualAuthUser(user={self.user}, auth_type={self.auth_type})"
+
+
+# =============================================================================
+# BACKWARD COMPATIBILITY FUNCTIONS
+# =============================================================================
+
+
+async def get_dual_auth_user(request: Request) -> Optional["DualAuthUser"]:
+    """
+    Backward compatibility function for getting dual auth user.
+
+    Returns None if not authenticated (for optional authentication).
+    """
+    try:
+        from .dependencies import get_current_user_optional
+
+        security_context = await get_current_user_optional(request)
+
+        if security_context and security_context.is_authenticated:
+            # Create a compatibility user object
+            if security_context.auth_type.value == "api_key":
+                api_user = APIKeyUser(security_context.client_id or "unknown")
+                return DualAuthUser(api_user, "api_key")
+            else:
+                # For JWT, create a simple user object
+                class JWTUser:
+                    def __init__(self, context):
+                        self.username = context.username
+                        self.email = getattr(context, "email", None)
+                        self.role = context.role
+                        self.client_id = context.client_id
+
+                jwt_user = JWTUser(security_context)
+                return DualAuthUser(jwt_user, "jwt")
+
+        return None
+    except Exception as e:
+        logger.warning(f"Error in get_dual_auth_user compatibility function: {e}")
+        return None
+
+
+async def require_dual_auth(request: Request) -> "DualAuthUser":
+    """
+    Backward compatibility function for requiring dual auth.
+
+    Raises HTTPException if not authenticated.
+    """
+    from fastapi import HTTPException, status
+
+    dual_user = await get_dual_auth_user(request)
+    if dual_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return dual_user
+
+
+async def require_api_key_only(request: Request) -> "APIKeyUser":
+    """Backward compatibility function for API key only authentication."""
+    from fastapi import HTTPException, status
+
+    from .dependencies import get_security_context
+
+    security_context = await get_security_context(request)
+
+    if not security_context.is_authenticated:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="API key authentication required",
+        )
+
+    if security_context.auth_type.value != "api_key":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="API key authentication required for this endpoint",
+        )
+
+    return APIKeyUser(security_context.client_id or "unknown")
+
+
+async def require_jwt_only(request: Request) -> "DualAuthUser":
+    """Backward compatibility function for JWT only authentication."""
+    from fastapi import HTTPException, status
+
+    from .dependencies import get_security_context
+
+    security_context = await get_security_context(request)
+
+    if not security_context.is_authenticated:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="JWT authentication required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if security_context.auth_type.value != "jwt":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="JWT authentication required for this endpoint",
+        )
+
+    # Create JWT user wrapper
+    class JWTUser:
+        def __init__(self, context):
+            self.username = context.username
+            self.email = getattr(context, "email", None)
+            self.role = context.role
+            self.client_id = context.client_id
+
+    jwt_user = JWTUser(security_context)
+    return DualAuthUser(jwt_user, "jwt")
+
+
+def extract_api_key_from_request(request: Request) -> Optional[str]:
+    """Extract API key from request headers."""
+    # Check X-API-Key header
+    api_key = request.headers.get("X-API-Key")
+    if api_key:
+        return api_key
+
+    # Check Authorization header with "Bearer" scheme
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header[7:]  # Remove "Bearer " prefix
+        # Simple check if it looks like an API key (not JWT)
+        if not token.count(".") == 2:  # JWTs have 2 dots
+            return token
+
+    return None
+
+
+def extract_client_from_api_key(api_key: str) -> Optional[str]:
+    """Extract client ID from API key."""
+    # This is a simple implementation for backward compatibility
+    # In practice, you'd validate against your API key database
+    if api_key.startswith("sk-"):
+        parts = api_key.split("-")
+        if len(parts) >= 3:
+            return f"client-{parts[1]}"
+
+    return "unknown-client"
+
+
+def get_auth_type_for_endpoint(request: Request) -> str:
+    """Determine required auth type for endpoint."""
+    # Simple implementation - could be enhanced with route analysis
+    if request.url.path.startswith("/webhooks/"):
+        return "api_key"
+    elif request.url.path.startswith("/auth/"):
+        return "optional"
+    else:
+        return "dual"
 
 
 class UnifiedAuthMiddleware(BaseHTTPMiddleware):

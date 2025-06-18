@@ -8,8 +8,8 @@ from typing import Any, Dict, Optional
 
 import httpx
 
+from ..core import get_app_config, get_config_manager
 from ..services.client_manager import ClientManager, get_client_manager
-from ..utils.config import get_config
 from ..utils.email_templates import create_customer_template, create_team_template
 
 logger = logging.getLogger(__name__)
@@ -465,11 +465,11 @@ async def _send_email(
     Returns:
         Mailgun API response
     """
-    config = get_config()
+    config = get_app_config()
 
     # Prepare email data with client-specific sender
     data = {
-        "from": f"{sender_name} <admin@{config.mailgun_domain}>",
+        "from": f"{sender_name} <admin@{config.services.mailgun_domain}>",
         "to": to,
         "subject": subject,
         "text": text,
@@ -490,8 +490,8 @@ async def _send_email(
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"https://api.mailgun.net/v3/{config.mailgun_domain}/messages",
-                auth=("api", config.mailgun_api_key),
+                f"https://api.mailgun.net/v3/{config.services.mailgun_domain}/messages",
+                auth=("api", config.services.mailgun_api_key),
                 data=data,
                 timeout=30.0,
             )

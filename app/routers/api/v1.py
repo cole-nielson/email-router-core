@@ -10,7 +10,6 @@ from typing import Annotated, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
-from ...middleware.dual_auth import DualAuthUser, require_dual_auth
 from ...models.schemas import (
     APIStatusResponse,
     ClientListResponse,
@@ -18,6 +17,7 @@ from ...models.schemas import (
     DomainResolutionResult,
     SystemMetrics,
 )
+from ...security.authentication.middleware import DualAuthUser, require_dual_auth
 from ...services.client_manager import ClientManager, get_client_manager
 from ...services.monitoring import MetricsCollector
 from ...utils.domain_resolver import normalize_domain

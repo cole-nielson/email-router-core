@@ -11,9 +11,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 
+from ..core import get_app_config, get_config_manager
 from ..services.client_manager import ClientManager
 from ..utils.client_loader import ClientLoadError, load_ai_prompt, load_fallback_responses
-from ..utils.config import get_config
 from ..utils.email_templates import _get_default_branding, create_branded_template
 
 logger = logging.getLogger(__name__)
@@ -708,7 +708,7 @@ class EmailService:
         Returns:
             AI response text
         """
-        config = get_config()
+        config = get_app_config()
 
         # Log prompt quality issues before sending to AI
         if "MISSING:" in prompt:
@@ -726,11 +726,11 @@ class EmailService:
                 "https://api.anthropic.com/v1/messages",
                 headers={
                     "Content-Type": "application/json",
-                    "x-api-key": config.anthropic_api_key,
+                    "x-api-key": config.services.anthropic_api_key,
                     "anthropic-version": "2023-06-01",
                 },
                 json={
-                    "model": config.anthropic_model,
+                    "model": config.services.anthropic_model,
                     "max_tokens": 1000,
                     "temperature": 0.3,
                     "messages": [{"role": "user", "content": prompt}],

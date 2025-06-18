@@ -9,10 +9,10 @@ from typing import Annotated, Any, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, EmailStr
 
-from ...middleware.jwt_auth import require_authenticated_user
-from ...services.auth_service import AuthenticatedUser
+from ...security.authentication.dependencies import require_authenticated_user
+from ...security.authentication.jwt_service import AuthenticatedUser
+from ...security.authorization.rbac import RBACService
 from ...services.config_service import ConfigService, get_config_service
-from ...services.rbac import RBACService
 
 logger = logging.getLogger(__name__)
 

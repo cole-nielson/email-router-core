@@ -11,9 +11,9 @@ from typing import Any, Dict, Optional
 
 import httpx
 
+from ..core import get_app_config, get_config_manager
 from ..services.client_manager import ClientManager
 from ..services.email_service import EmailService
-from ..utils.config import get_config
 from ..utils.domain_resolver import extract_domain_from_email
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,8 @@ class AIClassifier:
         """
         self.client_manager = client_manager
         self.email_service = EmailService(client_manager)
-        self.config = get_config()
+        self.config = get_app_config()
+        self.config_manager = get_config_manager()
 
     async def classify_email(
         self, email_data: Dict[str, Any], client_id: Optional[str] = None
@@ -84,7 +85,7 @@ class AIClassifier:
             classification.update(
                 {
                     "client_id": client_id,
-                    "ai_model": self.config.anthropic_model,
+                    "ai_model": self.config.services.anthropic_model,
                     "timestamp": datetime.utcnow().isoformat(),
                     "method": "ai_client_specific",
                 }
@@ -154,11 +155,11 @@ class AIClassifier:
                 "https://api.anthropic.com/v1/messages",
                 headers={
                     "Content-Type": "application/json",
-                    "x-api-key": self.config.anthropic_api_key,
+                    "x-api-key": self.config.services.anthropic_api_key,
                     "anthropic-version": "2023-06-01",
                 },
                 json={
-                    "model": self.config.anthropic_model,
+                    "model": self.config.services.anthropic_model,
                     "max_tokens": 500,
                     "temperature": 0.1,  # Low temperature for consistent classification
                     "messages": [{"role": "user", "content": prompt}],
@@ -271,7 +272,7 @@ class AIClassifier:
             classification.update(
                 {
                     "client_id": None,
-                    "ai_model": self.config.anthropic_model,
+                    "ai_model": self.config.services.anthropic_model,
                     "timestamp": datetime.utcnow().isoformat(),
                     "method": "ai_generic_fallback",
                 }

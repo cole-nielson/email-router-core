@@ -5,21 +5,21 @@ Authentication API Router for multi-tenant email router.
 
 import logging
 from typing import Annotated, List, Optional
-from sqlalchemy.orm import Session
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel, EmailStr
+from sqlalchemy.orm import Session
 
 from ..database.connection import get_db
-from ..middleware.jwt_auth import require_authenticated_user
-from ..services.auth_service import (
+from ..security.authentication.dependencies import require_authenticated_user
+from ..security.authentication.jwt_service import (
     AuthenticatedUser,
     LoginRequest,
     TokenResponse,
     get_auth_service,
 )
-from ..services.rbac import RBACService
+from ..security.authorization.rbac import RBACService
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,9 @@ async def login(request: LoginRequest, req: Request, db: Session = Depends(get_d
         # Get auth service
         auth_service = get_auth_service(db)
         if not auth_service:
-            raise HTTPException(status_code=500, detail="Could not initialize authentication service.")
+            raise HTTPException(
+                status_code=500, detail="Could not initialize authentication service."
+            )
 
         # Perform login
         token_response = auth_service.login(request, ip_address, user_agent)
@@ -118,7 +120,9 @@ async def refresh_token(request: RefreshTokenRequest, db: Session = Depends(get_
     try:
         auth_service = get_auth_service(db)
         if not auth_service:
-            raise HTTPException(status_code=500, detail="Could not initialize authentication service.")
+            raise HTTPException(
+                status_code=500, detail="Could not initialize authentication service."
+            )
 
         token_response = auth_service.refresh_access_token(request.refresh_token)
         if not token_response:
@@ -141,13 +145,15 @@ async def refresh_token(request: RefreshTokenRequest, db: Session = Depends(get_
 @router.post("/logout")
 async def logout(
     current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Logout user by revoking current token."""
     try:
         auth_service = get_auth_service(db)
         if not auth_service:
-            raise HTTPException(status_code=500, detail="Could not initialize authentication service.")
+            raise HTTPException(
+                status_code=500, detail="Could not initialize authentication service."
+            )
 
         # Extract token from request (this would need to be improved)
         # For now, we'll revoke all user tokens as a secure logout
@@ -174,7 +180,7 @@ async def logout(
 async def register_user(
     request: UserRegistrationRequest,
     current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Register a new user (admin only)."""
     try:
@@ -183,7 +189,9 @@ async def register_user(
 
         auth_service = get_auth_service(db)
         if not auth_service:
-            raise HTTPException(status_code=500, detail="Could not initialize authentication service.")
+            raise HTTPException(
+                status_code=500, detail="Could not initialize authentication service."
+            )
 
         # Import User model dynamically
         from ..database.models import User, UserRole, UserStatus
@@ -253,7 +261,7 @@ async def register_user(
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
     current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Get current user information."""
     try:
@@ -290,13 +298,15 @@ async def get_current_user_info(
 async def change_password(
     request: PasswordChangeRequest,
     current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Change current user password."""
     try:
         auth_service = get_auth_service(db)
         if not auth_service:
-            raise HTTPException(status_code=500, detail="Could not initialize authentication service.")
+            raise HTTPException(
+                status_code=500, detail="Could not initialize authentication service."
+            )
 
         # Import User model dynamically
         from ..database.models import User
@@ -344,7 +354,7 @@ async def list_users(
     client_id: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """List users (admin only)."""
     try:
@@ -390,9 +400,9 @@ async def list_users(
 
 @router.delete("/users/{user_id}")
 async def delete_user(
-    user_id: int, 
+    user_id: int,
     current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Delete user (super admin only)."""
     try:
@@ -412,7 +422,9 @@ async def delete_user(
 
         auth_service = get_auth_service(db)
         if not auth_service:
-            raise HTTPException(status_code=500, detail="Could not initialize authentication service.")
+            raise HTTPException(
+                status_code=500, detail="Could not initialize authentication service."
+            )
 
         # Import User model dynamically
         from ..database.models import User
@@ -450,7 +462,7 @@ async def delete_user(
 @router.get("/sessions")
 async def list_active_sessions(
     current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """List active sessions for current user."""
     try:
@@ -491,15 +503,17 @@ async def list_active_sessions(
 
 @router.delete("/sessions/{session_id}")
 async def revoke_session(
-    session_id: str, 
+    session_id: str,
     current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Revoke a specific session."""
     try:
         auth_service = get_auth_service(db)
         if not auth_service:
-            raise HTTPException(status_code=500, detail="Could not initialize authentication service.")
+            raise HTTPException(
+                status_code=500, detail="Could not initialize authentication service."
+            )
 
         # Import models dynamically
         from ..database.models import UserSession

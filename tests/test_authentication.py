@@ -7,8 +7,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.database.models import User, UserRole, UserStatus
-from app.middleware.dual_auth import APIKeyUser, DualAuthUser
-from app.services.auth_service import AuthService
+from app.security.authentication.jwt_service import AuthService
+from app.security.authentication.middleware import APIKeyUser, DualAuthUser
 
 # =============================================================================
 # TEST DATABASE SETUP - Using global conftest.py fixtures
@@ -188,7 +188,7 @@ class TestUserAuthentication:
 
     def test_login_flow(self, auth_service, test_user):
         """Test complete login flow."""
-        from app.services.auth_service import LoginRequest
+        from app.security.authentication.jwt_service import LoginRequest
 
         request = LoginRequest(username="testuser", password="testpass123")
 
@@ -227,8 +227,8 @@ class TestRBAC:
 
     def test_super_admin_permissions(self, auth_service, admin_user):
         """Test super admin has all permissions."""
-        from app.services.auth_service import AuthenticatedUser
-        from app.services.rbac import RBACService
+        from app.security.authentication.jwt_service import AuthenticatedUser
+        from app.security.authorization.rbac import RBACService
 
         auth_user = AuthenticatedUser(
             id=admin_user.id,
@@ -247,8 +247,8 @@ class TestRBAC:
 
     def test_client_user_permissions(self, auth_service, test_user):
         """Test client user has limited permissions."""
-        from app.services.auth_service import AuthenticatedUser
-        from app.services.rbac import RBACService
+        from app.security.authentication.jwt_service import AuthenticatedUser
+        from app.security.authorization.rbac import RBACService
 
         # Get user permissions based on role
         permissions = auth_service._get_user_permissions(test_user)
@@ -275,8 +275,8 @@ class TestRBAC:
 
     def test_client_scoping(self, auth_service, test_user):
         """Test client scoping prevents cross-client access."""
-        from app.services.auth_service import AuthenticatedUser
-        from app.services.rbac import RBACService
+        from app.security.authentication.jwt_service import AuthenticatedUser
+        from app.security.authorization.rbac import RBACService
 
         permissions = auth_service._get_user_permissions(test_user)
 
@@ -441,7 +441,7 @@ class TestDualAuthentication:
 
     def test_dual_auth_user_wrapper(self):
         """Test DualAuthUser wrapper functionality."""
-        from app.services.auth_service import AuthenticatedUser
+        from app.security.authentication.jwt_service import AuthenticatedUser
 
         # Create JWT user
         jwt_user = AuthenticatedUser(

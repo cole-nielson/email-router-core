@@ -33,7 +33,6 @@ config = get_app_config()
 configure_logging(level=config.server.log_level.value, format_string=config.server.log_format)
 logger = get_logger(__name__)
 
-from .middleware.dual_auth import DualAuthMiddleware
 from .middleware.rate_limiter import RateLimiterMiddleware
 from .models.schemas import APIInfo, HealthResponse
 from .routers.api.v1 import router as api_v1_router
@@ -41,6 +40,7 @@ from .routers.api.v2 import router as api_v2_router
 from .routers.auth import router as auth_router
 from .routers.dashboard import router as dashboard_router
 from .routers.webhooks import router as webhook_router
+from .security.authentication.middleware import UnifiedAuthMiddleware as DualAuthMiddleware
 from .services.monitoring import MetricsCollector
 from .services.websocket_manager import get_websocket_manager
 
@@ -435,7 +435,11 @@ async def detailed_health_check():
         components["ai_classifier"] = {
             "status": "healthy" if config_manager.is_service_available("anthropic") else "degraded",
             "response_time_ms": int((time.time() - ai_response_time) * 1000),
-            "details": "Claude 3.5 Sonnet API" if config_manager.is_service_available("anthropic") else "Missing API key",
+            "details": (
+                "Claude 3.5 Sonnet API"
+                if config_manager.is_service_available("anthropic")
+                else "Missing API key"
+            ),
         }
 
         # Email Service Health

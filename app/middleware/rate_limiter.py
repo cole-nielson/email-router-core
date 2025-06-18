@@ -154,21 +154,38 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
     - Burst protection with separate limits
     """
 
-    def __init__(self, app, calls_per_minute: int = 60, burst_limit: int = 10):
+    def __init__(self, app, calls_per_minute: int = None, burst_limit: int = None):
         """
         Initialize rate limiter middleware.
 
         Args:
             app: FastAPI application
-            calls_per_minute: Sustained rate limit
-            burst_limit: Burst rate limit per 10 seconds
+            calls_per_minute: Sustained rate limit (from config if None)
+            burst_limit: Burst rate limit per 10 seconds (default: calls_per_minute/6)
         """
         super().__init__(app)
-        self.calls_per_minute = calls_per_minute
-        self.burst_limit = burst_limit
-        self.refill_rate = calls_per_minute / 60.0  # tokens per second
 
-        logger.info(f"Rate limiter initialized: {calls_per_minute} req/min, {burst_limit} burst")
+        # Load rate limits from unified configuration
+        try:
+            from ..core import get_app_config
+
+            config = get_app_config()
+
+            self.calls_per_minute = calls_per_minute or config.security.api_rate_limit_per_minute
+            self.burst_limit = burst_limit or max(
+                10, self.calls_per_minute // 6
+            )  # 1/6 of per-minute limit
+
+        except Exception:
+            # Fallback to provided values or defaults
+            self.calls_per_minute = calls_per_minute or 60
+            self.burst_limit = burst_limit or 10
+
+        self.refill_rate = self.calls_per_minute / 60.0  # tokens per second
+
+        logger.info(
+            f"Rate limiter initialized: {self.calls_per_minute} req/min, {self.burst_limit} burst"
+        )
 
     async def dispatch(self, request: Request, call_next):
         """Process request with rate limiting."""
