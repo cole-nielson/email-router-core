@@ -4,6 +4,7 @@ Database connection and session management.
 """
 
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Generator
 
 from sqlalchemy import create_engine, event
