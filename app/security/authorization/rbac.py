@@ -422,3 +422,182 @@ def require_permission(
 ) -> None:
     """Require permission using global RBAC manager."""
     get_rbac_manager().check_permission(security_context, permission, client_id, raise_on_deny=True)
+
+
+# =============================================================================
+# LEGACY COMPATIBILITY LAYER
+# =============================================================================
+
+def convert_legacy_user_to_security_context(user) -> SecurityContext:
+    """
+    Convert legacy user objects to SecurityContext for unified RBAC.
+    
+    Args:
+        user: AuthenticatedUser or UserTokenClaims from legacy system
+        
+    Returns:
+        SecurityContext compatible with unified system
+    """
+    from ...authentication.jwt_service import AuthenticatedUser, UserTokenClaims
+    
+    if hasattr(user, 'id') and hasattr(user, 'username'):
+        # AuthenticatedUser
+        return SecurityContext(
+            is_authenticated=True,
+            auth_type="jwt",
+            user_id=user.id,
+            username=user.username,
+            role=user.role,
+            client_id=user.client_id,
+            permissions=getattr(user, 'permissions', []),
+            is_super_admin=user.role == "super_admin",
+            rate_limit_tier=getattr(user, 'rate_limit_tier', 'standard')
+        )
+    elif hasattr(user, 'sub') and hasattr(user, 'username'):
+        # UserTokenClaims
+        return SecurityContext(
+            is_authenticated=True,
+            auth_type="jwt",
+            user_id=int(user.sub),
+            username=user.username,
+            role=user.role,
+            client_id=user.client_id,
+            permissions=user.permissions,
+            is_super_admin=user.role == "super_admin"
+        )
+    else:
+        raise ValueError(f"Unknown user type: {type(user)}")
+
+
+class AgenticPermissions:
+    """
+    Helper class for AI agent permission checking (migrated from legacy RBAC).
+    Provides convenient methods for agentic workflows.
+    """
+    
+    def __init__(self, security_context: SecurityContext):
+        self.security_context = security_context
+        self.rbac_manager = get_rbac_manager()
+    
+    @classmethod
+    def from_legacy_user(cls, user):
+        """Create from legacy user object."""
+        security_context = convert_legacy_user_to_security_context(user)
+        return cls(security_context)
+    
+    def can_read_client_config(self, client_id: str) -> bool:
+        """Check if agent can read client configuration."""
+        return self.rbac_manager.check_permission(
+            self.security_context, Permissions.CLIENT_READ, client_id, raise_on_deny=False
+        )
+    
+    def can_write_client_config(self, client_id: str) -> bool:
+        """Check if agent can write client configuration."""
+        return self.rbac_manager.check_permission(
+            self.security_context, Permissions.CLIENT_WRITE, client_id, raise_on_deny=False
+        )
+    
+    def can_manage_routing(self, client_id: str) -> bool:
+        """Check if agent can manage routing rules."""
+        return self.rbac_manager.check_permission(
+            self.security_context, Permissions.ROUTING_WRITE, client_id, raise_on_deny=False
+        )
+    
+    def can_access_webhooks(self) -> bool:
+        """Check if agent can access webhook endpoints."""
+        return self.rbac_manager.check_permission(
+            self.security_context, Permissions.WEBHOOKS_WRITE, raise_on_deny=False
+        )
+    
+    def can_monitor_system(self) -> bool:
+        """Check if agent can monitor system status."""
+        return self.rbac_manager.check_permission(
+            self.security_context, Permissions.SYSTEM_MONITOR, raise_on_deny=False
+        )
+    
+    def require_client_access(self, client_id: str) -> None:
+        """Require access to specific client or raise exception."""
+        self.rbac_manager.check_client_access(self.security_context, client_id)
+    
+    def require_admin_access(self) -> None:
+        """Require admin access or raise exception."""
+        if not self.security_context.is_super_admin:
+            self.rbac_manager.check_role(self.security_context, [Role.SUPER_ADMIN.value])
+
+
+# =============================================================================
+# LEGACY RBAC SERVICE COMPATIBILITY CLASS
+# =============================================================================
+
+class RBACService:
+    """
+    Legacy RBAC service compatibility layer.
+    
+    ⚠️ DEPRECATED: This class provides backward compatibility for the migrated RBAC system.
+    New code should use the unified RBACManager directly or SecurityContext-based functions.
+    """
+    
+    @staticmethod
+    def check_permission(
+        user, 
+        permission: str, 
+        client_id: Optional[str] = None, 
+        raise_on_deny: bool = True
+    ) -> bool:
+        """
+        Check user permission (legacy compatibility method).
+        
+        Args:
+            user: AuthenticatedUser or UserTokenClaims
+            permission: Permission string (e.g., "routing:write")
+            client_id: Optional client ID for scoped permissions
+            raise_on_deny: Whether to raise exception on denial
+            
+        Returns:
+            True if permission is granted
+        """
+        security_context = convert_legacy_user_to_security_context(user)
+        return get_rbac_manager().check_permission(
+            security_context, permission, client_id, raise_on_deny
+        )
+    
+    @staticmethod
+    def check_client_access(
+        user, 
+        client_id: str, 
+        raise_on_deny: bool = True
+    ) -> bool:
+        """
+        Check user access to specific client (legacy compatibility method).
+        
+        Args:
+            user: AuthenticatedUser or UserTokenClaims
+            client_id: Client ID to check access for
+            raise_on_deny: Whether to raise exception on denial
+            
+        Returns:
+            True if access is granted
+        """
+        security_context = convert_legacy_user_to_security_context(user)
+        return get_rbac_manager().check_client_access(
+            security_context, client_id, raise_on_deny
+        )
+    
+    @staticmethod
+    def require_role(user, required_roles: Union[str, List[str]]) -> None:
+        """
+        Require specific role (legacy compatibility method).
+        
+        Args:
+            user: AuthenticatedUser or UserTokenClaims  
+            required_roles: Required role(s)
+        """
+        security_context = convert_legacy_user_to_security_context(user)
+        if isinstance(required_roles, str):
+            required_roles = [required_roles]
+        get_rbac_manager().check_role(security_context, required_roles)
+    
+    @staticmethod
+    def get_agentic_permissions(user):
+        """Get AgenticPermissions helper for user (legacy compatibility method)."""
+        return AgenticPermissions.from_legacy_user(user)
