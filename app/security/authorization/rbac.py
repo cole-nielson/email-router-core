@@ -438,7 +438,7 @@ def convert_legacy_user_to_security_context(user) -> SecurityContext:
     Returns:
         SecurityContext compatible with unified system
     """
-    from ...authentication.jwt_service import AuthenticatedUser, UserTokenClaims
+    from ...services.auth_service import AuthenticatedUser, UserTokenClaims
     
     if hasattr(user, 'id') and hasattr(user, 'username'):
         # AuthenticatedUser
