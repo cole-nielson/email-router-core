@@ -14,7 +14,6 @@ from app.services.email_service import EmailService
 from app.services.routing_engine import RoutingEngine
 
 
-@pytest.mark.xfail(reason="Integration tests require external services - see docs/known_issues.md")
 class TestEmailPipelineIntegration:
     """Test complete email processing pipeline integration."""
 
@@ -43,6 +42,7 @@ class TestEmailPipelineIntegration:
             "client_id": "client-001-cole-nielson",
         }
 
+    @pytest.mark.xfail(reason="Integration test requires full app setup - see docs/known_issues.md")
     @patch("app.services.email_sender.send_auto_reply")
     @patch("app.services.email_sender.forward_to_team")
     @patch("app.services.ai_classifier.AIClassifier._call_ai_service")
@@ -94,6 +94,7 @@ class TestEmailPipelineIntegration:
         # Verify email delivery functions would be called
         # (Background tasks make this harder to test directly)
 
+    @pytest.mark.xfail(reason="Integration test requires full app setup - see docs/known_issues.md")
     @patch("app.services.ai_classifier.AIClassifier._call_ai_service")
     def test_client_identification_flow(
         self, mock_ai_service, client: TestClient, auth_headers: dict
@@ -129,6 +130,7 @@ class TestEmailPipelineIntegration:
         data = response.json()
         assert data["client_id"] is None  # No client identified
 
+    @pytest.mark.xfail(reason="Integration test requires full app setup - see docs/known_issues.md")
     def test_webhook_validation_and_error_handling(self, client: TestClient, auth_headers: dict):
         """Test webhook input validation and error handling."""
 
@@ -150,6 +152,7 @@ class TestEmailPipelineIntegration:
         # Should handle gracefully
         assert response.status_code == 422  # Invalid form data
 
+    @pytest.mark.xfail(reason="Integration test requires full app setup - see docs/known_issues.md")
     def test_test_webhook_endpoint(self, client: TestClient, auth_headers: dict):
         """Test the test webhook endpoint with JSON payload."""
 
@@ -182,9 +185,6 @@ class TestEmailPipelineIntegration:
         assert isinstance(data["clients"], list)
 
 
-@pytest.mark.xfail(
-    reason="Service integration tests require complex mocking - see docs/known_issues.md"
-)
 class TestServiceIntegration:
     """Test integration between core services."""
 
@@ -220,6 +220,7 @@ class TestServiceIntegration:
         assert config.domains.primary == "mail.colesportfolio.com"
         assert config.settings.auto_reply_enabled is True
 
+    @pytest.mark.xfail(reason="Service integration tests require complex mocking - see docs/known_issues.md")
     @patch("app.services.ai_classifier.AIClassifier._call_ai_service")
     async def test_ai_classification_integration(self, mock_ai_service):
         """Test AI classification with client context."""
@@ -243,6 +244,7 @@ class TestServiceIntegration:
         # Verify AI service was called with composed prompt
         mock_ai_service.assert_called_once()
 
+    @pytest.mark.xfail(reason="Service integration tests require complex mocking - see docs/known_issues.md")
     def test_routing_engine_integration(self):
         """Test routing engine with client rules."""
 
@@ -256,6 +258,7 @@ class TestServiceIntegration:
         assert routing_result["category"] == "support"
         assert "routing_rules_applied" in routing_result
 
+    @pytest.mark.xfail(reason="Service integration tests require complex mocking - see docs/known_issues.md")
     @patch("app.services.email_service.EmailService._call_ai_service")
     async def test_email_service_integration(self, mock_ai_service):
         """Test email service content generation."""

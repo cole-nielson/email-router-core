@@ -277,9 +277,6 @@ class TestConcurrentServiceAccess:
             assert f"request {i}" in result.lower()
 
 
-@pytest.mark.xfail(
-    reason="Service state cleanup tests require memory profiling - see docs/known_issues.md"
-)
 class TestServiceStateCleanup:
     """Test that services properly clean up state."""
 
@@ -329,6 +326,7 @@ class TestServiceStateCleanup:
         )
         assert result == "also_success"
 
+    @pytest.mark.xfail(reason="Service state cleanup tests require memory profiling - see docs/known_issues.md")
     def test_memory_leak_prevention(self):
         """Test that services don't accumulate memory over time."""
 

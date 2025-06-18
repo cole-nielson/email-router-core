@@ -32,9 +32,6 @@ def mock_user():
     return user
 
 
-@pytest.mark.xfail(
-    reason="JWT security tests require database session mocking - see docs/known_issues.md"
-)
 class TestJWTTokenSecurity:
     """Test JWT token security and edge cases."""
 
@@ -104,6 +101,7 @@ class TestJWTTokenSecurity:
         refresh_only_claims = {"sub", "username", "jti", "iat", "exp", "token_type"}
         assert set(refresh_claims.keys()) == refresh_only_claims
 
+    @pytest.mark.xfail(reason="JWT security tests require database session mocking - see docs/known_issues.md")
     def test_token_validation_with_wrong_type(self, auth_service, mock_user):
         """Test validating access token as refresh token fails."""
         # Mock database session query
@@ -123,6 +121,7 @@ class TestJWTTokenSecurity:
         claims = auth_service.validate_token(access_token, "refresh")
         assert claims is None
 
+    @pytest.mark.xfail(reason="JWT security tests require database session mocking - see docs/known_issues.md")
     def test_token_validation_with_inactive_session(self, auth_service, mock_user):
         """Test that tokens with inactive sessions are rejected."""
         # Mock database to return no active session
@@ -208,9 +207,6 @@ class TestTokenRevocation:
         mock_db.commit.assert_called_once()
 
 
-@pytest.mark.xfail(
-    reason="Token refresh security tests require database state management - see docs/known_issues.md"
-)
 class TestTokenRefreshSecurity:
     """Test refresh token security."""
 
@@ -232,6 +228,7 @@ class TestTokenRefreshSecurity:
 
         return service, user
 
+    @pytest.mark.xfail(reason="Token refresh security tests require database state management - see docs/known_issues.md")
     def test_refresh_token_hash_verification(self, auth_service_with_user):
         """Test refresh token hash verification."""
         auth_service, mock_user = auth_service_with_user
