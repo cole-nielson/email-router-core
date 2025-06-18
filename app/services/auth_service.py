@@ -104,17 +104,20 @@ class AuthService:
             logger.error("AuthService initialized with a null database session.")
             raise ValueError("Database session cannot be None for AuthService.")
         self.db = db
-        
+
         # Import models dynamically to avoid circular imports
         try:
             from ..database.models import User, UserRole, UserSession, UserStatus
+
             self.User = User
             self.UserRole = UserRole
             self.UserSession = UserSession
             self.UserStatus = UserStatus
         except ImportError as e:
             logger.critical(f"Failed to import database models for AuthService: {e}")
-            raise RuntimeError("Could not initialize AuthService due to missing database models.") from e
+            raise RuntimeError(
+                "Could not initialize AuthService due to missing database models."
+            ) from e
 
     # =========================================================================
     # PASSWORD MANAGEMENT
@@ -139,67 +142,80 @@ class AuthService:
         try:
             # Get user by username using raw SQL to bypass enum issues
             from sqlalchemy import text
+
             result = self.db.execute(
-                text("""
-                    SELECT id, username, email, password_hash, full_name, role, status, 
-                           client_id, last_login_at, login_attempts, locked_until, 
+                text(
+                    """
+                    SELECT id, username, email, password_hash, full_name, role, status,
+                           client_id, last_login_at, login_attempts, locked_until,
                            jwt_refresh_token_hash, jwt_token_version, created_at, updated_at,
                            created_by, api_access_enabled, rate_limit_tier
                     FROM users WHERE username = :username
-                """),
-                {"username": username}
+                """
+                ),
+                {"username": username},
             ).fetchone()
-            
+
             if not result:
                 logger.warning(f"Authentication failed: user '{username}' not found")
                 return None
-            
+
             # Create a user-like object from the raw data
             user_data = {
-                'id': result[0],
-                'username': result[1],
-                'email': result[2], 
-                'password_hash': result[3],
-                'full_name': result[4],
-                'role_str': result[5],
-                'status_str': result[6],
-                'client_id': result[7],
-                'last_login_at': result[8],
-                'login_attempts': result[9] or 0,
-                'locked_until': result[10],
-                'jwt_refresh_token_hash': result[11],
-                'jwt_token_version': result[12] or 1,
-                'created_at': result[13],
-                'updated_at': result[14],
-                'created_by': result[15],
-                'api_access_enabled': bool(result[16]) if result[16] is not None else True,
-                'rate_limit_tier': result[17] or 'standard'
+                "id": result[0],
+                "username": result[1],
+                "email": result[2],
+                "password_hash": result[3],
+                "full_name": result[4],
+                "role_str": result[5],
+                "status_str": result[6],
+                "client_id": result[7],
+                "last_login_at": result[8],
+                "login_attempts": result[9] or 0,
+                "locked_until": result[10],
+                "jwt_refresh_token_hash": result[11],
+                "jwt_token_version": result[12] or 1,
+                "created_at": result[13],
+                "updated_at": result[14],
+                "created_by": result[15],
+                "api_access_enabled": bool(result[16]) if result[16] is not None else True,
+                "rate_limit_tier": result[17] or "standard",
             }
-            
-            # Map string roles to enum values for compatibility
+
+            # Map string roles to enum values for compatibility (handle both values and names)
             role_mapping = {
-                'super_admin': self.UserRole.SUPER_ADMIN,
-                'client_admin': self.UserRole.CLIENT_ADMIN,
-                'client_user': self.UserRole.CLIENT_USER
+                "super_admin": self.UserRole.SUPER_ADMIN,
+                "client_admin": self.UserRole.CLIENT_ADMIN,
+                "client_user": self.UserRole.CLIENT_USER,
+                "SUPER_ADMIN": self.UserRole.SUPER_ADMIN,
+                "CLIENT_ADMIN": self.UserRole.CLIENT_ADMIN,
+                "CLIENT_USER": self.UserRole.CLIENT_USER,
             }
-            user_data['role'] = role_mapping.get(user_data['role_str'], self.UserRole.CLIENT_USER)
-            
-            # Map string status to enum values
+            user_data["role"] = role_mapping.get(user_data["role_str"], self.UserRole.CLIENT_USER)
+
+            # Map string status to enum values (handle both values and names)
             status_mapping = {
-                'active': self.UserStatus.ACTIVE,
-                'pending': self.UserStatus.PENDING,
-                'suspended': self.UserStatus.SUSPENDED
+                "active": self.UserStatus.ACTIVE,
+                "pending": self.UserStatus.PENDING,
+                "suspended": self.UserStatus.SUSPENDED,
+                "inactive": self.UserStatus.INACTIVE,
+                "ACTIVE": self.UserStatus.ACTIVE,
+                "PENDING": self.UserStatus.PENDING,
+                "SUSPENDED": self.UserStatus.SUSPENDED,
+                "INACTIVE": self.UserStatus.INACTIVE,
             }
-            user_data['status'] = status_mapping.get(user_data['status_str'], self.UserStatus.PENDING)
-            
+            user_data["status"] = status_mapping.get(
+                user_data["status_str"], self.UserStatus.PENDING
+            )
+
             # Create a simple user object
             class SimpleUser:
                 pass
-            
+
             user = SimpleUser()
             for key, value in user_data.items():
                 setattr(user, key, value)
-            
+
             # Add missing attributes for compatibility
             user.permissions = []  # Empty permissions list for now
 
@@ -226,19 +242,25 @@ class AuthService:
             if not self.verify_password(password, user.password_hash):
                 # Increment failed login attempts using raw SQL
                 new_attempts = user.login_attempts + 1
-                
+
                 # Lock account if too many attempts
                 if new_attempts >= MAX_LOGIN_ATTEMPTS:
                     lock_until = datetime.utcnow() + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
                     self.db.execute(
-                        text("UPDATE users SET login_attempts = :attempts, locked_until = :locked WHERE username = :username"),
-                        {"attempts": new_attempts, "locked": lock_until, "username": username}
+                        text(
+                            "UPDATE users SET login_attempts = :attempts, locked_until = :locked WHERE username = :username"
+                        ),
+                        {"attempts": new_attempts, "locked": lock_until, "username": username},
                     )
-                    logger.warning(f"Account '{username}' locked due to {MAX_LOGIN_ATTEMPTS} failed attempts")
+                    logger.warning(
+                        f"Account '{username}' locked due to {MAX_LOGIN_ATTEMPTS} failed attempts"
+                    )
                 else:
                     self.db.execute(
-                        text("UPDATE users SET login_attempts = :attempts WHERE username = :username"),
-                        {"attempts": new_attempts, "username": username}
+                        text(
+                            "UPDATE users SET login_attempts = :attempts WHERE username = :username"
+                        ),
+                        {"attempts": new_attempts, "username": username},
                     )
 
                 self.db.commit()
@@ -258,8 +280,10 @@ class AuthService:
 
             # Reset login attempts on successful authentication using raw SQL
             self.db.execute(
-                text("UPDATE users SET login_attempts = 0, locked_until = NULL, last_login_at = datetime('now') WHERE username = :username"),
-                {"username": username}
+                text(
+                    "UPDATE users SET login_attempts = 0, locked_until = NULL, last_login_at = datetime('now') WHERE username = :username"
+                ),
+                {"username": username},
             )
             self.db.commit()
 
@@ -355,9 +379,7 @@ class AuthService:
             # Check if session is still active
             session = (
                 self.db.query(self.UserSession)
-                .filter(
-                    self.UserSession.session_id == claims.jti, self.UserSession.is_active
-                )
+                .filter(self.UserSession.session_id == claims.jti, self.UserSession.is_active)
                 .first()
             )
 
