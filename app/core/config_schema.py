@@ -116,6 +116,7 @@ class SecurityConfig(BaseModel):
     session_timeout_minutes: int = Field(default=60, ge=15, le=480)
     rate_limit_per_minute: int = Field(default=60, ge=10, le=1000)
     api_rate_limit_per_minute: int = Field(default=300, ge=50, le=5000)
+    api_rate_limit_burst: int = Field(default=50, ge=10, le=200)
     enable_cors: bool = True
     allowed_origins: List[str] = Field(default_factory=lambda: ["http://localhost:3000"])
     trusted_proxies: List[str] = Field(default_factory=list)

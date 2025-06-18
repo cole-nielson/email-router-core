@@ -116,7 +116,7 @@ app.add_middleware(DualAuthMiddleware)  # JWT + API key authentication
 app.add_middleware(
     RateLimiterMiddleware,
     calls_per_minute=config.security.api_rate_limit_per_minute,
-    burst_limit=50,
+    burst_limit=config.security.api_rate_limit_burst,
 )
 
 # Add trusted host middleware for production
@@ -430,22 +430,22 @@ async def detailed_health_check():
         }
 
         # AI Classifier Health
-        config = get_config()
+        config_manager = get_config_manager()
         ai_response_time = time.time()
         components["ai_classifier"] = {
-            "status": "healthy" if config.anthropic_api_key else "degraded",
+            "status": "healthy" if config_manager.is_service_available("anthropic") else "degraded",
             "response_time_ms": int((time.time() - ai_response_time) * 1000),
-            "details": "Claude 3.5 Sonnet API" if config.anthropic_api_key else "Missing API key",
+            "details": "Claude 3.5 Sonnet API" if config_manager.is_service_available("anthropic") else "Missing API key",
         }
 
         # Email Service Health
         email_response_time = time.time()
         components["email_service"] = {
-            "status": "healthy" if config.mailgun_api_key else "degraded",
+            "status": "healthy" if config_manager.is_service_available("mailgun") else "degraded",
             "response_time_ms": int((time.time() - email_response_time) * 1000),
             "details": (
-                f"Mailgun service for {config.mailgun_domain}"
-                if config.mailgun_domain
+                f"Mailgun service for {config.services.mailgun_domain}"
+                if config.services.mailgun_domain
                 else "Missing configuration"
             ),
         }
@@ -479,8 +479,8 @@ async def detailed_health_check():
         return {
             "status": overall_status,
             "timestamp": datetime.utcnow().isoformat(),
-            "version": "2.0.0",
-            "environment": os.getenv("ENVIRONMENT", "development"),
+            "version": config.app_version,
+            "environment": config.environment.value,
             "uptime_seconds": int(time.time() - metrics.start_time),
             "total_response_time_ms": total_response_time,
             "components": components,
@@ -606,6 +606,5 @@ async def global_exception_handler(request: Request, exc: Exception):
 if __name__ == "__main__":
     import uvicorn
 
-    port = int(os.environ.get("PORT", 8080))
-    logger.info(f"Starting Email Router SaaS API v2.0.0 on port {port}")
-    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=False)
+    logger.info(f"Starting Email Router SaaS API {config.app_version} on port {config.server.port}")
+    uvicorn.run("app.main:app", host=config.server.host, port=config.server.port, reload=False)
