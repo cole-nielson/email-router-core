@@ -1,16 +1,28 @@
 """
 API key authentication middleware.
 🔐 Validates API keys and manages authentication for protected endpoints.
+
+⚠️ DEPRECATED: This middleware is deprecated and will be removed in the next version.
+Please use app.security.authentication.middleware.UnifiedAuthMiddleware instead.
 """
 
 import logging
 import secrets
+import warnings
 from datetime import datetime
 from typing import Dict, List, Optional
 
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+
+# Issue deprecation warning
+warnings.warn(
+    "APIKeyAuthMiddleware is deprecated. Use app.security.authentication.middleware.UnifiedAuthMiddleware instead. "
+    "This middleware will be removed in the next version.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 logger = logging.getLogger(__name__)
 

@@ -1,14 +1,26 @@
 """
 JWT Authentication Middleware for multi-tenant email router.
 🔐 Bearer token validation with client scoping and RBAC integration.
+
+⚠️ DEPRECATED: This middleware is deprecated and will be removed in the next version.
+Please use app.security.authentication.middleware.UnifiedAuthMiddleware instead.
 """
 
 import logging
+import warnings
 from typing import Annotated, Optional
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
+
+# Issue deprecation warning
+warnings.warn(
+    "JWTAuthMiddleware is deprecated. Use app.security.authentication.middleware.UnifiedAuthMiddleware instead. "
+    "This middleware will be removed in the next version.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 from ..database.connection import get_db
 from ..services.auth_service import AuthenticatedUser

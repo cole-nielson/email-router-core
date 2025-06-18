@@ -1,14 +1,26 @@
 """
 Dual Authentication Middleware for multi-tenant email router.
 🔐 Supports both JWT tokens (humans) and API keys (bots/integrations).
+
+⚠️ DEPRECATED: This middleware is deprecated and will be removed in the next version.
+Please use app.security.authentication.middleware.UnifiedAuthMiddleware instead.
 """
 
 import logging
+import warnings
 from typing import Annotated, Optional, Union
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer
 from starlette.middleware.base import BaseHTTPMiddleware
+
+# Issue deprecation warning
+warnings.warn(
+    "DualAuthMiddleware is deprecated. Use app.security.authentication.middleware.UnifiedAuthMiddleware instead. "
+    "This middleware will be removed in the next version.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 from ..database.connection import get_database_session
 from ..middleware.jwt_auth import _get_user_from_token_logic
