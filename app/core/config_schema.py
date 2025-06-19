@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 # =============================================================================
 # ENUMS FOR CONFIGURATION
@@ -72,12 +72,14 @@ class DatabaseConfig(BaseModel):
     pool_recycle: int = Field(default=3600, ge=300)
     echo_sql: bool = False
 
-    @validator("url", always=True)
-    def build_database_url(cls, v: Optional[str], values: Dict[str, Any]) -> str:
+    @field_validator("url", mode="before")
+    @classmethod
+    def build_database_url(cls, v: Optional[str], info: Any) -> str:
         """Build database URL from components if not provided."""
         if v:
             return v
 
+        values = info.data if hasattr(info, "data") else {}
         db_type = values.get("type", DatabaseType.SQLITE)
 
         if db_type == DatabaseType.SQLITE:
@@ -126,7 +128,8 @@ class SecurityConfig(BaseModel):
     enable_https_redirect: bool = False
     hsts_max_age: int = Field(default=31536000, ge=300)
 
-    @validator("jwt_secret_key")
+    @field_validator("jwt_secret_key")
+    @classmethod
     def validate_jwt_secret(cls, v: str) -> str:
         """Ensure JWT secret is sufficiently strong."""
         if len(v) < 32:
@@ -215,14 +218,16 @@ class ClientDomainConfig(BaseModel):
     aliases: List[str] = Field(default_factory=list)
     catch_all: bool = False
 
-    @validator("primary")
+    @field_validator("primary")
+    @classmethod
     def validate_primary_domain(cls, v: str) -> str:
         """Basic domain validation."""
         if not v or "." not in v:
             raise ValueError("Primary domain must be a valid domain")
         return v.lower()
 
-    @validator("aliases")
+    @field_validator("aliases")
+    @classmethod
     def validate_aliases(cls, v: List[str]) -> List[str]:
         """Validate alias domains."""
         return [alias.lower() for alias in v]
@@ -247,7 +252,7 @@ class ClientBrandingConfig(BaseModel):
     footer_text: str = ""
     email_signature: Optional[str] = None
 
-    @validator(
+    @field_validator(
         "primary_color",
         "secondary_color",
         "header_text_color",
@@ -259,6 +264,7 @@ class ClientBrandingConfig(BaseModel):
         "footer_text_color",
         "link_color",
     )
+    @classmethod
     def validate_hex_color(cls, v: str) -> str:
         """Validate hex color format."""
         if not v.startswith("#") or len(v) not in [4, 7]:
@@ -345,7 +351,8 @@ class ClientConfig(BaseModel):
     )
     custom_prompts: Dict[str, str] = Field(default_factory=dict)
 
-    @validator("client_id")
+    @field_validator("client_id")
+    @classmethod
     def validate_client_id(cls, v: str) -> str:
         """Validate client ID format."""
         if not v or not v.replace("-", "").replace("_", "").isalnum():
@@ -405,7 +412,8 @@ class AppConfig(BaseModel):
         validate_assignment = True
         extra = "forbid"
 
-    @validator("environment", pre=True)
+    @field_validator("environment", mode="before")
+    @classmethod
     def parse_environment(cls, v: Union[str, Environment]) -> Environment:
         """Parse environment from string."""
         if isinstance(v, str):

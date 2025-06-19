@@ -5,6 +5,7 @@ AI Email Router - Production SaaS FastAPI Application
 """
 
 import time
+from contextlib import asynccontextmanager
 from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, status
@@ -47,8 +48,42 @@ from .services.websocket_manager import get_websocket_manager
 # Initialize metrics collector
 metrics = MetricsCollector()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan handler for startup and shutdown events."""
+    # Startup
+    try:
+        # Run startup validation first
+        from .utils.startup_validator import validate_startup
+
+        validation_results = validate_startup()
+        logger.info(
+            f"✅ Startup validation passed: {validation_results['checks_passed']}/{validation_results['total_checks']} checks"
+        )
+
+        # Initialize database
+        from .database.connection import init_database
+
+        init_database()
+        logger.info("✅ Database initialized successfully")
+
+        # Log startup completion
+        logger.info("🚀 Email Router SaaS API v2.0 started successfully")
+
+    except Exception as e:
+        logger.error(f"❌ Startup failed: {e}")
+        raise e  # Re-raise to prevent app from starting with invalid configuration
+
+    yield  # Application runs here
+
+    # Shutdown
+    logger.info("🔄 Application shutting down...")
+
+
 # Create FastAPI app with enhanced metadata
 app = FastAPI(
+    lifespan=lifespan,
     title=config.app_name,
     description="""
     ## Multi-Tenant AI Email Router API
@@ -202,33 +237,6 @@ def custom_openapi():
 
 
 app.openapi = custom_openapi
-
-
-# Database startup
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database and other startup tasks."""
-    try:
-        # Run startup validation first
-        from .utils.startup_validator import validate_startup
-
-        validation_results = validate_startup()
-        logger.info(
-            f"✅ Startup validation passed: {validation_results['checks_passed']}/{validation_results['total_checks']} checks"
-        )
-
-        # Initialize database
-        from .database.connection import init_database
-
-        init_database()
-        logger.info("✅ Database initialized successfully")
-
-        # Log startup completion
-        logger.info("🚀 Email Router SaaS API v2.0 started successfully")
-
-    except Exception as e:
-        logger.error(f"❌ Startup failed: {e}")
-        raise e  # Re-raise to prevent app from starting with invalid configuration
 
 
 # Include routers with API versioning

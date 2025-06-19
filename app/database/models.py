@@ -8,11 +8,12 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import DeclarativeBase, relationship
 
-# Create base class for all models
-Base: Any = declarative_base()
+
+# Create base class for all models using SQLAlchemy 2.0 syntax
+class Base(DeclarativeBase):
+    pass
 
 
 # =============================================================================

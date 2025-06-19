@@ -245,8 +245,8 @@ def isolated_db_session():
 # =============================================================================
 
 # Import all specialized fixtures to make them available globally
-from .auth_fixtures import *  # noqa: F401, F403
-from .client_fixtures import *  # noqa: F401, F403
+from tests.fixtures.auth_fixtures import *  # noqa: F401, F403
+from tests.fixtures.client_fixtures import *  # noqa: F401, F403
 
 # =============================================================================
 # LEGACY COMPATIBILITY FIXTURES
