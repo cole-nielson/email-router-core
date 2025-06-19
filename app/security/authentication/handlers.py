@@ -123,24 +123,42 @@ class JWTHandler(AuthenticationHandler):
 
     async def _validate_jwt_token(self, token: str):
         """
-        Validate JWT token using existing auth service.
+        Validate JWT token using stateless validation for middleware.
 
         Args:
             token: JWT token string
 
         Returns:
-            Authenticated user object or None
+            User-like object with JWT claims or None
         """
-        # Import here to avoid circular imports
-        from ...database.connection import get_database_session
-        from ...services.auth_service import get_auth_service
-
-        db = get_database_session()
         try:
-            auth_service = get_auth_service(db)
-            return auth_service.get_current_user(token)
-        finally:
-            db.close()
+            # Import here to avoid circular imports
+            from .jwt_service import AuthService
+            
+            logger.debug(f"Attempting to validate JWT token: {token[:20]}...")
+
+            # Use stateless validation for middleware - no database access needed
+            claims = AuthService.validate_token_stateless(token)
+            logger.debug(f"JWT validation result: {claims}")
+            
+            if claims:
+                # Return a user-like object with basic info from JWT claims
+                user_obj = type('JWTUser', (), {
+                    'id': claims.user_id,
+                    'username': claims.username,
+                    'email': claims.email,
+                    'role': claims.role,
+                    'client_id': claims.client_id,
+                    'permissions': claims.permissions or [],
+                    'auth_type': 'jwt'
+                })()
+                logger.debug(f"Created JWT user object: {user_obj.username}")
+                return user_obj
+                
+        except Exception as e:
+            logger.error(f"JWT validation error in handler: {e}")
+            
+        return None
 
 
 class APIKeyHandler(AuthenticationHandler):

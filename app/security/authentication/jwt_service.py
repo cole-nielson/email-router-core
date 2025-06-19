@@ -378,10 +378,11 @@ class AuthService:
 
         return {"token": token, "claims": claims, "expires_at": exp}
 
-    def validate_token(self, token: str, token_type: str = "access") -> Optional[UserTokenClaims]:
-        """Validate JWT token and return claims."""
+    @staticmethod
+    def validate_token_stateless(token: str, token_type: str = "access") -> Optional[UserTokenClaims]:
+        """Validate JWT token signature and expiration without database access."""
         try:
-            # Decode token
+            # Decode token with signature and expiration validation
             payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
             claims = UserTokenClaims(**payload)
 
@@ -390,6 +391,26 @@ class AuthService:
                 logger.warning(
                     f"Invalid token type: expected {token_type}, got {claims.token_type}"
                 )
+                return None
+
+            return claims
+
+        except jwt.ExpiredSignatureError:
+            logger.warning("Token has expired")
+            return None
+        except jwt.InvalidTokenError as e:
+            logger.warning(f"Invalid token: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Token validation error: {e}")
+            return None
+
+    def validate_token(self, token: str, token_type: str = "access") -> Optional[UserTokenClaims]:
+        """Validate JWT token and return claims with database session check."""
+        try:
+            # First do stateless validation
+            claims = self.validate_token_stateless(token, token_type)
+            if not claims:
                 return None
 
             # Check if session is still active

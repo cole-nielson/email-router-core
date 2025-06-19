@@ -50,11 +50,12 @@ class DualAuthUser:
     def __init__(self, user, auth_type: str):
         """Initialize dual auth user."""
         self.user = user
+        self.underlying_user = user  # Alias for backward compatibility
         self.auth_type = auth_type
         self.client_id = getattr(user, "client_id", None)
 
         # Copy common attributes from the underlying user
-        for attr in ["username", "email", "role", "permissions"]:
+        for attr in ["id", "username", "email", "role", "permissions"]:
             if hasattr(user, attr):
                 setattr(self, attr, getattr(user, attr))
 

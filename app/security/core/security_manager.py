@@ -160,7 +160,7 @@ class SecurityManager:
 
             # Import here to avoid circular imports
             from ...database.connection import get_database_session
-            from ...services.auth_service import get_auth_service
+            from ..authentication.jwt_service import get_auth_service
 
             # Validate JWT token
             db = get_database_session()
@@ -440,7 +440,12 @@ class SecurityManager:
         elif path.startswith("/api/v2/"):
             return "jwt_only"
         elif path.startswith("/auth/"):
-            return "public"
+            # Some auth endpoints require authentication
+            authenticated_auth_paths = ["/auth/me", "/auth/sessions", "/auth/users"]
+            if any(path.startswith(auth_path) for auth_path in authenticated_auth_paths):
+                return "jwt_only"
+            else:
+                return "public"  # login, register, etc.
         else:
             return "jwt_preferred"
 

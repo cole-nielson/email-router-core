@@ -75,7 +75,7 @@ def init_database():
         # Create all tables
         Base.metadata.create_all(bind=engine)
 
-        logger.info(f"✅ Database initialized at {DATABASE_PATH}")
+        logger.info(f"✅ Database initialized successfully")
 
     except Exception as e:
         logger.error(f"❌ Database initialization failed: {e}")
@@ -142,14 +142,28 @@ def backup_database(backup_path: Path = None):
     """Create database backup."""
     import shutil
     import time
+    
+    try:
+        config = get_app_config()
+        database_url = config.database.url
+        
+        # Extract database path from URL if it's SQLite
+        if database_url.startswith("sqlite:///"):
+            database_path = Path(database_url.replace("sqlite:///", ""))
+            
+            if backup_path is None:
+                backup_path = database_path.with_suffix(f".backup.{int(time.time())}.db")
 
-    if backup_path is None:
-        backup_path = DATABASE_PATH.with_suffix(f".backup.{int(time.time())}.db")
-
-    if DATABASE_PATH.exists():
-        shutil.copy2(DATABASE_PATH, backup_path)
-        logger.info(f"📦 Database backed up to {backup_path}")
-        return backup_path
-    else:
-        logger.warning("⚠️ No database file found to backup")
+            if database_path.exists():
+                shutil.copy2(database_path, backup_path)
+                logger.info(f"📦 Database backed up to {backup_path}")
+                return backup_path
+            else:
+                logger.warning("⚠️ No database file found to backup")
+                return None
+        else:
+            logger.warning("⚠️ Database backup only supported for SQLite")
+            return None
+    except Exception as e:
+        logger.error(f"❌ Database backup failed: {e}")
         return None
