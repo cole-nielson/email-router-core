@@ -5,12 +5,14 @@ SQLAlchemy models for configuration storage.
 
 import enum
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
-Base = declarative_base()
+# Create base class for all models
+Base: Any = declarative_base()
 
 
 # =============================================================================
@@ -49,8 +51,10 @@ class User(Base):
 
     # User information
     full_name = Column(String(200), nullable=False)
-    role = Column(Enum(UserRole), nullable=False, default=UserRole.CLIENT_USER)
-    status = Column(Enum(UserStatus), nullable=False, default=UserStatus.PENDING)
+    role: Column[UserRole] = Column(Enum(UserRole), nullable=False, default=UserRole.CLIENT_USER)
+    status: Column[UserStatus] = Column(
+        Enum(UserStatus), nullable=False, default=UserStatus.PENDING
+    )
 
     # Client association (null for super_admin)
     client_id = Column(String(100), ForeignKey("clients.id"), nullable=True)
