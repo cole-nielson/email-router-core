@@ -17,6 +17,7 @@ backend_path = str(Path(__file__).parent.parent / "backend")
 sys.path.insert(0, backend_path)
 # Ensure tests can find the src module
 import sys
+
 if backend_path not in sys.path:
     sys.path.insert(0, backend_path)
 
@@ -36,10 +37,10 @@ TEST_ENV_VARS = {
 for key, value in TEST_ENV_VARS.items():
     os.environ.setdefault(key, value)
 
+from src.core.authentication.jwt import AuthService
 from src.infrastructure.database.connection import get_db
 from src.infrastructure.database.models import Base, User, UserRole, UserStatus
 from src.main import app
-from src.core.authentication.jwt import AuthService
 
 # Use an in-memory SQLite database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"

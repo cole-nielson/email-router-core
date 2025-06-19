@@ -1,42 +1,33 @@
 # =============================================================================
-# CLIENT CONFIGURATION - COLE NIELSON (MIGRATED TO UNIFIED SCHEMA)
-# Updated for Phase 2: Configuration Consolidation
+# CLIENT CONFIGURATION - COLE NIELSON (INFRASTRUCTURE SCHEMA)
+# Updated to match infrastructure.config.schema ClientConfig model
 # =============================================================================
 
-# Basic client information
+# Basic client information (top-level as per schema)
 client_id: "client-001-cole-nielson"
 name: "Cole Nielson Email Router"
 industry: "Technology"
 timezone: "America/Mountain"
 active: true
 
-# Domain configuration
+# Domain configuration 
 domains:
   primary: "mail.colesportfolio.com"
+  support: "support@mail.colesportfolio.com"
+  mailgun: "mail.colesportfolio.com"
   aliases:
     - "colenielson.dev"
-    - "support@mail.colesportfolio.com"
-  catch_all: false
 
 # Branding configuration
 branding:
   company_name: "Cole Nielson Email Router"
-  logo_url: ""
+  email_signature: "AI Email Router Support Team"
   primary_color: "#667eea"
   secondary_color: "#764ba2"
-  header_gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-  header_text_color: "#ffffff"
-  body_background: "#ffffff"
-  body_text_color: "#374151"
-  accent_background: "#f8f9ff"
-  accent_border_color: "#667eea"
-  footer_background: "#f8f9fa"
-  footer_text_color: "#6b7280"
-  link_color: "#667eea"
+  logo_url: ""
   footer_text: "© 2024 Cole Nielson Email Router. Automated email processing."
-  email_signature: "AI Email Router Support Team"
 
-# Routing rules (converted from old format)
+# Routing configuration (List[ClientRoutingRule] as per schema)
 routing:
   - category: "support"
     email: "colenielson.re@gmail.com"
@@ -69,53 +60,22 @@ routing:
     priority: 1
     enabled: true
 
-# SLA configuration
+# SLA configuration (optional)
 sla:
   response_times:
-    urgent: 15      # minutes
-    high: 60        # minutes
-    medium: 240     # minutes (4 hours)
-    low: 1440       # minutes (24 hours)
-    support: 240    # 4 hours
-    billing: 1440   # 24 hours
-    sales: 120      # 2 hours
-    general: 1440   # 24 hours
-  business_hours:
-    timezone: "America/Mountain"
-    weekdays:
-      start: "09:00"
-      end: "17:00"
-    weekends:
-      enabled: false
+    support: "4 hours"
+    billing: "24 hours"
+    sales: "2 hours"
+    general: "24 hours"
   escalation_enabled: true
-  escalation_rules:
-    - trigger_type: "time"
-      trigger_value: 4
-      action: "escalate"
-      target_email: "colenielson8@gmail.com"
-      enabled: true
-    - trigger_type: "keyword"
-      trigger_value: "urgent"
-      action: "route_to"
-      target_email: "colenielson.re@gmail.com"
-      enabled: true
-    - trigger_type: "keyword"
-      trigger_value: "refund"
-      action: "route_to"
-      target_email: "colenielson8@gmail.com"
-      enabled: true
 
-# Client settings
+# Client settings (optional)
 settings:
   auto_reply_enabled: true
   ai_classification_enabled: true
   team_forwarding_enabled: true
   escalation_enabled: true
-  custom_templates_enabled: false
-  analytics_enabled: true
-  webhook_notifications_enabled: false
-  webhook_url: null
-  debug_logging_enabled: false
+  monitoring_enabled: true
 
 # AI classification categories
 ai_categories:

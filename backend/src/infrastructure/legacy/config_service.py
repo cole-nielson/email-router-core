@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
+from ...core.clients.loader import load_client_config
 from ..database.connection import get_database_session
 from ..database.models import (
     AIPrompt,
@@ -18,7 +19,6 @@ from ..database.models import (
     ResponseTime,
     RoutingRule,
 )
-from ...core.clients.loader import load_client_config
 
 logger = logging.getLogger(__name__)
 

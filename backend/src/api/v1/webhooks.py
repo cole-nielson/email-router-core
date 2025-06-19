@@ -11,16 +11,16 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 
 from ...application.middleware.auth import DualAuthUser, get_dual_auth_user
-from ...core.email.classifier import DynamicClassifier, get_dynamic_classifier
 from ...core.clients.manager import ClientManager, get_client_manager
 from ...core.dashboard.service import DashboardService, get_dashboard_service
-from ...infrastructure.external.mailgun import forward_to_team, send_auto_reply
+from ...core.email.classifier import DynamicClassifier, get_dynamic_classifier
 from ...core.email.composer import (
     EmailService,
     get_email_service,
 )
 from ...core.email.router import RoutingEngine, get_routing_engine
 from ...infrastructure.config.manager import get_app_config
+from ...infrastructure.external.mailgun import forward_to_team, send_auto_reply
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -454,6 +454,7 @@ async def test_webhook(
     dynamic_classifier: Annotated[DynamicClassifier, Depends(get_dynamic_classifier)],
     routing_engine: Annotated[RoutingEngine, Depends(get_routing_engine)],
     dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
+    email_service: Annotated[EmailService, Depends(get_email_service)],
 ):
     """
     Test endpoint for webhook functionality.
@@ -491,6 +492,7 @@ async def test_webhook(
             client_manager,
             routing_engine,
             dashboard_service,
+            email_service,
         )
 
         return {

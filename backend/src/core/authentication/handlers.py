@@ -10,8 +10,8 @@ from typing import Optional
 from fastapi import Request
 from sqlalchemy.orm import Session
 
-from ...infrastructure.legacy.auth_context import SecurityContext
 from ...infrastructure.config.security import SecurityConfig
+from ...infrastructure.legacy.auth_context import SecurityContext
 
 logger = logging.getLogger(__name__)
 

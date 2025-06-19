@@ -8,6 +8,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
+from ...application.middleware.auth import DualAuthUser, require_dual_auth
+from ...core.dashboard.service import DashboardService, get_dashboard_service
 from ...core.models.dashboard import (
     ActivityFeedResponse,
     AlertsResponse,
@@ -18,8 +20,6 @@ from ...core.models.dashboard import (
     IntegrationHealth,
     MetricsResponse,
 )
-from ...application.middleware.auth import DualAuthUser, require_dual_auth
-from ...core.dashboard.service import DashboardService, get_dashboard_service
 
 logger = logging.getLogger(__name__)
 

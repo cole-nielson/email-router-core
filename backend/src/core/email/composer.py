@@ -12,9 +12,9 @@ from typing import Any, Dict, List, Optional, Tuple
 import httpx
 
 from ...infrastructure.config.manager import get_app_config, get_config_manager
-from ..clients.manager import ClientManager
-from ..clients.loader import ClientLoadError, load_ai_prompt, load_fallback_responses
 from ...infrastructure.templates.email import _get_default_branding, create_branded_template
+from ..clients.loader import ClientLoadError, load_ai_prompt, load_fallback_responses
+from ..clients.manager import ClientManager
 
 logger = logging.getLogger(__name__)
 
