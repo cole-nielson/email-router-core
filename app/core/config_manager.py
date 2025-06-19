@@ -7,9 +7,9 @@ import os
 import sys
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 from pydantic import ValidationError
 
 from ..utils.logger import get_logger
@@ -67,7 +67,7 @@ class ConfigManager:
     def _load_environment_variables(self) -> None:
         """Load and validate environment variables with comprehensive checks."""
         # Define required and optional variables with validation rules
-        validation_rules = {
+        validation_rules: Dict[str, Dict[str, Any]] = {
             "JWT_SECRET_KEY": {
                 "required": True,
                 "min_length": 32,
@@ -103,9 +103,9 @@ class ConfigManager:
             },
         }
 
-        missing_vars = []
-        validation_warnings = []
-        validation_errors = []
+        missing_vars: List[Dict[str, str]] = []
+        validation_warnings: List[str] = []
+        validation_errors: List[str] = []
 
         for var_name, rules in validation_rules.items():
             value = os.getenv(var_name)
@@ -120,30 +120,38 @@ class ConfigManager:
                 continue
 
             # Validate minimum length
-            if "min_length" in rules and len(value) < rules["min_length"]:
+            min_length = rules.get("min_length")
+            if min_length is not None and isinstance(min_length, int) and len(value) < min_length:
                 validation_errors.append(
-                    f"{var_name} must be at least {rules['min_length']} characters long"
+                    f"{var_name} must be at least {min_length} characters long"
                 )
 
             # Validate starts_with patterns
-            if "starts_with" in rules:
-                patterns = rules["starts_with"]
-                if isinstance(patterns, str):
-                    patterns = [patterns]
+            starts_with = rules.get("starts_with")
+            if starts_with is not None:
+                patterns = starts_with if isinstance(starts_with, list) else [starts_with]
                 if not any(value.startswith(pattern) for pattern in patterns):
                     validation_errors.append(
                         f"{var_name} must start with one of: {', '.join(patterns)}"
                     )
 
             # Validate must_contain patterns
-            if "must_contain" in rules and rules["must_contain"] not in value:
-                validation_errors.append(f"{var_name} must contain '{rules['must_contain']}'")
+            must_contain = rules.get("must_contain")
+            if (
+                must_contain is not None
+                and isinstance(must_contain, str)
+                and must_contain not in value
+            ):
+                validation_errors.append(f"{var_name} must contain '{must_contain}'")
 
             # Validate allowed values
-            if "allowed_values" in rules and value not in rules["allowed_values"]:
-                validation_errors.append(
-                    f"{var_name} must be one of: {', '.join(rules['allowed_values'])}"
-                )
+            allowed_values = rules.get("allowed_values")
+            if (
+                allowed_values is not None
+                and isinstance(allowed_values, list)
+                and value not in allowed_values
+            ):
+                validation_errors.append(f"{var_name} must be one of: {', '.join(allowed_values)}")
 
         # Handle missing required variables
         if missing_vars:
@@ -203,22 +211,24 @@ class ConfigManager:
 
     def _extract_env_config(self) -> Dict[str, Any]:
         """Extract configuration from environment variables."""
-        config = {}
+        config: Dict[str, Any] = {}
 
         # Environment and basics
         config["environment"] = os.getenv("EMAIL_ROUTER_ENVIRONMENT", "development")
         config["debug"] = os.getenv("EMAIL_ROUTER_DEBUG", "false").lower() == "true"
 
         # Database configuration
-        db_config = {}
+        db_config: Dict[str, Any] = {}
         if db_url := os.getenv("DATABASE_URL"):
             db_config["url"] = db_url
         else:
+            db_port_str = os.getenv("DB_PORT", "0")
+            db_port = int(db_port_str) if db_port_str.isdigit() and int(db_port_str) > 0 else None
             db_config.update(
                 {
                     "type": os.getenv("DB_TYPE", "sqlite"),
                     "host": os.getenv("DB_HOST"),
-                    "port": int(os.getenv("DB_PORT", "0")) or None,
+                    "port": db_port,
                     "database": os.getenv("DB_NAME", "data/email_router.db"),
                     "username": os.getenv("DB_USER"),
                     "password": os.getenv("DB_PASSWORD"),
@@ -227,7 +237,7 @@ class ConfigManager:
         config["database"] = db_config
 
         # Security configuration
-        security_config = {
+        security_config: Dict[str, Any] = {
             "jwt_secret_key": os.getenv("JWT_SECRET_KEY", ""),
             "jwt_algorithm": os.getenv("JWT_ALGORITHM", "HS256"),
             "access_token_expire_minutes": int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")),
@@ -242,7 +252,7 @@ class ConfigManager:
         config["security"] = security_config
 
         # Services configuration
-        services_config = {
+        services_config: Dict[str, Any] = {
             "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY", ""),
             "anthropic_model": os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022"),
             "mailgun_api_key": os.getenv("MAILGUN_API_KEY", ""),
@@ -254,7 +264,7 @@ class ConfigManager:
         config["services"] = services_config
 
         # Server configuration
-        server_config = {
+        server_config: Dict[str, Any] = {
             "host": os.getenv("HOST", "0.0.0.0"),
             "port": int(os.getenv("PORT", "8080")),
             "workers": int(os.getenv("WORKERS", "1")),
@@ -264,7 +274,7 @@ class ConfigManager:
         config["server"] = server_config
 
         # Cache configuration
-        cache_config = {
+        cache_config: Dict[str, Any] = {
             "enabled": os.getenv("CACHE_ENABLED", "true").lower() == "true",
             "default_ttl_seconds": int(os.getenv("CACHE_TTL", "300")),
             "max_size_mb": int(os.getenv("CACHE_MAX_SIZE_MB", "128")),
@@ -272,7 +282,7 @@ class ConfigManager:
         config["cache"] = cache_config
 
         # Monitoring configuration
-        monitoring_config = {
+        monitoring_config: Dict[str, Any] = {
             "enable_tracing": os.getenv("ENABLE_TRACING", "false").lower() == "true",
             "enable_profiling": os.getenv("ENABLE_PROFILING", "false").lower() == "true",
             "error_tracking_dsn": os.getenv("ERROR_TRACKING_DSN"),
@@ -306,6 +316,10 @@ class ConfigManager:
 
     def _load_client_configurations(self) -> None:
         """Load all client configurations from the client directory."""
+        if not self._config:
+            logger.warning("No configuration loaded, cannot load client configurations")
+            return
+
         client_path = Path(self._config.client_config_path)
 
         if not client_path.exists():
@@ -388,6 +402,10 @@ class ConfigManager:
         Returns:
             True if reloaded successfully, False otherwise
         """
+        if not self._config:
+            logger.error("No configuration loaded, cannot reload client config")
+            return False
+
         client_path = Path(self._config.client_config_path) / client_id / "client-config.yaml"
 
         if not client_path.exists():
@@ -434,6 +452,8 @@ class ConfigManager:
         Returns:
             True if feature is enabled, False otherwise
         """
+        if not self._config:
+            return False
         return self._config.features.get(feature_name, False)
 
     def is_service_available(self, service_name: str) -> bool:
@@ -445,6 +465,9 @@ class ConfigManager:
         Returns:
             True if service is configured and available
         """
+        if not self._config:
+            return False
+
         services = self._config.services
 
         if service_name == "anthropic":
@@ -462,7 +485,12 @@ class ConfigManager:
         Returns:
             Database URL string
         """
-        return self._config.database.url
+        if not self._config:
+            raise ConfigurationError("Configuration not loaded")
+        url = self._config.database.url
+        if not url:
+            raise ConfigurationError("Database URL not configured")
+        return url
 
     def get_environment_info(self) -> Dict[str, Any]:
         """Get environment and runtime information.
@@ -470,6 +498,18 @@ class ConfigManager:
         Returns:
             Dictionary with environment details
         """
+        if not self._config:
+            return {
+                "environment": "unknown",
+                "debug": False,
+                "app_name": "Email Router",
+                "app_version": "unknown",
+                "python_version": sys.version,
+                "config_loaded": False,
+                "clients_loaded": len(self._clients),
+                "features_enabled": 0,
+            }
+
         return {
             "environment": self._config.environment.value,
             "debug": self._config.debug,

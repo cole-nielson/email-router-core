@@ -73,7 +73,7 @@ class DatabaseConfig(BaseModel):
     echo_sql: bool = False
 
     @validator("url", always=True)
-    def build_database_url(cls, v, values):
+    def build_database_url(cls, v: Optional[str], values: Dict[str, Any]) -> str:
         """Build database URL from components if not provided."""
         if v:
             return v
@@ -98,7 +98,9 @@ class DatabaseConfig(BaseModel):
             password = values.get("password", "")
             return f"mysql+pymysql://{username}:{password}@{host}:{port}/{database}"
 
-        return v
+        # Fallback to SQLite if database type is unknown
+        database = values.get("database", "data/email_router.db")
+        return f"sqlite:///{database}"
 
 
 class SecurityConfig(BaseModel):
@@ -125,7 +127,7 @@ class SecurityConfig(BaseModel):
     hsts_max_age: int = Field(default=31536000, ge=300)
 
     @validator("jwt_secret_key")
-    def validate_jwt_secret(cls, v):
+    def validate_jwt_secret(cls, v: str) -> str:
         """Ensure JWT secret is sufficiently strong."""
         if len(v) < 32:
             raise ValueError("JWT secret key must be at least 32 characters")
@@ -214,14 +216,14 @@ class ClientDomainConfig(BaseModel):
     catch_all: bool = False
 
     @validator("primary")
-    def validate_primary_domain(cls, v):
+    def validate_primary_domain(cls, v: str) -> str:
         """Basic domain validation."""
         if not v or "." not in v:
             raise ValueError("Primary domain must be a valid domain")
         return v.lower()
 
     @validator("aliases")
-    def validate_aliases(cls, v):
+    def validate_aliases(cls, v: List[str]) -> List[str]:
         """Validate alias domains."""
         return [alias.lower() for alias in v]
 
@@ -257,7 +259,7 @@ class ClientBrandingConfig(BaseModel):
         "footer_text_color",
         "link_color",
     )
-    def validate_hex_color(cls, v):
+    def validate_hex_color(cls, v: str) -> str:
         """Validate hex color format."""
         if not v.startswith("#") or len(v) not in [4, 7]:
             raise ValueError("Colors must be valid hex codes (#RGB or #RRGGBB)")
@@ -344,7 +346,7 @@ class ClientConfig(BaseModel):
     custom_prompts: Dict[str, str] = Field(default_factory=dict)
 
     @validator("client_id")
-    def validate_client_id(cls, v):
+    def validate_client_id(cls, v: str) -> str:
         """Validate client ID format."""
         if not v or not v.replace("-", "").replace("_", "").isalnum():
             raise ValueError(
@@ -404,7 +406,7 @@ class AppConfig(BaseModel):
         extra = "forbid"
 
     @validator("environment", pre=True)
-    def parse_environment(cls, v):
+    def parse_environment(cls, v: Union[str, Environment]) -> Environment:
         """Parse environment from string."""
         if isinstance(v, str):
             return Environment(v.lower())

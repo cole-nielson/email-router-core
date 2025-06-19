@@ -263,7 +263,9 @@ class CategoriesConfig(BaseModel):
     priority_levels: Dict[Priority, PriorityLevel] = Field(
         ..., description="Priority level definitions"
     )
-    fallback: FallbackConfig = Field(default_factory=FallbackConfig)
+    fallback: FallbackConfig = FallbackConfig(
+        default_category="general", minimum_confidence=0.5, unknown_threshold=0.3
+    )
 
 
 # SLA Models
@@ -287,8 +289,8 @@ class BusinessHours(BaseModel):
     holidays: List[str] = Field(default_factory=list, description="Holiday dates (YYYY-MM-DD)")
 
 
-class SLAConfig(BaseModel):
-    """Service Level Agreement configuration."""
+class SLAConfiguration(BaseModel):
+    """Service Level Agreement configuration (renamed to avoid conflict)."""
 
     response_times: Dict[str, ResponseTimeTarget] = Field(..., description="Response time targets")
     business_hours: BusinessHours = Field(..., description="Business hours definition")
