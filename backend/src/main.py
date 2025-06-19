@@ -4,6 +4,7 @@ AI Email Router - Production SaaS FastAPI Application
 🚀 Multi-tenant AI-powered email classification and routing system with advanced API management.
 """
 
+import os
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -26,24 +27,24 @@ except ImportError:
     print("⚠️ python-dotenv not installed, using system environment variables")
 
 # Initialize unified configuration system
-from .core import get_app_config, get_config_manager
-from .utils.logger import configure_logging, get_logger
+from .infrastructure.config.manager import get_app_config, get_config_manager
+from .infrastructure.logging.logger import configure_logging, get_logger
 
 # Get configuration and set up logging
 config = get_app_config()
 configure_logging(level=config.server.log_level.value, format_string=config.server.log_format)
 logger = get_logger(__name__)
 
-from .middleware.rate_limiter import RateLimiterMiddleware
-from .models.schemas import APIInfo, HealthResponse
-from .routers.api.v1 import router as api_v1_router
-from .routers.api.v2 import router as api_v2_router
-from .routers.auth import router as auth_router
-from .routers.dashboard import router as dashboard_router
-from .routers.webhooks import router as webhook_router
-from .security.authentication.middleware import UnifiedAuthMiddleware as DualAuthMiddleware
-from .services.monitoring import MetricsCollector
-from .services.websocket_manager import get_websocket_manager
+from .application.middleware.rate_limit import RateLimiterMiddleware
+from .core.models.schemas import APIInfo, HealthResponse
+from .api.v1.clients import router as api_v1_router
+from .api.v2.config import router as api_v2_router
+from .api.v1.auth import router as auth_router
+from .api.v1.dashboard import router as dashboard_router
+from .api.v1.webhooks import router as webhook_router
+from .application.middleware.auth import UnifiedAuthMiddleware as DualAuthMiddleware
+from .infrastructure.monitoring.metrics import MetricsCollector
+from .infrastructure.websockets.manager import get_websocket_manager
 
 # Initialize metrics collector
 metrics = MetricsCollector()
@@ -55,7 +56,7 @@ async def lifespan(app: FastAPI):
     # Startup
     try:
         # Run startup validation first
-        from .utils.startup_validator import validate_startup
+        from .application.startup import validate_startup
 
         validation_results = validate_startup()
         logger.info(
@@ -63,7 +64,7 @@ async def lifespan(app: FastAPI):
         )
 
         # Initialize database
-        from .database.connection import init_database
+        from .infrastructure.database.connection import init_database
 
         init_database()
         logger.info("✅ Database initialized successfully")
@@ -463,7 +464,7 @@ async def detailed_health_check():
         }
 
         # Client Management Health
-        from .services.client_manager import get_client_manager
+        from .core.clients.manager import get_client_manager
 
         try:
             client_manager = get_client_manager()
@@ -619,4 +620,4 @@ if __name__ == "__main__":
     import uvicorn
 
     logger.info(f"Starting Email Router SaaS API {config.app_version} on port {config.server.port}")
-    uvicorn.run("app.main:app", host=config.server.host, port=config.server.port, reload=False)
+    uvicorn.run("backend.src.main:app", host=config.server.host, port=config.server.port, reload=False)
