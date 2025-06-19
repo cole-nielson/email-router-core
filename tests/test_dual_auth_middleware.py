@@ -7,7 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.middleware.dual_auth import (
+from app.security.authentication.jwt_service import AuthenticatedUser
+from app.security.authentication.middleware import (
     APIKeyUser,
     DualAuthMiddleware,
     DualAuthUser,
@@ -19,7 +20,6 @@ from app.middleware.dual_auth import (
     require_dual_auth,
     require_jwt_only,
 )
-from app.services.auth_service import AuthenticatedUser
 
 
 class TestAPIKeyExtraction:

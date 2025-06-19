@@ -3,7 +3,6 @@ Database connection and session management.
 🔗 SQLAlchemy setup for configuration database.
 """
 
-import logging
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator
@@ -11,13 +10,11 @@ from typing import Generator
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
+from ..core import get_app_config
+from ..utils.logger import get_logger
 from .models import Base
 
-logger = logging.getLogger(__name__)
-
-# Database path
-DATABASE_PATH = Path("data/email_router.db")
-DATABASE_URL = f"sqlite:///{DATABASE_PATH.absolute()}"
+logger = get_logger(__name__)
 
 # Global engine and session factory
 engine = None
@@ -29,29 +26,48 @@ def init_database():
     global engine, SessionLocal
 
     try:
-        # Ensure data directory exists
-        DATABASE_PATH.parent.mkdir(exist_ok=True)
+        # Get database configuration
+        config = get_app_config()
+        database_url = config.database.url
 
-        # Create engine with SQLite optimizations
-        engine = create_engine(
-            DATABASE_URL,
-            echo=False,  # Set to True for SQL debugging
-            pool_pre_ping=True,
-            connect_args={
+        logger.info(f"Initializing database: {database_url.split('://')[0]}://...")
+
+        # Create engine with configuration
+        engine_kwargs = {
+            "echo": config.database.echo_sql,
+            "pool_pre_ping": True,
+        }
+
+        # SQLite-specific configuration
+        if config.database.type.value == "sqlite":
+            engine_kwargs["connect_args"] = {
                 "check_same_thread": False,  # Allow multi-threading
-                "timeout": 30,  # Connection timeout
-            },
-        )
+                "timeout": config.database.pool_timeout,
+            }
+        else:
+            # PostgreSQL/MySQL configuration
+            engine_kwargs.update(
+                {
+                    "pool_size": config.database.pool_size,
+                    "max_overflow": config.database.max_overflow,
+                    "pool_timeout": config.database.pool_timeout,
+                    "pool_recycle": config.database.pool_recycle,
+                }
+            )
 
-        # Enable WAL mode for better concurrency
-        @event.listens_for(engine, "connect")
-        def set_sqlite_pragma(dbapi_connection, connection_record):
-            cursor = dbapi_connection.cursor()
-            cursor.execute("PRAGMA journal_mode=WAL")
-            cursor.execute("PRAGMA synchronous=NORMAL")
-            cursor.execute("PRAGMA cache_size=10000")
-            cursor.execute("PRAGMA temp_store=MEMORY")
-            cursor.close()
+        engine = create_engine(database_url, **engine_kwargs)
+
+        # Enable SQLite-specific optimizations if using SQLite
+        if config.database.type.value == "sqlite":
+
+            @event.listens_for(engine, "connect")
+            def set_sqlite_pragma(dbapi_connection, connection_record):
+                cursor = dbapi_connection.cursor()
+                cursor.execute("PRAGMA journal_mode=WAL")
+                cursor.execute("PRAGMA synchronous=NORMAL")
+                cursor.execute("PRAGMA cache_size=10000")
+                cursor.execute("PRAGMA temp_store=MEMORY")
+                cursor.close()
 
         # Create session factory
         SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -71,7 +87,7 @@ def get_database_session() -> Session:
     if SessionLocal is None:
         init_database()
         if SessionLocal is None:
-             raise RuntimeError("Database not initialized, SessionLocal is None.")
+            raise RuntimeError("Database not initialized, SessionLocal is None.")
 
     db = SessionLocal()
     if db is None:
@@ -126,7 +142,7 @@ def backup_database(backup_path: Path = None):
     """Create database backup."""
     import shutil
     import time
-    
+
     if backup_path is None:
         backup_path = DATABASE_PATH.with_suffix(f".backup.{int(time.time())}.db")
 

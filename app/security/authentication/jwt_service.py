@@ -2,6 +2,9 @@
 JWT Authentication Service for multi-tenant email router.
 🔐 Secure token generation and validation with client scoping and RBAC.
 Optimized for agentic workflows with fine-grained permissions.
+
+This is the unified JWT service that replaces app/services/auth_service.py.
+All JWT token operations, user authentication, and session management are handled here.
 """
 
 import hashlib
@@ -25,15 +28,28 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION & CONSTANTS
 # =============================================================================
 
-# JWT Configuration
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", secrets.token_urlsafe(32))
-JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-REFRESH_TOKEN_EXPIRE_DAYS = 30
-
-# Rate limiting for authentication
-MAX_LOGIN_ATTEMPTS = 5
-LOCKOUT_DURATION_MINUTES = 30
+# Get unified configuration
+try:
+    from ..core import get_app_config
+    _app_config = get_app_config()
+    
+    # JWT Configuration from unified config
+    JWT_SECRET_KEY = _app_config.security.jwt_secret_key
+    JWT_ALGORITHM = _app_config.security.jwt_algorithm
+    ACCESS_TOKEN_EXPIRE_MINUTES = _app_config.security.access_token_expire_minutes
+    REFRESH_TOKEN_EXPIRE_DAYS = _app_config.security.refresh_token_expire_days
+    
+    # Rate limiting from unified config
+    MAX_LOGIN_ATTEMPTS = _app_config.security.max_login_attempts
+    LOCKOUT_DURATION_MINUTES = _app_config.security.lockout_duration_minutes
+except Exception:
+    # Fallback to environment variables if unified config fails
+    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", secrets.token_urlsafe(32))
+    JWT_ALGORITHM = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES = 30
+    REFRESH_TOKEN_EXPIRE_DAYS = 30
+    MAX_LOGIN_ATTEMPTS = 5
+    LOCKOUT_DURATION_MINUTES = 30
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -107,7 +123,7 @@ class AuthService:
 
         # Import models dynamically to avoid circular imports
         try:
-            from ..database.models import User, UserRole, UserSession, UserStatus
+            from ...database.models import User, UserRole, UserSession, UserStatus
 
             self.User = User
             self.UserRole = UserRole

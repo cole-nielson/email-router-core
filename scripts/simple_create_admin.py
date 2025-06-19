@@ -28,7 +28,7 @@ def create_simple_admin():
         init_database()
 
         from app.database.connection import get_db_session
-        from app.services.auth_service import AuthService
+        from app.security.authentication.jwt_service import AuthService
 
         # Get user input
         print("\n🔐 Create Super Admin User")

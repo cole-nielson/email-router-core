@@ -1,10 +1,14 @@
 # Authentication & Authorization Guide
 
-🔐 **Complete guide to Email Router's enterprise-grade authentication system**
+🔐 **Complete guide to Email Router's unified security architecture**
 
 ## Overview
 
-The Email Router implements a sophisticated dual authentication system supporting both human users (JWT tokens) and automated systems (API keys). This design enables secure access for web applications, mobile apps, and automated integrations while maintaining strict multi-tenant isolation.
+The Email Router implements a **unified security architecture** with a single authentication middleware that supports both human users (JWT tokens) and automated systems (API keys). This consolidated design enables secure access for web applications, mobile apps, and automated integrations while maintaining strict multi-tenant isolation.
+
+**✅ Phase 3.3 Complete - Legacy Security Code Cleaned Up**
+
+As of the latest update, all legacy authentication middleware and services have been removed and replaced with the unified security architecture located in `app/security/`.
 
 ## Authentication Methods
 
@@ -496,9 +500,51 @@ Enable debug logging for authentication:
 
 ```python
 import logging
-logging.getLogger('app.services.auth_service').setLevel(logging.DEBUG)
-logging.getLogger('app.middleware.dual_auth').setLevel(logging.DEBUG)
+# Updated loggers for unified security architecture
+logging.getLogger('app.security.authentication.jwt_service').setLevel(logging.DEBUG)
+logging.getLogger('app.security.authentication.middleware').setLevel(logging.DEBUG)
 ```
+
+## Updated Import Paths (Phase 3.3)
+
+**⚠️ BREAKING CHANGE:** Legacy middleware and services have been removed. Use these new import paths:
+
+### New Import Paths
+
+```python
+# Authentication services
+from app.security.authentication.jwt_service import AuthService, get_auth_service
+from app.security.authentication.dependencies import (
+    require_auth,           # Replaces require_dual_auth
+    require_jwt_only,       # JWT authentication only
+    require_api_key_only,   # API key authentication only
+    get_current_user,       # Get authenticated user
+)
+
+# Authorization services
+from app.security.authorization.rbac import RBACService
+
+# Middleware
+from app.security.authentication.middleware import UnifiedAuthMiddleware
+```
+
+### Legacy Compatibility
+
+For backward compatibility, these legacy imports still work but are deprecated:
+
+```python
+# DEPRECATED - Use new paths above
+from app.services.auth_service import AuthService          # ⚠️ Deprecated
+from app.services.rbac import RBACService                  # ⚠️ Deprecated
+from app.middleware.dual_auth import require_dual_auth    # ⚠️ Deprecated
+```
+
+### Migration Guide
+
+1. **Update imports** to use `app.security.*` modules
+2. **Replace middleware references** with `UnifiedAuthMiddleware`
+3. **Update dependency functions** to use new names from `dependencies.py`
+4. **Test thoroughly** - backward compatibility is maintained but deprecated
 
 ## Security Considerations
 

@@ -19,7 +19,7 @@ sys.path.insert(0, str(project_root))
 
 from app.database.connection import init_database
 from app.database.models import User, UserRole, UserStatus
-from app.services.auth_service import AuthService
+from app.security.authentication.jwt_service import AuthService
 
 
 def validate_password(password: str) -> bool:

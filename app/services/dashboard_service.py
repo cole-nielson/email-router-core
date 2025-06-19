@@ -9,6 +9,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
+from ..core import get_app_config, get_config_manager
 from ..models.dashboard_schemas import (
     ActivityType,
     AlertSeverity,
@@ -21,7 +22,6 @@ from ..models.dashboard_schemas import (
     SystemStatus,
 )
 from ..services.client_manager import ClientManager
-from ..utils.config import get_config
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class DashboardService:
 
     def __init__(self, client_manager: ClientManager):
         self.client_manager = client_manager
-        self.config = get_config()
+        self.config = get_app_config()
 
         # In-memory storage for demo (would be replaced with database in production)
         self._activities_cache: Dict[str, List[ProcessingActivity]] = defaultdict(list)

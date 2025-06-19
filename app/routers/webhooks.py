@@ -10,7 +10,7 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 
-from ..middleware.dual_auth import DualAuthUser, get_dual_auth_user
+from ..security.authentication.middleware import DualAuthUser, get_dual_auth_user
 from ..services.ai_classifier import DynamicClassifier, get_dynamic_classifier
 from ..services.client_manager import ClientManager, get_client_manager
 from ..services.dashboard_service import DashboardService, get_dashboard_service

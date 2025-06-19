@@ -108,3 +108,11 @@ yarn-error.log*
 test_auth.db
 test_*.db
 *.test.db
+# Test databases
+test*.db
+*.db-wal
+*.db-shm
+
+# Development artifacts
+test_route_validation*.py
+test_unified_security.py

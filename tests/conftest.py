@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from app.database.connection import get_db
 from app.database.models import Base, User, UserRole, UserStatus
 from app.main import app
-from app.services.auth_service import AuthService
+from app.security.authentication.jwt_service import AuthService
 
 # Use an in-memory SQLite database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
