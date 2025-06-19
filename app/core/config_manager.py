@@ -65,22 +65,120 @@ class ConfigManager:
             raise ConfigurationError(f"Configuration loading failed: {e}") from e
 
     def _load_environment_variables(self) -> None:
-        """Load and validate environment variables."""
-        required_vars = ["JWT_SECRET_KEY", "ANTHROPIC_API_KEY", "MAILGUN_API_KEY", "MAILGUN_DOMAIN"]
+        """Load and validate environment variables with comprehensive checks."""
+        # Define required and optional variables with validation rules
+        validation_rules = {
+            "JWT_SECRET_KEY": {
+                "required": True,
+                "min_length": 32,
+                "description": "JWT signing secret key (generate with: python -c 'import secrets; print(secrets.token_urlsafe(32))')",
+            },
+            "ANTHROPIC_API_KEY": {
+                "required": True,
+                "starts_with": "sk-ant-",
+                "description": "Anthropic Claude API key from https://console.anthropic.com/",
+            },
+            "MAILGUN_API_KEY": {
+                "required": True,
+                "starts_with": [
+                    "key-",
+                    "4bcea0",
+                ],  # Allow both private and public keys for flexibility
+                "description": "Mailgun API key from https://app.mailgun.com/",
+            },
+            "MAILGUN_DOMAIN": {
+                "required": True,
+                "must_contain": ".",
+                "description": "Mailgun domain for sending emails",
+            },
+            "MAILGUN_WEBHOOK_SIGNING_KEY": {
+                "required": False,
+                "min_length": 10,
+                "description": "Mailgun webhook signing key for security (recommended)",
+            },
+            "EMAIL_ROUTER_ENVIRONMENT": {
+                "required": False,
+                "allowed_values": ["development", "staging", "production", "test", "testing"],
+                "description": "Application environment",
+            },
+        }
 
         missing_vars = []
-        for var in required_vars:
-            if not os.getenv(var):
-                missing_vars.append(var)
+        validation_warnings = []
+        validation_errors = []
 
+        for var_name, rules in validation_rules.items():
+            value = os.getenv(var_name)
+
+            # Check if required variable is missing
+            if rules.get("required", False) and not value:
+                missing_vars.append({"name": var_name, "description": rules.get("description", "")})
+                continue
+
+            # Skip validation if variable is not set and not required
+            if not value:
+                continue
+
+            # Validate minimum length
+            if "min_length" in rules and len(value) < rules["min_length"]:
+                validation_errors.append(
+                    f"{var_name} must be at least {rules['min_length']} characters long"
+                )
+
+            # Validate starts_with patterns
+            if "starts_with" in rules:
+                patterns = rules["starts_with"]
+                if isinstance(patterns, str):
+                    patterns = [patterns]
+                if not any(value.startswith(pattern) for pattern in patterns):
+                    validation_errors.append(
+                        f"{var_name} must start with one of: {', '.join(patterns)}"
+                    )
+
+            # Validate must_contain patterns
+            if "must_contain" in rules and rules["must_contain"] not in value:
+                validation_errors.append(f"{var_name} must contain '{rules['must_contain']}'")
+
+            # Validate allowed values
+            if "allowed_values" in rules and value not in rules["allowed_values"]:
+                validation_errors.append(
+                    f"{var_name} must be one of: {', '.join(rules['allowed_values'])}"
+                )
+
+        # Handle missing required variables
         if missing_vars:
-            error_msg = f"Missing required environment variables: {', '.join(missing_vars)}"
+            error_msg = "Missing required environment variables:\n"
+            for var in missing_vars:
+                error_msg += f"  - {var['name']}: {var['description']}\n"
+            error_msg += "\nSee .env.example for complete configuration template."
+
             logger.critical(error_msg)
+            # Allow missing vars in test environment
             if not os.getenv("EMAIL_ROUTER_ENVIRONMENT", "").lower().startswith("test"):
                 raise ConfigurationError(error_msg)
 
+        # Handle validation errors
+        if validation_errors:
+            error_msg = "Environment variable validation failed:\n"
+            for error in validation_errors:
+                error_msg += f"  - {error}\n"
+
+            logger.critical(error_msg)
+            raise ConfigurationError(error_msg)
+
+        # Log warnings for optional but recommended variables
+        if not os.getenv("MAILGUN_WEBHOOK_SIGNING_KEY"):
+            validation_warnings.append(
+                "MAILGUN_WEBHOOK_SIGNING_KEY not set - webhook security is reduced"
+            )
+
+        for warning in validation_warnings:
+            logger.warning(warning)
+
         self._env_loaded = True
-        logger.debug("Environment variables loaded and validated")
+        logger.info(f"Environment variables loaded and validated successfully")
+        if validation_warnings:
+            logger.info(f"Configuration loaded with {len(validation_warnings)} warnings")
 
     def _build_app_config(self) -> AppConfig:
         """Build main application configuration from environment and files."""

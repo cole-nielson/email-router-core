@@ -48,8 +48,18 @@ def get_config() -> Config:
     This function provides backward compatibility by wrapping the new
     unified configuration system in the legacy Config interface.
     """
+    import warnings
+
+    warnings.warn(
+        "app.utils.config.get_config() is deprecated and will be removed in v3.0. "
+        "Use app.core.get_app_config() instead. "
+        "See migration guide in docs/CODEBASE_CLEANUP_PLAN.md",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     logger.warning(
-        "app.utils.config.get_config() is deprecated. " "Use app.core.get_app_config() instead."
+        "Legacy configuration access detected. "
+        "Please migrate to unified configuration: app.core.get_app_config()"
     )
 
     try:
