@@ -22,7 +22,7 @@ class StartupValidator:
 
     def __init__(self):
         # Use new unified configuration system
-        from ..core import get_app_config, get_config_manager
+        from ..infrastructure.config.manager import get_app_config, get_config_manager
 
         self.config = get_app_config()
         self.config_manager = get_config_manager()

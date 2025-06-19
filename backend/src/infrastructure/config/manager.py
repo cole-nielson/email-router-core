@@ -12,8 +12,8 @@ from typing import Any, Dict, List, Optional, Union
 import yaml  # type: ignore[import-untyped]
 from pydantic import ValidationError
 
-from ..utils.logger import get_logger
-from .config_schema import AppConfig, ClientConfig, Environment
+from ..logging.logger import get_logger
+from .schema import AppConfig, ClientConfig, Environment
 
 logger = get_logger(__name__)
 

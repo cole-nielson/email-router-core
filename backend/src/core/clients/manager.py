@@ -7,14 +7,14 @@ import logging
 from typing import Dict, List, Optional, Set, Tuple
 
 
-from ..models.client_config import ClientConfig, RoutingRules
-from ..utils.client_loader import (
+from ..models.client import ClientConfig, RoutingRules
+from .loader import (
     ClientLoadError,
     get_available_clients,
     load_client_config,
     load_routing_rules,
 )
-from ..utils.domain_resolver import (
+from .resolver import (
     DomainMatcher,
     calculate_domain_similarity,
     extract_domain_from_email,
