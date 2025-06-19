@@ -10,8 +10,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import HTTPException, Request, status
 
-from .auth_context import AuthenticationType, SecurityContext
-from .config import SecurityConfig
+from ...infrastructure.legacy.auth_context import AuthenticationType, SecurityContext
+from ...infrastructure.config.security import SecurityConfig
 
 logger = logging.getLogger(__name__)
 

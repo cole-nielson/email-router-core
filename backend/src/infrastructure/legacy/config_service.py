@@ -18,7 +18,7 @@ from ..database.models import (
     ResponseTime,
     RoutingRule,
 )
-from ..utils.client_loader import load_client_config
+from ...core.clients.loader import load_client_config
 
 logger = logging.getLogger(__name__)
 

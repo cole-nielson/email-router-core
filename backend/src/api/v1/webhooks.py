@@ -100,7 +100,7 @@ async def mailgun_inbound_webhook(
         signature = form_data.get("signature", "")
 
         # Get Mailgun API key for signature verification
-        config = get_config()
+        config = get_app_config()
 
         # Verify Mailgun signature if we have the webhook signing key
         if config.mailgun_webhook_signing_key:
@@ -511,7 +511,7 @@ async def check_environment_variables():
     🔧 ENV CHECK: Verify which environment variables are actually loaded in production
     """
     try:
-        config = get_config()
+        config = get_app_config()
 
         env_status = {
             "anthropic_api_key": "SET" if config.anthropic_api_key else "MISSING",

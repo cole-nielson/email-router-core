@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 import yaml
 from pydantic import ValidationError
 
-from ..models.client_config import ClientConfig, RoutingRules
+from ..models.client import ClientConfig, RoutingRules
 
 logger = logging.getLogger(__name__)
 

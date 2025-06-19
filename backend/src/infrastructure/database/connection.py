@@ -10,8 +10,8 @@ from typing import Generator
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
-from ..core import get_app_config
-from ..utils.logger import get_logger
+from ..config.manager import get_app_config
+from ..logging.logger import get_logger
 from .models import Base
 
 logger = get_logger(__name__)

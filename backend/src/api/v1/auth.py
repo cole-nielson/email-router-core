@@ -11,15 +11,15 @@ from fastapi.security import HTTPBearer
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
-from ..database.connection import get_db
-from ..security.authentication.dependencies import require_authenticated_user
-from ..security.authentication.jwt_service import (
+from ...infrastructure.database.connection import get_db
+from ...application.dependencies.auth import require_authenticated_user
+from ...core.authentication.jwt import (
     AuthenticatedUser,
     LoginRequest,
     TokenResponse,
     get_auth_service,
 )
-from ..security.authorization.rbac import RBACService
+from ...core.authentication.rbac import RBACService
 
 logger = logging.getLogger(__name__)
 

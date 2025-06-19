@@ -9,9 +9,9 @@ from typing import Any, Dict, List, Optional
 
 import pytz
 
-from ..models.client_config import ClientConfig, RoutingRules
-from ..services.client_manager import ClientManager
-from ..utils.domain_resolver import extract_domain_from_email
+from ..models.client import ClientConfig, RoutingRules
+from ..clients.manager import ClientManager
+from ..clients.resolver import extract_domain_from_email
 
 logger = logging.getLogger(__name__)
 

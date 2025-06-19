@@ -8,9 +8,9 @@ from typing import Any, Dict, Optional
 
 import httpx
 
-from ..core import get_app_config, get_config_manager
-from ..services.client_manager import ClientManager, get_client_manager
-from ..utils.email_templates import create_customer_template, create_team_template
+from ..config.manager import get_app_config, get_config_manager
+from ...core.clients.manager import ClientManager, get_client_manager
+from ..templates.email import create_customer_template, create_team_template
 
 logger = logging.getLogger(__name__)
 

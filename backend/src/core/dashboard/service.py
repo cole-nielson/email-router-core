@@ -9,8 +9,8 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
-from ..core import get_app_config, get_config_manager
-from ..models.dashboard_schemas import (
+from ...infrastructure.config.manager import get_app_config, get_config_manager
+from ..models.dashboard import (
     ActivityType,
     AlertSeverity,
     AutomationStatus,
@@ -21,7 +21,7 @@ from ..models.dashboard_schemas import (
     SystemAlert,
     SystemStatus,
 )
-from ..services.client_manager import ClientManager
+from ..clients.manager import ClientManager
 
 logger = logging.getLogger(__name__)
 

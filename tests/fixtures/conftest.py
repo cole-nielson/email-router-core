@@ -13,7 +13,12 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+backend_path = str(Path(__file__).parent.parent / "backend")
+sys.path.insert(0, backend_path)
+# Ensure tests can find the src module
+import sys
+if backend_path not in sys.path:
+    sys.path.insert(0, backend_path)
 
 # Set up test environment variables before any imports
 TEST_ENV_VARS = {
@@ -21,19 +26,20 @@ TEST_ENV_VARS = {
     "ANTHROPIC_API_KEY": "sk-ant-test-key-for-testing",
     "MAILGUN_API_KEY": "key-test-key-for-testing",
     "MAILGUN_DOMAIN": "test.example.com",
-    "EMAIL_ROUTER_ENVIRONMENT": "test",
+    "ENVIRONMENT": "test",
     "EMAIL_ROUTER_DEBUG": "false",
     "LOG_LEVEL": "WARNING",  # Reduce noise in tests
+    "DATABASE_URL": "sqlite:///:memory:",
 }
 
 # Apply test environment variables
 for key, value in TEST_ENV_VARS.items():
     os.environ.setdefault(key, value)
 
-from app.database.connection import get_db
-from app.database.models import Base, User, UserRole, UserStatus
-from app.main import app
-from app.security.authentication.jwt_service import AuthService
+from src.infrastructure.database.connection import get_db
+from src.infrastructure.database.models import Base, User, UserRole, UserStatus
+from src.main import app
+from src.core.authentication.jwt import AuthService
 
 # Use an in-memory SQLite database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"

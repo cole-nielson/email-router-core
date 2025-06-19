@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Union
 from fastapi import HTTPException, status
 from pydantic import BaseModel
 
-from ..core.auth_context import SecurityContext
+from ...infrastructure.legacy.auth_context import SecurityContext
 from .permissions import Permissions, PermissionSets, PermissionUtils
 
 logger = logging.getLogger(__name__)

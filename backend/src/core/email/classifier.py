@@ -11,10 +11,10 @@ from typing import Any, Dict, Optional
 
 import httpx
 
-from ..core import get_app_config, get_config_manager
-from ..services.client_manager import ClientManager
-from ..services.email_service import EmailService
-from ..utils.domain_resolver import extract_domain_from_email
+from ...infrastructure.config.manager import get_app_config, get_config_manager
+from ..clients.manager import ClientManager
+from ..email.composer import EmailService
+from ..clients.resolver import extract_domain_from_email
 
 logger = logging.getLogger(__name__)
 

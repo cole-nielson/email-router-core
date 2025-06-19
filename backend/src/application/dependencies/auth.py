@@ -8,7 +8,7 @@ from typing import Annotated, Optional
 
 from fastapi import Depends, HTTPException, Request, status
 
-from ..core.auth_context import AuthenticationType, SecurityContext
+from ...infrastructure.legacy.auth_context import AuthenticationType, SecurityContext
 
 logger = logging.getLogger(__name__)
 
