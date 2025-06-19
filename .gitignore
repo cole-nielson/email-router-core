@@ -87,16 +87,53 @@ email_cache/
 monitoring/
 analytics/
 
-# 🌐 NODE.JS & UI DEPENDENCIES
-ui/node_modules/
-ui/.svelte-kit/
-ui/.vercel/
-ui/build/
-ui/dist/
+# 🌐 FRONTEND & NODE.JS BUILD ARTIFACTS
+# Node.js dependencies
 node_modules/
+ui/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+package-lock.json.backup
+
+# SvelteKit build artifacts
+ui/.svelte-kit/
+ui/build/
+ui/dist/
+ui/.vite/
+ui/vite.config.js.timestamp-*
+
+# Vercel deployment
+ui/.vercel/
+.vercel/
+
+# Frontend development
+.next/
+.nuxt/
+.cache/
+.parcel-cache/
+.turbo/
+
+# Frontend testing
+ui/coverage/
+ui/.nyc_output/
+ui/playwright-report/
+ui/test-results/
+
+# Environment files (frontend)
+ui/.env
+ui/.env.local
+ui/.env.development.local
+ui/.env.test.local
+ui/.env.production.local
+
+# Frontend IDE and OS files
+ui/.vscode/settings.json
+ui/.idea/
+ui/*.tsbuildinfo
+ui/.eslintcache
 
 # 🔧 DEVELOPMENT CACHE & TYPE CHECKING
 .mypy_cache/

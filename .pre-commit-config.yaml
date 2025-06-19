@@ -65,6 +65,28 @@ repos:
         args: [--convention=google, --add-ignore=D100,D101,D102,D103,D104,D105]
         exclude: ^(tests/|docs/|migrations/)
 
+  # Frontend/TypeScript checks
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.21.0
+    hooks:
+      - id: eslint
+        files: ^ui/.*\.(js|ts|svelte)$
+        types: [file]
+        additional_dependencies:
+          - eslint@^8.0.0
+          - eslint-plugin-svelte3@^4.0.0
+          - '@typescript-eslint/parser@^6.0.0'
+        exclude: ^ui/(node_modules|\.svelte-kit|build|dist)/
+
+  # Prevent committing build artifacts
+  - repo: local
+    hooks:
+      - id: prevent-build-artifacts
+        name: Prevent committing build artifacts
+        entry: bash -c 'if git diff --cached --name-status | grep "^A" | cut -f2 | grep -E "ui/(\.svelte-kit|build|dist|node_modules)/" > /dev/null; then echo "❌ Build artifacts detected in commit. Please remove them."; exit 1; fi'
+        language: system
+        stages: [pre-commit]
+
 # Configuration for specific hooks
 default_stages: [pre-commit]
 default_language_version:
@@ -81,6 +103,10 @@ exclude: |
     \.venv/.*|
     venv/.*|
     node_modules/.*|
-    ui/.*\.js$|
-    ui/.*\.css$
+    ui/node_modules/.*|
+    ui/\.svelte-kit/.*|
+    ui/build/.*|
+    ui/dist/.*|
+    ui/\.vite/.*|
+    .*\.log$
   )$
