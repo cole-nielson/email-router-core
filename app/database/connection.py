@@ -142,15 +142,15 @@ def backup_database(backup_path: Path = None):
     """Create database backup."""
     import shutil
     import time
-    
+
     try:
         config = get_app_config()
         database_url = config.database.url
-        
+
         # Extract database path from URL if it's SQLite
         if database_url.startswith("sqlite:///"):
             database_path = Path(database_url.replace("sqlite:///", ""))
-            
+
             if backup_path is None:
                 backup_path = database_path.with_suffix(f".backup.{int(time.time())}.db")
 

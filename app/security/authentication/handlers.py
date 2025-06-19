@@ -134,30 +134,34 @@ class JWTHandler(AuthenticationHandler):
         try:
             # Import here to avoid circular imports
             from .jwt_service import AuthService
-            
+
             logger.debug(f"Attempting to validate JWT token: {token[:20]}...")
 
             # Use stateless validation for middleware - no database access needed
             claims = AuthService.validate_token_stateless(token)
             logger.debug(f"JWT validation result: {claims}")
-            
+
             if claims:
                 # Return a user-like object with basic info from JWT claims
-                user_obj = type('JWTUser', (), {
-                    'id': claims.user_id,
-                    'username': claims.username,
-                    'email': claims.email,
-                    'role': claims.role,
-                    'client_id': claims.client_id,
-                    'permissions': claims.permissions or [],
-                    'auth_type': 'jwt'
-                })()
+                user_obj = type(
+                    "JWTUser",
+                    (),
+                    {
+                        "id": claims.user_id,
+                        "username": claims.username,
+                        "email": claims.email,
+                        "role": claims.role,
+                        "client_id": claims.client_id,
+                        "permissions": claims.permissions or [],
+                        "auth_type": "jwt",
+                    },
+                )()
                 logger.debug(f"Created JWT user object: {user_obj.username}")
                 return user_obj
-                
+
         except Exception as e:
             logger.error(f"JWT validation error in handler: {e}")
-            
+
         return None
 
 

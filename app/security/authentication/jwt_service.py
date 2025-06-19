@@ -31,14 +31,15 @@ logger = logging.getLogger(__name__)
 # Get unified configuration
 try:
     from ..core import get_app_config
+
     _app_config = get_app_config()
-    
+
     # JWT Configuration from unified config
     JWT_SECRET_KEY = _app_config.security.jwt_secret_key
     JWT_ALGORITHM = _app_config.security.jwt_algorithm
     ACCESS_TOKEN_EXPIRE_MINUTES = _app_config.security.access_token_expire_minutes
     REFRESH_TOKEN_EXPIRE_DAYS = _app_config.security.refresh_token_expire_days
-    
+
     # Rate limiting from unified config
     MAX_LOGIN_ATTEMPTS = _app_config.security.max_login_attempts
     LOCKOUT_DURATION_MINUTES = _app_config.security.lockout_duration_minutes
@@ -379,7 +380,9 @@ class AuthService:
         return {"token": token, "claims": claims, "expires_at": exp}
 
     @staticmethod
-    def validate_token_stateless(token: str, token_type: str = "access") -> Optional[UserTokenClaims]:
+    def validate_token_stateless(
+        token: str, token_type: str = "access"
+    ) -> Optional[UserTokenClaims]:
         """Validate JWT token signature and expiration without database access."""
         try:
             # Decode token with signature and expiration validation
