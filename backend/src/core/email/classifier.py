@@ -373,7 +373,7 @@ class AIClassifier:
 def get_ai_classifier():
     """Dependency injection function for AIClassifier."""
     if not hasattr(get_ai_classifier, "_instance"):
-        from .client_manager import get_client_manager
+        from ..clients.manager import get_client_manager
 
         client_manager = get_client_manager()
         get_ai_classifier._instance = AIClassifier(client_manager)

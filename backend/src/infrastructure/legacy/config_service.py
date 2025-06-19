@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from ...core.clients.loader import load_client_config
+from ...infrastructure.config.manager import get_config_manager
 from ..database.connection import get_database_session
 from ..database.models import (
     AIPrompt,
@@ -316,16 +316,20 @@ class ConfigService:
         """Load configuration from YAML files into database."""
         try:
             # Load existing YAML configuration
-            config = load_client_config(client_id)
+            config_manager = get_config_manager()
+            config = config_manager.get_client_config(client_id)
+
+            if not config:
+                raise ValueError(f"Client config for {client_id} not found in ConfigManager")
 
             # Create or update client
             client_data = {
-                "id": config.client.id,
-                "name": config.client.name,
-                "industry": config.client.industry,
-                "status": getattr(config.client, "status", "active"),
-                "timezone": config.client.timezone,
-                "business_hours": config.client.business_hours,
+                "id": config.client_id,
+                "name": config.name,
+                "industry": config.industry,
+                "status": "active" if config.active else "inactive",
+                "timezone": config.timezone,
+                "business_hours": "9-17",  # Placeholder, needs to be mapped from new config
             }
 
             existing_client = self.get_client(client_id)

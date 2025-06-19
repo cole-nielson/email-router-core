@@ -9,8 +9,11 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from app.models.client_config import ClientConfig
-from app.services.client_manager import ClientManager
+from backend.src.core.clients.manager import ClientManager
+from backend.src.infrastructure.config.schema import ClientConfig
+
+# Load the test client configuration file
+TEST_CLIENT_CONFIG_PATH = "clients/active/client-001-cole-nielson/client-config.yaml"
 
 
 class TestClientConfigValidation:
@@ -35,10 +38,10 @@ class TestClientConfigValidation:
             config = self.client_manager.get_client_config(client_id)
 
             # Basic validation checks
-            assert config.client.id == client_id
-            assert isinstance(config.client.name, str)
-            assert len(config.client.name) > 0
-            assert config.client.industry in [
+            assert config.client_id == client_id
+            assert isinstance(config.name, str)
+            assert len(config.name) > 0
+            assert config.industry in [
                 "Technology",
                 "Healthcare",
                 "Finance",
@@ -95,8 +98,8 @@ class TestClientConfigValidation:
                 validated_config = ClientConfig(**config_data)
 
                 # Additional validation checks
-                assert validated_config.client.id == client_id
-                assert validated_config.client.status in ["active", "inactive", "pending"]
+                assert validated_config.client_id == client_id
+                assert validated_config.active in [True, False]
 
                 # Domain validation
                 assert isinstance(validated_config.domains.primary, str)
@@ -152,11 +155,14 @@ class TestClientConfigValidation:
         for client_id in self.client_ids:
             # Load from consolidated client config (Milestone 5)
             client_config = self.client_manager.get_client_config(client_id)
-            
+
             # Check that routing exists
-            assert client_config.routing is not None, f"Missing routing configuration for {client_id}"
-            
-            routing = client_config.routing
+            assert (
+                client_config.routing is not None
+            ), f"Missing routing configuration for {client_id}"
+
+            # Convert routing list to dict for easier access
+            routing = {rule.category: rule.email for rule in client_config.routing}
 
             # Check for common categories
             expected_categories = ["support", "billing", "sales", "general"]
@@ -167,14 +173,13 @@ class TestClientConfigValidation:
                         "@" in email
                     ), f"Invalid email {email} for category {category} in {client_id}"
 
-            # Check escalation rules if present
-            if client_config.escalation and hasattr(client_config.escalation, 'keyword_based'):
-                keyword_based = client_config.escalation.keyword_based
-                if keyword_based:
-                    for keyword, email in keyword_based.items():
+            # Check escalation rules if present (now in SLA configuration)
+            if client_config.sla and client_config.sla.escalation_rules:
+                for escalation_rule in client_config.sla.escalation_rules:
+                    if escalation_rule.enabled and escalation_rule.target_email:
                         assert (
-                            "@" in email
-                        ), f"Invalid escalation email {email} for keyword {keyword} in {client_id}"
+                            "@" in escalation_rule.target_email
+                        ), f"Invalid escalation email {escalation_rule.target_email} for {escalation_rule.trigger_type} in {client_id}"
 
             print(f"✅ Client {client_id} routing rules validation passed")
 
@@ -334,9 +339,10 @@ class TestConfigurationIntegrity:
             # Load routing rules from consolidated client config
             client_config = self.client_manager.get_client_config(client_id)
 
-            routing_categories = (
-                set(client_config.routing.keys()) if client_config.routing else set()
-            )
+            # Convert routing list to dict for access
+            routing_categories = set()
+            if client_config.routing:
+                routing_categories = {rule.category for rule in client_config.routing}
 
             # Check that all routing categories are defined
             undefined_categories = routing_categories - defined_categories
@@ -354,13 +360,13 @@ class TestConfigurationIntegrity:
 
             # Client ID should match directory name
             assert (
-                config.client.id == client_id
-            ), f"Client ID mismatch: directory={client_id}, config={config.client.id}"
+                config.client_id == client_id
+            ), f"Client ID mismatch: directory={client_id}, config={config.client_id}"
 
             # Status should be active for clients in active directory
             assert (
-                config.client.status == "active"
-            ), f"Client {client_id} in active directory but status is {config.client.status}"
+                config.active == True
+            ), f"Client {client_id} in active directory but status is {config.active}"
 
             print(f"✅ Client {client_id} config consistency passed")
 

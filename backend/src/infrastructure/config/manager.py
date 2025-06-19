@@ -34,7 +34,7 @@ class ConfigManager:
             config_path: Optional path to configuration file
         """
         self._config: Optional[AppConfig] = None
-        self._clients: Dict[str, ClientConfig] = {}
+        self._client_cache: Dict[str, ClientConfig] = {}
         self._config_path = config_path
         self._env_loaded = False
 
@@ -53,8 +53,8 @@ class ConfigManager:
             # Validate configuration
             self._validate_configuration()
 
-            # Load client configurations
-            self._load_client_configurations()
+            # Pre-warm the client configuration cache
+            self._warm_client_cache()
 
             logger.info(
                 f"Configuration loaded successfully for {self._config.environment} environment"
@@ -314,8 +314,8 @@ class ConfigManager:
 
         logger.debug("Configuration validation completed")
 
-    def _load_client_configurations(self) -> None:
-        """Load all client configurations from the client directory."""
+    def _warm_client_cache(self) -> None:
+        """Load all client configurations from the client directory into the cache."""
         if not self._config:
             logger.warning("No configuration loaded, cannot load client configurations")
             return
@@ -331,29 +331,37 @@ class ConfigManager:
             if not client_dir.is_dir():
                 continue
 
-            config_file = client_dir / "client-config.yaml"
-            if not config_file.exists():
-                logger.warning(f"Client config file not found: {config_file}")
-                continue
-
+            client_id = client_dir.name
             try:
-                with open(config_file, "r") as f:
-                    client_data = yaml.safe_load(f)
-
-                # Ensure client_id matches directory name
-                client_data["client_id"] = client_dir.name
-
-                client_config = ClientConfig(**client_data)
-                self._clients[client_config.client_id] = client_config
-                loaded_count += 1
-
-                logger.debug(f"Loaded client configuration: {client_config.client_id}")
-
+                config = self._load_single_client_config(client_id)
+                if config:
+                    self._client_cache[client_id] = config
+                    loaded_count += 1
             except Exception as e:
-                logger.error(f"Failed to load client config from {config_file}: {e}")
+                logger.error(f"Failed to pre-load client config for {client_id}: {e}")
                 continue
 
-        logger.info(f"Loaded {loaded_count} client configurations")
+        logger.info(f"Pre-warmed cache with {loaded_count} client configurations")
+
+    def _load_single_client_config(self, client_id: str) -> Optional[ClientConfig]:
+        """Load a single client's configuration from its file."""
+        if not self._config:
+            return None
+
+        client_path = Path(self._config.client_config_path) / client_id
+        config_file = client_path / "client-config.yaml"
+
+        if not config_file.is_file():
+            logger.debug(f"Client config file not found: {config_file}")
+            return None
+
+        with open(config_file, "r") as f:
+            client_data = yaml.safe_load(f)
+
+        # Ensure client_id from directory name is authoritative
+        client_data["client_id"] = client_id
+
+        return ClientConfig(**client_data)
 
     # =========================================================================
     # PUBLIC API
@@ -367,7 +375,7 @@ class ConfigManager:
         return self._config
 
     def get_client_config(self, client_id: str) -> Optional[ClientConfig]:
-        """Get configuration for a specific client.
+        """Get configuration for a specific client, using a cache.
 
         Args:
             client_id: Client identifier
@@ -375,23 +383,111 @@ class ConfigManager:
         Returns:
             Client configuration or None if not found
         """
-        return self._clients.get(client_id)
+        # 1. Check cache first
+        if client_id in self._client_cache:
+            return self._client_cache[client_id]
+
+        # 2. If not in cache, load from file
+        try:
+            client_config = self._load_single_client_config(client_id)
+            if client_config:
+                # 3. Store in cache
+                self._client_cache[client_id] = client_config
+                logger.info(f"Loaded and cached new client config: {client_id}")
+                return client_config
+        except (ValidationError, Exception) as e:
+            logger.error(f"Failed to load client config for '{client_id}': {e}")
+
+        return None
 
     def get_all_clients(self) -> Dict[str, ClientConfig]:
-        """Get all client configurations.
+        """Get all loaded client configurations from the cache.
 
         Returns:
             Dictionary of client_id -> ClientConfig
         """
-        return self._clients.copy()
+        return self._client_cache.copy()
 
     def get_active_clients(self) -> Dict[str, ClientConfig]:
-        """Get only active client configurations.
+        """Get only active client configurations from the cache.
 
         Returns:
             Dictionary of active client configurations
         """
-        return {client_id: config for client_id, config in self._clients.items() if config.active}
+        return {
+            client_id: config for client_id, config in self._client_cache.items() if config.active
+        }
+
+    def load_ai_prompt(self, client_id: str, prompt_type: str) -> str:
+        """
+        Load AI prompt template for a client.
+
+        Args:
+            client_id: Client identifier
+            prompt_type: Type of prompt ('classification', 'acknowledgment', 'team-analysis')
+
+        Returns:
+            Prompt template content as string
+
+        Raises:
+            ConfigurationError: If prompt cannot be loaded
+        """
+        if not self._config:
+            raise ConfigurationError("Configuration not loaded")
+
+        client_path = Path(self._config.client_config_path) / client_id
+        prompt_file = client_path / "ai-context" / f"{prompt_type}-prompt.md"
+
+        try:
+            if not prompt_file.exists():
+                raise ConfigurationError(f"AI prompt file not found: {prompt_file}")
+
+            with open(prompt_file, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            logger.debug(f"Loaded AI prompt {prompt_type} for {client_id}")
+            return content
+
+        except Exception as e:
+            error_msg = f"Failed to load AI prompt {prompt_type} for {client_id}: {e}"
+            logger.error(error_msg)
+            raise ConfigurationError(error_msg) from e
+
+    def load_fallback_responses(self, client_id: str) -> Dict:
+        """
+        Load fallback responses configuration.
+
+        Args:
+            client_id: Client identifier
+
+        Returns:
+            Fallback responses as dictionary
+
+        Raises:
+            ConfigurationError: If fallback responses cannot be loaded
+        """
+        if not self._config:
+            raise ConfigurationError("Configuration not loaded")
+
+        client_path = Path(self._config.client_config_path) / client_id
+        fallback_file = client_path / "ai-context" / "fallback-responses.yaml"
+
+        try:
+            with open(fallback_file, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+
+            if data is None:
+                raise ConfigurationError(f"Empty or invalid YAML file: {fallback_file}")
+
+            logger.debug(f"Loaded fallback responses for {client_id}")
+            return data
+
+        except yaml.YAMLError as e:
+            raise ConfigurationError(f"YAML parsing error in {fallback_file}: {e}")
+        except Exception as e:
+            error_msg = f"Failed to load fallback responses for {client_id}: {e}"
+            logger.error(error_msg)
+            raise ConfigurationError(error_msg) from e
 
     def reload_client_config(self, client_id: str) -> bool:
         """Reload configuration for a specific client.
@@ -402,30 +498,16 @@ class ConfigManager:
         Returns:
             True if reloaded successfully, False otherwise
         """
-        if not self._config:
-            logger.error("No configuration loaded, cannot reload client config")
-            return False
-
-        client_path = Path(self._config.client_config_path) / client_id / "client-config.yaml"
-
-        if not client_path.exists():
-            logger.warning(f"Client config file not found for reload: {client_path}")
-            return False
-
         try:
-            with open(client_path, "r") as f:
-                client_data = yaml.safe_load(f)
-
-            client_data["client_id"] = client_id
-            client_config = ClientConfig(**client_data)
-            self._clients[client_id] = client_config
-
-            logger.info(f"Reloaded client configuration: {client_id}")
-            return True
-
-        except Exception as e:
+            client_config = self._load_single_client_config(client_id)
+            if client_config:
+                self._client_cache[client_id] = client_config
+                logger.info(f"Reloaded client configuration: {client_id}")
+                return True
+        except (ValidationError, Exception) as e:
             logger.error(f"Failed to reload client config for {client_id}: {e}")
-            return False
+
+        return False
 
     def validate_client_config(self, client_data: Dict[str, Any]) -> bool:
         """Validate client configuration data.
@@ -506,7 +588,7 @@ class ConfigManager:
                 "app_version": "unknown",
                 "python_version": sys.version,
                 "config_loaded": False,
-                "clients_loaded": len(self._clients),
+                "clients_loaded": len(self._client_cache),
                 "features_enabled": 0,
             }
 
@@ -517,7 +599,7 @@ class ConfigManager:
             "app_version": self._config.app_version,
             "python_version": sys.version,
             "config_loaded": self._config is not None,
-            "clients_loaded": len(self._clients),
+            "clients_loaded": len(self._client_cache),
             "features_enabled": sum(1 for enabled in self._config.features.values() if enabled),
         }
 

@@ -8,9 +8,10 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
+from jose import jwt
 
-from app.database.models import UserRole, UserStatus
-from app.security.authentication.jwt_service import AuthService, UserTokenClaims
+from backend.src.core.authentication.jwt import AuthenticatedUser, AuthService
+from backend.src.infrastructure.database.models import UserRole, UserStatus
 
 
 @pytest.fixture
@@ -146,7 +147,7 @@ class TestJWTTokenSecurity:
                 claims = auth_service.validate_token(token, "access")
                 assert claims is None
 
-    @patch("app.services.auth_service.jwt.decode")
+    @patch("backend.src.core.authentication.jwt.jwt.decode")
     def test_token_validation_exception_handling(self, mock_decode, auth_service):
         """Test exception handling during token validation."""
         # Make jwt.decode raise an exception
@@ -245,6 +246,8 @@ class TestTokenRefreshSecurity:
 
         # Mock token validation
         with patch.object(auth_service, "validate_token") as mock_validate:
+            from backend.src.core.authentication.jwt import UserTokenClaims
+
             mock_validate.return_value = UserTokenClaims(
                 sub="1",
                 username="testuser",
@@ -272,6 +275,8 @@ class TestTokenRefreshSecurity:
         auth_service, mock_user = auth_service_with_user
 
         with patch.object(auth_service, "validate_token") as mock_validate:
+            from backend.src.core.authentication.jwt import UserTokenClaims
+
             mock_validate.return_value = UserTokenClaims(
                 sub="1",
                 username="testuser",
@@ -294,17 +299,15 @@ class TestTokenRefreshSecurity:
 class TestPasswordSecurity:
     """Test password hashing and verification."""
 
-    def test_password_hashing_uniqueness(self, db_session):
+    def test_password_hashing_uniqueness(self, auth_service):
         """Test that same password produces different hashes."""
-        auth_service = AuthService(db_session)  # No DB needed for hashing
         password = "a_very_secure_password_123"
         hash1 = auth_service.hash_password(password)
         hash2 = auth_service.hash_password(password)
         assert hash1 != hash2
 
-    def test_password_verification_timing(self, db_session):
+    def test_password_verification_timing(self, auth_service):
         """Test password verification doesn't leak timing info."""
-        auth_service = AuthService(db_session)
         password = "a_very_secure_password_123"
         correct_hash = auth_service.hash_password(password)
         incorrect_hash = auth_service.hash_password("wrong_password")

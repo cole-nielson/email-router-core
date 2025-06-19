@@ -6,9 +6,10 @@ Dual Authentication Middleware Tests
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import FastAPI, Request, Response
+from fastapi.testclient import TestClient
 
-from app.security.authentication.jwt_service import AuthenticatedUser
-from app.security.authentication.middleware import (
+from backend.src.application.middleware.auth import (
     APIKeyUser,
     DualAuthMiddleware,
     DualAuthUser,
@@ -20,6 +21,12 @@ from app.security.authentication.middleware import (
     require_dual_auth,
     require_jwt_only,
 )
+from backend.src.core.authentication.jwt import AuthenticatedUser
+
+
+@pytest.fixture
+def test_app():
+    pass
 
 
 class TestAPIKeyExtraction:
@@ -212,7 +219,10 @@ class TestDualAuthDependencies:
             permissions=["client:read"],
         )
 
-        with patch("app.middleware.dual_auth.get_current_user_from_token", return_value=jwt_user):
+        with patch(
+            "backend.src.application.dependencies.auth.get_current_user_from_token",
+            return_value=jwt_user,
+        ):
             user = await get_dual_auth_user(request, credentials)
 
             assert user is not None
@@ -232,7 +242,7 @@ class TestDualAuthDependencies:
         credentials.credentials = "invalid.jwt.token"
 
         with patch(
-            "app.middleware.dual_auth.get_current_user_from_token",
+            "backend.src.application.dependencies.auth.get_current_user_from_token",
             side_effect=Exception("Invalid JWT"),
         ):
             user = await get_dual_auth_user(request, credentials)

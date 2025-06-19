@@ -159,8 +159,8 @@ class SecurityManager:
             token = auth_header[7:]  # Remove "Bearer " prefix
 
             # Import here to avoid circular imports
-            from ...database.connection import get_database_session
-            from ..authentication.jwt_service import get_auth_service
+            from ...infrastructure.database.connection import get_database_session
+            from ..authentication.jwt import get_auth_service
 
             # Validate JWT token
             db = get_database_session()

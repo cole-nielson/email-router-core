@@ -13,7 +13,6 @@ import httpx
 
 from ...infrastructure.config.manager import get_app_config, get_config_manager
 from ...infrastructure.templates.email import _get_default_branding, create_branded_template
-from ..clients.loader import ClientLoadError, load_ai_prompt, load_fallback_responses
 from ..clients.manager import ClientManager
 
 logger = logging.getLogger(__name__)
@@ -451,7 +450,7 @@ class EmailService:
             Fallback response text
         """
         try:
-            fallback_responses = load_fallback_responses(client_id)
+            fallback_responses = get_config_manager().load_fallback_responses(client_id)
 
             if response_type in fallback_responses:
                 responses = fallback_responses[response_type]
@@ -463,7 +462,7 @@ class EmailService:
             # Hard fallback
             return self._get_hard_fallback_response(response_type, category)
 
-        except ClientLoadError:
+        except Exception:
             return self._get_hard_fallback_response(response_type, category)
 
     def clear_cache(self):
@@ -541,7 +540,7 @@ class EmailService:
             return self._template_cache[cache_key]
 
         try:
-            template = load_ai_prompt(client_id, template_type)
+            template = get_config_manager().load_ai_prompt(client_id, template_type)
 
             # Validate template
             validation = self.validate_template(template, client_id)
@@ -558,7 +557,7 @@ class EmailService:
             self._template_cache[cache_key] = template
             return template
 
-        except ClientLoadError as e:
+        except Exception as e:
             logger.error(f"Failed to load template {template_type} for {client_id}: {e}")
             raise
 
@@ -577,14 +576,17 @@ class EmailService:
         """
         try:
             client_config = self.client_manager.get_client_config(client_id)
+            if not client_config:
+                logger.error(f"Could not load client config for {client_id} to prepare context")
+                return {"client": {"name": "Unknown Client"}, "email": {}}
 
             context = {
                 "client": {
-                    "name": client_config.client.name,
-                    "id": client_config.client.id,
-                    "industry": client_config.client.industry,
-                    "timezone": client_config.client.timezone,
-                    "business_hours": client_config.client.business_hours,
+                    "name": client_config.name,
+                    "id": client_config.client_id,
+                    "industry": client_config.industry,
+                    "timezone": client_config.timezone,
+                    "business_hours": "N/A",  # This needs to be adapted from new config
                     "branding": {
                         "company_name": client_config.branding.company_name,
                         "primary_color": client_config.branding.primary_color,
@@ -944,7 +946,7 @@ Check for any special handling requirements or escalation needs.
 def get_email_service() -> EmailService:
     """Dependency injection function for EmailService."""
     if not hasattr(get_email_service, "_instance"):
-        from .client_manager import get_client_manager
+        from ..clients.manager import get_client_manager
 
         client_manager = get_client_manager()
         get_email_service._instance = EmailService(client_manager)

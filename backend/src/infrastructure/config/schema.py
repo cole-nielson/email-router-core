@@ -217,6 +217,8 @@ class ClientDomainConfig(BaseModel):
     primary: str
     aliases: List[str] = Field(default_factory=list)
     catch_all: bool = False
+    support: Optional[str] = None  # Support email address
+    mailgun: Optional[str] = None  # Mailgun domain
 
     @field_validator("primary")
     @classmethod
@@ -328,6 +330,14 @@ class ClientSettingsConfig(BaseModel):
     debug_logging_enabled: bool = False
 
 
+class ClientContactsConfig(BaseModel):
+    """Contact information for the client."""
+
+    primary_contact: str = Field(..., description="Primary contact email")
+    escalation_contact: str = Field(..., description="Escalation contact email")
+    billing_contact: str = Field(..., description="Billing contact email")
+
+
 class ClientConfig(BaseModel):
     """Complete client configuration."""
 
@@ -344,6 +354,7 @@ class ClientConfig(BaseModel):
     routing: List[ClientRoutingRule] = Field(default_factory=list)
     sla: ClientSLAConfig = Field(default_factory=ClientSLAConfig)
     settings: ClientSettingsConfig = Field(default_factory=ClientSettingsConfig)
+    contacts: ClientContactsConfig
 
     # AI and Template Configuration
     ai_categories: List[str] = Field(
@@ -372,7 +383,7 @@ class AppConfig(BaseModel):
 
     # Environment and Meta
     environment: Environment = Environment.DEVELOPMENT
-    app_name: str = "Email Router"
+    app_name: str = "Email Router SaaS API"
     app_version: str = "2.0.0"
     debug: bool = False
 

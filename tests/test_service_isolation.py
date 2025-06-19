@@ -6,14 +6,14 @@ Service isolation tests to ensure no shared state between service instances.
 import asyncio
 import threading
 import time
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.services.ai_classifier import AIClassifier, get_ai_classifier
-from app.services.client_manager import ClientManager, get_client_manager
-from app.services.email_service import EmailService, get_email_service
-from app.services.routing_engine import RoutingEngine
+from backend.src.core.clients.manager import ClientManager, get_client_manager
+from backend.src.core.email.classifier import AIClassifier, get_ai_classifier
+from backend.src.core.email.composer import EmailService, get_email_service
+from backend.src.core.email.router import RoutingEngine
 
 
 class TestServiceInstanceIsolation:
@@ -41,7 +41,7 @@ class TestServiceInstanceIsolation:
         config2 = manager2.get_client_config("client-001-cole-nielson")
 
         # Should be same config but operations should be independent
-        assert config1.client.id == config2.client.id
+        assert config1.client_id == config2.client_id
 
     def test_ai_classifier_isolation(self):
         """Test AIClassifier instance isolation."""
@@ -168,7 +168,7 @@ class TestConcurrentServiceAccess:
                     # Store results
                     results[f"{thread_id}-{i}"] = {
                         "client_id": result.client_id,
-                        "config_name": config.client.name,
+                        "config_name": config.name,
                     }
 
                     # Small delay to encourage race conditions
@@ -326,7 +326,9 @@ class TestServiceStateCleanup:
         )
         assert result == "also_success"
 
-    @pytest.mark.xfail(reason="Service state cleanup tests require memory profiling - see docs/known_issues.md")
+    @pytest.mark.xfail(
+        reason="Service state cleanup tests require memory profiling - see docs/known_issues.md"
+    )
     def test_memory_leak_prevention(self):
         """Test that services don't accumulate memory over time."""
 
@@ -377,19 +379,17 @@ class TestServiceDependencyIsolation:
 
         # Get config
         config1 = manager.get_client_config("client-001-cole-nielson")
-        original_name = config1.client.name
+        original_name = config1.name
 
         # Modify the config object (should not affect cached version)
-        config1.client.name = "Modified Name"
+        config1.name = "Modified Name"
 
         # Get config again
         config2 = manager.get_client_config("client-001-cole-nielson")
 
         # Should still have original name (if properly cached/isolated)
         # Note: This depends on implementation - if config is mutable, this test may need adjustment
-        print(
-            f"Original: {original_name}, Modified: {config1.client.name}, Retrieved: {config2.client.name}"
-        )
+        print(f"Original: {original_name}, Modified: {config1.name}, Retrieved: {config2.name}")
 
     def test_template_engine_context_isolation(self):
         """Test that template context modifications don't leak between calls."""
@@ -439,6 +439,11 @@ class TestServiceDependencyIsolation:
             # Note: This test would need to be async to work properly
             # For now, just verify the mock setup works
             assert mock_ai.return_value["category"] == "support"
+
+
+@pytest.fixture
+def mock_client_manager():
+    pass
 
 
 if __name__ == "__main__":

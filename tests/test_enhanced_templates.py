@@ -3,12 +3,16 @@ Tests for enhanced template engine and branded email templates.
 🧪 Validates template variable injection, branding integration, and template validation.
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from app.services.email_service import EmailService
-from app.utils.email_templates import _get_default_branding, create_branded_template
+from backend.src.core.clients.manager import ClientManager
+from backend.src.core.email.composer import EmailService
+from backend.src.infrastructure.templates.email import (
+    _get_default_branding,
+    create_branded_template,
+)
 
 
 class TestEnhancedTemplateEngine:

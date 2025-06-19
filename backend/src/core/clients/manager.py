@@ -6,14 +6,10 @@ Enhanced client manager service for advanced multi-tenant operations.
 import logging
 from typing import Dict, List, Optional, Set, Tuple
 
+from pydantic import BaseModel, Field
 
-from ..models.client import ClientConfig, RoutingRules
-from .loader import (
-    ClientLoadError,
-    get_available_clients,
-    load_client_config,
-    load_routing_rules,
-)
+from ...infrastructure.config.manager import get_config_manager
+from ...infrastructure.config.schema import ClientConfig
 from .resolver import (
     DomainMatcher,
     calculate_domain_similarity,
@@ -24,6 +20,14 @@ from .resolver import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class RoutingRules(BaseModel):
+    """Simplified routing rules model for internal use."""
+
+    routing: Dict[str, str] = Field(default_factory=dict)
+    backup_routing: Optional[Dict[str, str]] = None
+    # Add other fields from the old model if needed, e.g., escalation, special_rules
 
 
 class ClientIdentificationResult:
@@ -96,26 +100,27 @@ class EnhancedClientManager:
         self._domain_to_client_cache.clear()
         self._client_to_domains_cache.clear()
 
-        available_clients = get_available_clients()
+        config_manager = get_config_manager()
+        available_clients = config_manager.get_all_clients()
 
-        for client_id in available_clients:
-            try:
-                client_config = load_client_config(client_id)
-                client_domains = set()
+        for client_id, client_config in available_clients.items():
+            client_domains = set()
 
-                # Primary domain
-                primary_domain = normalize_domain(client_config.domains.primary)
-                if primary_domain:
-                    self._domain_to_client_cache[primary_domain] = client_id
-                    client_domains.add(primary_domain)
+            # Primary domain
+            primary_domain = normalize_domain(client_config.domains.primary)
+            if primary_domain:
+                self._domain_to_client_cache[primary_domain] = client_id
+                client_domains.add(primary_domain)
 
-                    # Add domain variants for primary domain
-                    for variant in get_domain_variants(primary_domain):
-                        self._domain_to_client_cache[variant] = client_id
-                        client_domains.add(variant)
+                # Add domain variants for primary domain
+                for variant in get_domain_variants(primary_domain):
+                    self._domain_to_client_cache[variant] = client_id
+                    client_domains.add(variant)
 
-                # Support email domain
-                support_email = client_config.domains.support
+            # Support email domain
+            support_domain = None
+            support_email = client_config.domains.support
+            if support_email:
                 support_domain = extract_domain_from_email(support_email)
                 if support_domain and support_domain != primary_domain:
                     support_domain = normalize_domain(support_domain)
@@ -128,8 +133,10 @@ class EnhancedClientManager:
                             self._domain_to_client_cache[variant] = client_id
                             client_domains.add(variant)
 
-                # Mailgun domain
-                mailgun_domain = normalize_domain(client_config.domains.mailgun)
+            # Mailgun domain
+            mailgun_domain_raw = client_config.domains.mailgun
+            if mailgun_domain_raw:
+                mailgun_domain = normalize_domain(mailgun_domain_raw)
                 if mailgun_domain and mailgun_domain not in [primary_domain, support_domain]:
                     self._domain_to_client_cache[mailgun_domain] = client_id
                     client_domains.add(mailgun_domain)
@@ -139,32 +146,29 @@ class EnhancedClientManager:
                         self._domain_to_client_cache[variant] = client_id
                         client_domains.add(variant)
 
-                # Alias domains
-                if hasattr(client_config.domains, "aliases") and client_config.domains.aliases:
-                    for alias_domain in client_config.domains.aliases:
-                        alias_domain = normalize_domain(alias_domain)
-                        if alias_domain and alias_domain not in [
-                            primary_domain,
-                            support_domain,
-                            mailgun_domain,
-                        ]:
-                            self._domain_to_client_cache[alias_domain] = client_id
-                            client_domains.add(alias_domain)
+            # Alias domains
+            if hasattr(client_config.domains, "aliases") and client_config.domains.aliases:
+                for alias_domain in client_config.domains.aliases:
+                    alias_domain = normalize_domain(alias_domain)
+                    if alias_domain and alias_domain not in [
+                        primary_domain,
+                        support_domain,
+                        mailgun_domain,
+                    ]:
+                        self._domain_to_client_cache[alias_domain] = client_id
+                        client_domains.add(alias_domain)
 
-                            # Add variants for alias domain
-                            for variant in get_domain_variants(alias_domain):
-                                self._domain_to_client_cache[variant] = client_id
-                                client_domains.add(variant)
+                        # Add variants for alias domain
+                        for variant in get_domain_variants(alias_domain):
+                            self._domain_to_client_cache[variant] = client_id
+                            client_domains.add(variant)
 
-                # Store client domains for reverse lookup
-                self._client_to_domains_cache[client_id] = client_domains
+            # Store client domains for reverse lookup
+            self._client_to_domains_cache[client_id] = client_domains
 
-                logger.debug(
-                    f"Mapped {len(client_domains)} domains for {client_id}: {list(client_domains)[:5]}..."
-                )
-
-            except ClientLoadError as e:
-                logger.error(f"Failed to load client {client_id} during domain mapping: {e}")
+            logger.debug(
+                f"Mapped {len(client_domains)} domains for {client_id}: {list(client_domains)[:5]}..."
+            )
 
         # Configure domain matcher with known domains
         all_domains = list(self._domain_to_client_cache.keys())
@@ -185,9 +189,9 @@ class EnhancedClientManager:
             List of client IDs
         """
         self._ensure_initialized()
-        return get_available_clients()
+        return list(get_config_manager().get_all_clients().keys())
 
-    def get_client_config(self, client_id: str) -> ClientConfig:
+    def get_client_config(self, client_id: str) -> Optional[ClientConfig]:
         """
         Get client configuration by ID.
 
@@ -195,20 +199,12 @@ class EnhancedClientManager:
             client_id: Client identifier
 
         Returns:
-            ClientConfig object
-
-        Raises:
-            ClientLoadError: If client cannot be loaded
+            ClientConfig object or None
         """
         self._ensure_initialized()
+        return get_config_manager().get_client_config(client_id)
 
-        try:
-            return load_client_config(client_id)
-        except ClientLoadError as e:
-            logger.error(f"Failed to get client config for {client_id}: {e}")
-            raise
-
-    def get_routing_rules(self, client_id: str) -> RoutingRules:
+    def get_routing_rules(self, client_id: str) -> Optional[RoutingRules]:
         """
         Get routing rules for a client.
 
@@ -216,18 +212,16 @@ class EnhancedClientManager:
             client_id: Client identifier
 
         Returns:
-            RoutingRules object
-
-        Raises:
-            ClientLoadError: If routing rules cannot be loaded
+            RoutingRules object or None
         """
         self._ensure_initialized()
+        client_config = self.get_client_config(client_id)
+        if not client_config:
+            return None
 
-        try:
-            return load_routing_rules(client_id)
-        except ClientLoadError as e:
-            logger.error(f"Failed to get routing rules for {client_id}: {e}")
-            raise
+        # Adapt from the main ClientConfig
+        routing_data = {"routing": {rule.category: rule.email for rule in client_config.routing}}
+        return RoutingRules(**routing_data)
 
     def get_client_domains(self, client_id: str) -> Set[str]:
         """
@@ -416,7 +410,7 @@ class EnhancedClientManager:
             logger.error(f"No routing destination found for {category} in {client_id}")
             return None
 
-        except ClientLoadError as e:
+        except Exception as e:
             logger.error(f"Failed to get routing destination: {e}")
             return None
 
@@ -433,23 +427,28 @@ class EnhancedClientManager:
         """
         try:
             client_config = self.get_client_config(client_id)
+            if not client_config:
+                raise ValueError("Client config not found")
 
             # Check if category has specific response time
-            response_time = None
-            if hasattr(client_config.response_times, category):
-                response_time = getattr(client_config.response_times, category)
-            else:
-                # Fallback to general
-                response_time = client_config.response_times.general
+            response_time_minutes = client_config.sla.response_times.get(category)
+            if not response_time_minutes:
+                response_time_minutes = client_config.sla.response_times.get(
+                    "medium", 1440
+                )  # fallback
 
-            # Handle both string and ResponseTimeDetail formats
-            if isinstance(response_time, str):
-                return response_time
+            # Convert to appropriate time unit
+            if response_time_minutes >= 60:  # 1 hour or more
+                hours = response_time_minutes // 60
+                if hours >= 48:  # 48 hours or more, use days
+                    days = hours // 24
+                    return f"within {days} day{'s' if days > 1 else ''}"
+                else:
+                    return f"within {hours} hour{'s' if hours > 1 else ''}"
             else:
-                # ResponseTimeDetail object
-                return response_time.target
+                return f"within {response_time_minutes} minutes"
 
-        except ClientLoadError as e:
+        except Exception as e:
             logger.error(f"Failed to get response time: {e}")
             return "within 24 hours"  # Safe fallback
 
@@ -504,29 +503,21 @@ class EnhancedClientManager:
         Args:
             client_id: Client identifier to refresh
         """
-        try:
-            # Force reload from disk
-            load_client_config(client_id, force_reload=True)
-            load_routing_rules(client_id, force_reload=True)
-
+        config_manager = get_config_manager()
+        if config_manager.reload_client_config(client_id):
             # Rebuild domain mapping to pick up changes
             self._build_comprehensive_domain_mapping()
-
             logger.info(f"Refreshed configuration for client {client_id}")
-
-        except ClientLoadError as e:
-            logger.error(f"Failed to refresh client {client_id}: {e}")
+        else:
+            logger.error(f"Failed to refresh client {client_id}")
 
     def refresh_all_clients(self):
         """Refresh configurations for all clients."""
         logger.info("Refreshing all client configurations...")
 
-        available_clients = get_available_clients()
-        for client_id in available_clients:
-            try:
-                self.refresh_client(client_id)
-            except Exception as e:
-                logger.error(f"Failed to refresh client {client_id}: {e}")
+        # This can be simplified as reload_configuration() in the manager does this
+        get_config_manager().reload_configuration()
+        self._build_comprehensive_domain_mapping()
 
         logger.info("Completed refreshing all client configurations")
 
@@ -543,16 +534,20 @@ class EnhancedClientManager:
         try:
             # Test loading all required configurations
             client_config = self.get_client_config(client_id)
+            if not client_config:
+                logger.error(f"Client config not found for {client_id}")
+                return False
+
             routing_rules = self.get_routing_rules(client_id)
 
             # Basic validation checks
-            if not client_config.client.id == client_id:
+            if not client_config.client_id == client_id:
                 logger.error(
-                    f"Client ID mismatch in config: {client_config.client.id} != {client_id}"
+                    f"Client ID mismatch in config: {client_config.client_id} != {client_id}"
                 )
                 return False
 
-            if not routing_rules.routing:
+            if not routing_rules or not routing_rules.routing:
                 logger.error(f"No routing rules defined for {client_id}")
                 return False
 
@@ -587,17 +582,20 @@ class EnhancedClientManager:
         """
         try:
             client_config = self.get_client_config(client_id)
+            if not client_config:
+                return {"client_id": client_id, "error": "Client not found"}
+
             routing_rules = self.get_routing_rules(client_id)
             domains = self.get_client_domains(client_id)
 
             return {
                 "client_id": client_id,
-                "name": client_config.client.name,
-                "industry": client_config.client.industry,
-                "status": client_config.client.status,
+                "name": client_config.name,
+                "industry": client_config.industry,
+                "status": "active" if client_config.active else "inactive",
                 "domains": list(domains),
                 "primary_domain": client_config.domains.primary,
-                "routing_categories": list(routing_rules.routing.keys()),
+                "routing_categories": list(routing_rules.routing.keys()) if routing_rules else [],
                 "total_domains": len(domains),
                 "settings": {
                     "ai_classification_enabled": client_config.settings.ai_classification_enabled,

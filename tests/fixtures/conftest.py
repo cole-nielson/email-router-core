@@ -13,14 +13,6 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-backend_path = str(Path(__file__).parent.parent / "backend")
-sys.path.insert(0, backend_path)
-# Ensure tests can find the src module
-import sys
-
-if backend_path not in sys.path:
-    sys.path.insert(0, backend_path)
-
 # Set up test environment variables before any imports
 TEST_ENV_VARS = {
     "JWT_SECRET_KEY": "test-secret-key-for-testing-minimum-32-characters",
@@ -37,10 +29,10 @@ TEST_ENV_VARS = {
 for key, value in TEST_ENV_VARS.items():
     os.environ.setdefault(key, value)
 
-from src.core.authentication.jwt import AuthService
-from src.infrastructure.database.connection import get_db
-from src.infrastructure.database.models import Base, User, UserRole, UserStatus
-from src.main import app
+from backend.src.core.authentication.jwt import AuthService
+from backend.src.infrastructure.database.connection import get_db
+from backend.src.infrastructure.database.models import Base, User, UserRole, UserStatus
+from backend.src.main import app
 
 # Use an in-memory SQLite database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -187,7 +179,9 @@ def mock_anthropic_response():
                     yield mock_client
             else:
                 # Mock through application-specific imports instead
-                with patch("app.services.ai_classifier.anthropic", create=True) as mock_anthropic:
+                with patch(
+                    "backend.src.core.email.classifier.anthropic", create=True
+                ) as mock_anthropic:
                     mock_client = mock_anthropic.Anthropic.return_value
                     mock_response = mock_client.messages.create.return_value
                     mock_response.content = [type("obj", (object,), {"text": classification})]

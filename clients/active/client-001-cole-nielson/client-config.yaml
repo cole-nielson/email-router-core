@@ -10,7 +10,7 @@ industry: "Technology"
 timezone: "America/Mountain"
 active: true
 
-# Domain configuration 
+# Domain configuration
 domains:
   primary: "mail.colesportfolio.com"
   support: "support@mail.colesportfolio.com"
@@ -26,6 +26,12 @@ branding:
   secondary_color: "#764ba2"
   logo_url: ""
   footer_text: "© 2024 Cole Nielson Email Router. Automated email processing."
+
+# Contact information (Required)
+contacts:
+  primary_contact: "colenielson.re@gmail.com"
+  escalation_contact: "colenielson8@gmail.com"
+  billing_contact: "colenielson8@gmail.com"
 
 # Routing configuration (List[ClientRoutingRule] as per schema)
 routing:
@@ -63,10 +69,10 @@ routing:
 # SLA configuration (optional)
 sla:
   response_times:
-    support: "4 hours"
-    billing: "24 hours"
-    sales: "2 hours"
-    general: "24 hours"
+    support: 240 # 4 hours in minutes
+    billing: 1440 # 24 hours in minutes
+    sales: 120 # 2 hours in minutes
+    general: 1440 # 24 hours in minutes
   escalation_enabled: true
 
 # Client settings (optional)

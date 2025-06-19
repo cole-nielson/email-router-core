@@ -8,10 +8,10 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.services.ai_classifier import AIClassifier
-from app.services.client_manager import ClientManager
-from app.services.email_service import EmailService
-from app.services.routing_engine import RoutingEngine
+from backend.src.core.clients.manager import ClientManager
+from backend.src.core.email.classifier import AIClassifier
+from backend.src.core.email.composer import EmailService
+from backend.src.core.email.router import RoutingEngine
 
 
 class TestEmailPipelineIntegration:
@@ -43,9 +43,9 @@ class TestEmailPipelineIntegration:
         }
 
     @pytest.mark.xfail(reason="Integration test requires full app setup - see docs/known_issues.md")
-    @patch("app.services.email_sender.send_auto_reply")
-    @patch("app.services.email_sender.forward_to_team")
-    @patch("app.services.ai_classifier.AIClassifier._call_ai_service")
+    @patch("backend.src.infrastructure.external.mailgun.send_auto_reply")
+    @patch("backend.src.infrastructure.external.mailgun.forward_to_team")
+    @patch("backend.src.core.email.classifier.AIClassifier._call_ai_service")
     def test_complete_webhook_pipeline_success(
         self, mock_ai_service, mock_forward, mock_auto_reply, client: TestClient, auth_headers: dict
     ):
@@ -95,7 +95,7 @@ class TestEmailPipelineIntegration:
         # (Background tasks make this harder to test directly)
 
     @pytest.mark.xfail(reason="Integration test requires full app setup - see docs/known_issues.md")
-    @patch("app.services.ai_classifier.AIClassifier._call_ai_service")
+    @patch("backend.src.core.email.classifier.AIClassifier._call_ai_service")
     def test_client_identification_flow(
         self, mock_ai_service, client: TestClient, auth_headers: dict
     ):
@@ -216,12 +216,14 @@ class TestServiceIntegration:
         # Test client config loading
         config = self.client_manager.get_client_config("client-001-cole-nielson")
 
-        assert config.client.name == "Cole Nielson Email Router"
+        assert config.name == "Cole Nielson Email Router"
         assert config.domains.primary == "mail.colesportfolio.com"
         assert config.settings.auto_reply_enabled is True
 
-    @pytest.mark.xfail(reason="Service integration tests require complex mocking - see docs/known_issues.md")
-    @patch("app.services.ai_classifier.AIClassifier._call_ai_service")
+    @pytest.mark.xfail(
+        reason="Service integration tests require complex mocking - see docs/known_issues.md"
+    )
+    @patch("backend.src.core.email.classifier.AIClassifier._call_ai_service")
     async def test_ai_classification_integration(self, mock_ai_service):
         """Test AI classification with client context."""
 
@@ -244,7 +246,9 @@ class TestServiceIntegration:
         # Verify AI service was called with composed prompt
         mock_ai_service.assert_called_once()
 
-    @pytest.mark.xfail(reason="Service integration tests require complex mocking - see docs/known_issues.md")
+    @pytest.mark.xfail(
+        reason="Service integration tests require complex mocking - see docs/known_issues.md"
+    )
     def test_routing_engine_integration(self):
         """Test routing engine with client rules."""
 
@@ -258,8 +262,10 @@ class TestServiceIntegration:
         assert routing_result["category"] == "support"
         assert "routing_rules_applied" in routing_result
 
-    @pytest.mark.xfail(reason="Service integration tests require complex mocking - see docs/known_issues.md")
-    @patch("app.services.email_service.EmailService._call_ai_service")
+    @pytest.mark.xfail(
+        reason="Service integration tests require complex mocking - see docs/known_issues.md"
+    )
+    @patch("backend.src.core.email.composer.EmailService._call_ai_service")
     async def test_email_service_integration(self, mock_ai_service):
         """Test email service content generation."""
 
@@ -294,7 +300,7 @@ class TestErrorHandlingIntegration:
         """Set up test client."""
         # self.client = TestClient(app) # Replaced by fixture
 
-    @patch("app.services.ai_classifier.AIClassifier._call_ai_service")
+    @patch("backend.src.core.email.classifier.AIClassifier._call_ai_service")
     def test_ai_service_failure_fallback(
         self, mock_ai_service, client: TestClient, auth_headers: dict
     ):
@@ -364,9 +370,9 @@ class TestErrorHandlingIntegration:
 class TestPerformanceIntegration:
     """Test performance characteristics of the pipeline."""
 
-    @patch("app.services.email_sender.send_auto_reply")
-    @patch("app.services.email_sender.forward_to_team")
-    @patch("app.services.ai_classifier.AIClassifier._call_ai_service")
+    @patch("backend.src.infrastructure.external.mailgun.send_auto_reply")
+    @patch("backend.src.infrastructure.external.mailgun.forward_to_team")
+    @patch("backend.src.core.email.classifier.AIClassifier._call_ai_service")
     def test_webhook_response_time(
         self, mock_ai_service, mock_forward, mock_auto_reply, client: TestClient, auth_headers: dict
     ):

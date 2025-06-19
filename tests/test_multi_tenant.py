@@ -3,12 +3,10 @@ Enhanced multi-tenant functionality tests.
 Tests the advanced client identification, domain resolution, and fuzzy matching capabilities.
 """
 
-
 import pytest
 
-from app.services.client_manager import ClientIdentificationResult, EnhancedClientManager
-from app.utils.client_loader import ClientLoadError, get_available_clients
-from app.utils.domain_resolver import (
+from backend.src.core.clients.manager import ClientIdentificationResult, EnhancedClientManager
+from backend.src.core.clients.resolver import (
     DomainMatcher,
     calculate_domain_similarity,
     extract_domain_from_email,
@@ -17,11 +15,13 @@ from app.utils.domain_resolver import (
     match_domain_pattern,
     normalize_domain,
 )
+from backend.src.infrastructure.config.manager import ConfigurationError, get_config_manager
 
 
 def test_client_discovery():
     """Test that we can discover available clients"""
-    clients = get_available_clients()
+    config_manager = get_config_manager()
+    clients = list(config_manager.get_all_clients().keys())
     assert isinstance(clients, list)
     assert len(clients) >= 1  # Should have at least client-001-cole-nielson
 
@@ -33,12 +33,12 @@ def test_client_discovery():
 
 def test_load_client_config():
     """Test loading client configuration"""
-    from app.utils.client_loader import load_client_config
+    config_manager = get_config_manager()
 
     # Should be able to load the test client
-    config = load_client_config("client-001-cole-nielson")
-    assert config.client.id == "client-001-cole-nielson"
-    assert config.client.name == "Cole Nielson Email Router"
+    config = config_manager.get_client_config("client-001-cole-nielson")
+    assert config.client_id == "client-001-cole-nielson"
+    assert config.name == "Cole Nielson Email Router"
     assert config.domains.primary == "mail.colesportfolio.com"
 
 
@@ -135,8 +135,11 @@ def test_invalid_client_id():
     """Test handling of invalid client IDs with enhanced error reporting"""
     manager = EnhancedClientManager()
 
-    with pytest.raises(ClientLoadError):
-        manager.get_client_config("invalid-client-id")
+    # The new config manager returns None for invalid clients, it does not raise an error
+    # on get_client_config. An error would be raised on initialization if a config is malformed.
+    # We can test that get_client_config returns None.
+    config = manager.get_client_config("invalid-client-id")
+    assert config is None
 
 
 # New tests for enhanced features

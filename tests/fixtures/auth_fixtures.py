@@ -4,8 +4,8 @@ Authentication-specific test fixtures.
 
 import pytest
 
-from app.database.models import User, UserRole, UserStatus
-from app.security.authentication.jwt_service import AuthService
+from backend.src.core.authentication.jwt import AuthService
+from backend.src.infrastructure.database.models import User, UserRole, UserStatus
 
 
 @pytest.fixture(scope="function")

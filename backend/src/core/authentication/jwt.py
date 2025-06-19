@@ -124,7 +124,7 @@ class AuthService:
 
         # Import models dynamically to avoid circular imports
         try:
-            from ...database.models import User, UserRole, UserSession, UserStatus
+            from ...infrastructure.database.models import User, UserRole, UserSession, UserStatus
 
             self.User = User
             self.UserRole = UserRole

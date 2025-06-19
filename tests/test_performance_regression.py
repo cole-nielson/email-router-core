@@ -10,14 +10,19 @@ from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 
 import pytest
+from fastapi.testclient import TestClient
 
-from app.services.ai_classifier import get_ai_classifier
-from app.services.client_manager import ClientManager, get_client_manager
-from app.services.email_service import EmailService, get_email_service
-from app.services.routing_engine import get_routing_engine
+from backend.src.core.clients.manager import ClientManager, get_client_manager
+from backend.src.core.email.classifier import get_ai_classifier
+from backend.src.core.email.composer import EmailService, get_email_service
+from backend.src.core.email.router import get_routing_engine
+from backend.src.main import app
 
 # import psutil  # Not available in this environment
 # import os
+
+# Create a test client for the FastAPI app
+client = TestClient(app)
 
 
 class TestPerformanceBenchmarks:
@@ -72,7 +77,7 @@ class TestPerformanceBenchmarks:
 
         for _ in range(50):
             config = client_manager.get_client_config("client-001-cole-nielson")
-            assert config.client.id == "client-001-cole-nielson"
+            assert config.client_id == "client-001-cole-nielson"
 
         end_time = time.time()
         total_time = end_time - start_time
@@ -265,7 +270,7 @@ class TestConcurrencyPerformance:
             start_time = time.time()
             config = client_manager.get_client_config("client-001-cole-nielson")
             end_time = time.time()
-            return end_time - start_time, config.client.name
+            return end_time - start_time, config.name
 
         # Test with multiple threads
         with ThreadPoolExecutor(max_workers=8) as executor:
