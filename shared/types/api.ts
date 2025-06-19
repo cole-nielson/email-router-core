@@ -9,7 +9,7 @@ export interface LoginRequest {
   password: string;
 }
 
-export interface LoginResponse {
+export interface TokenResponse {
   access_token: string;
   refresh_token: string;
   token_type: string;
@@ -24,6 +24,55 @@ export interface UserInfo {
   role: string;
   client_id: string | null;
   permissions: string[];
+}
+
+export interface AuthenticatedUser {
+  id: number;
+  username: string;
+  email: string | null;
+  role: string;
+  client_id: string | null;
+  permissions: string[];
+  created_at: string;
+  last_login: string | null;
+}
+
+export interface UserSession {
+  id: string;
+  user_id: number;
+  created_at: string;
+  last_activity: string;
+  ip_address: string;
+  user_agent: string;
+  is_active: boolean;
+}
+
+export interface RefreshTokenRequest {
+  refresh_token: string;
+}
+
+export interface PasswordChangeRequest {
+  current_password: string;
+  new_password: string;
+}
+
+export interface UserRegistrationRequest {
+  username: string;
+  password: string;
+  email?: string;
+  role: string;
+  client_id?: string;
+}
+
+export interface UserResponse {
+  id: number;
+  username: string;
+  email: string | null;
+  role: string;
+  client_id: string | null;
+  created_at: string;
+  last_login: string | null;
+  is_active: boolean;
 }
 
 // Client Management Types
@@ -102,7 +151,7 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
 }
 
 // Error Types
-export interface ApiError {
+export interface APIError {
   error: string;
   details?: Record<string, any>;
   timestamp: string;
