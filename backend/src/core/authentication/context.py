@@ -8,7 +8,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class SecurityContext(BaseModel):
     Request-scoped security context containing authentication and authorization state.
 
     This class centralizes all security-related information for a request,
-    replacing the scattered state management across multiple middleware.
+    providing a single source of truth for authentication and authorization decisions.
     """
 
     # Authentication state
@@ -43,7 +43,7 @@ class SecurityContext(BaseModel):
     # Authorization data
     role: Optional[str] = None
     client_id: Optional[str] = None
-    permissions: List[str] = []
+    permissions: List[str] = Field(default_factory=list)
 
     # Security metadata
     rate_limit_tier: str = "standard"
@@ -66,6 +66,7 @@ class SecurityContext(BaseModel):
 
         use_enum_values = True
         validate_assignment = True
+        arbitrary_types_allowed = True
 
     @classmethod
     def create_unauthenticated(
@@ -74,7 +75,17 @@ class SecurityContext(BaseModel):
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
     ) -> "SecurityContext":
-        """Create an unauthenticated security context."""
+        """
+        Create an unauthenticated security context.
+
+        Args:
+            request_id: Unique request identifier
+            ip_address: Client IP address
+            user_agent: Client user agent string
+
+        Returns:
+            SecurityContext instance for unauthenticated request
+        """
         return cls(
             is_authenticated=False,
             auth_type=AuthenticationType.NONE,
@@ -86,13 +97,25 @@ class SecurityContext(BaseModel):
     @classmethod
     def create_from_jwt_user(
         cls,
-        user: Any,  # AuthenticatedUser from auth_service
+        user: Any,  # AuthenticatedUser from auth service
         token: str,
         request_id: Optional[str] = None,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
     ) -> "SecurityContext":
-        """Create security context from JWT authenticated user."""
+        """
+        Create security context from JWT authenticated user.
+
+        Args:
+            user: Authenticated user object
+            token: JWT token
+            request_id: Unique request identifier
+            ip_address: Client IP address
+            user_agent: Client user agent string
+
+        Returns:
+            SecurityContext instance for JWT authenticated user
+        """
         return cls(
             is_authenticated=True,
             auth_type=AuthenticationType.JWT,
@@ -123,7 +146,21 @@ class SecurityContext(BaseModel):
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
     ) -> "SecurityContext":
-        """Create security context from API key authentication."""
+        """
+        Create security context from API key authentication.
+
+        Args:
+            client_id: Client identifier
+            api_key_id: API key identifier
+            permissions: List of granted permissions
+            token: API key token
+            request_id: Unique request identifier
+            ip_address: Client IP address
+            user_agent: Client user agent string
+
+        Returns:
+            SecurityContext instance for API key authenticated request
+        """
         return cls(
             is_authenticated=True,
             auth_type=AuthenticationType.API_KEY,
@@ -249,7 +286,12 @@ class SecurityContext(BaseModel):
         return self.is_authenticated
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert security context to dictionary for logging/debugging."""
+        """
+        Convert security context to dictionary for logging/debugging.
+
+        Returns:
+            Dictionary representation of security context
+        """
         return {
             "is_authenticated": self.is_authenticated,
             "auth_type": self.auth_type,

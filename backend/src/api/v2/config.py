@@ -8,11 +8,12 @@ from typing import Annotated, Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, EmailStr
+from sqlalchemy.orm import Session
 
-from ...application.dependencies.auth import require_authenticated_user
-from ...core.authentication.jwt import AuthenticatedUser
-from ...core.authentication.rbac import RBACService
-from ...infrastructure.legacy.config_service import ConfigService, get_config_service
+from ...application.dependencies.auth import require_auth
+from ...core.authentication.context import SecurityContext
+from ...infrastructure.config.database_bridge import DatabaseConfigBridge
+from ...infrastructure.database.connection import get_database_session
 
 logger = logging.getLogger(__name__)
 
@@ -120,14 +121,18 @@ class AIPromptResponse(BaseModel):
 @router.get("/clients/{client_id}", response_model=ClientResponse)
 async def get_client_config(
     client_id: Annotated[str, Path(description="Client ID")],
-    config_service: Annotated[ConfigService, Depends(get_config_service)],
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    db_session: Annotated[Session, Depends(get_database_session)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
 ):
     """Get complete client configuration."""
     # Check permission
-    RBACService.check_permission(current_user, "client:read", client_id)
+    if not security_context.has_permission("client:read", client_id):
+        raise HTTPException(
+            status_code=403, detail=f"Permission denied: client:read for {client_id}"
+        )
 
-    client = config_service.get_client(client_id)
+    config_bridge = DatabaseConfigBridge(db_session)
+    client = config_bridge.get_client(client_id)
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
 
@@ -146,21 +151,24 @@ async def get_client_config(
 @router.post("/clients", response_model=ClientResponse, status_code=201)
 async def create_client(
     request: ClientCreateRequest,
-    config_service: Annotated[ConfigService, Depends(get_config_service)],
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    db_session: Annotated[Session, Depends(get_database_session)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
 ):
     """Create a new client configuration."""
     # Check permission
-    RBACService.check_permission(current_user, "clients:write")
+    if not security_context.has_permission("clients:write"):
+        raise HTTPException(status_code=403, detail="Permission denied: clients:write")
+
+    config_bridge = DatabaseConfigBridge(db_session)
 
     # Check if client already exists
-    existing = config_service.get_client(request.id)
+    existing = config_bridge.get_client(request.id)
     if existing:
         raise HTTPException(status_code=409, detail="Client already exists")
 
     client_data = request.model_dump()
-    client = config_service.create_client(client_data, current_user.username)
-    config_service.db.commit()
+    client = config_bridge.create_client(client_data, security_context.username)
+    db_session.commit()
 
     return ClientResponse(
         id=client.id,
@@ -178,18 +186,22 @@ async def create_client(
 async def update_client_config(
     client_id: Annotated[str, Path(description="Client ID")],
     updates: Dict[str, Any],
-    config_service: Annotated[ConfigService, Depends(get_config_service)],
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    db_session: Annotated[Session, Depends(get_database_session)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
 ):
     """Update client configuration."""
     # Check permission
-    RBACService.check_permission(current_user, "client:write", client_id)
+    if not security_context.has_permission("client:write", client_id):
+        raise HTTPException(
+            status_code=403, detail=f"Permission denied: client:write for {client_id}"
+        )
 
-    client = config_service.update_client(client_id, updates, current_user.username)
+    config_bridge = DatabaseConfigBridge(db_session)
+    client = config_bridge.update_client(client_id, updates, security_context.username)
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
 
-    config_service.db.commit()
+    db_session.commit()
 
     return ClientResponse(
         id=client.id,
@@ -211,14 +223,18 @@ async def update_client_config(
 @router.get("/clients/{client_id}/routing", response_model=RoutingRulesResponse)
 async def get_routing_rules(
     client_id: Annotated[str, Path(description="Client ID")],
-    config_service: Annotated[ConfigService, Depends(get_config_service)],
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    db_session: Annotated[Session, Depends(get_database_session)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
 ):
     """Get routing rules for a client."""
     # Check permission
-    RBACService.check_permission(current_user, "routing:read", client_id)
+    if not security_context.has_permission("routing:read", client_id):
+        raise HTTPException(
+            status_code=403, detail=f"Permission denied: routing:read for {client_id}"
+        )
 
-    rules = config_service.get_routing_rules(client_id)
+    config_bridge = DatabaseConfigBridge(db_session)
+    rules = config_bridge.get_routing_rules(client_id)
     rules_dict = {rule.category: rule.email_address for rule in rules}
 
     return RoutingRulesResponse(rules=rules_dict)
@@ -229,17 +245,21 @@ async def update_routing_rule(
     client_id: Annotated[str, Path(description="Client ID")],
     category: Annotated[str, Path(description="Email category")],
     request: RoutingRuleRequest,
-    config_service: Annotated[ConfigService, Depends(get_config_service)],
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    db_session: Annotated[Session, Depends(get_database_session)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
 ):
     """Update routing rule for a specific category."""
     # Check permission
-    RBACService.check_permission(current_user, "routing:write", client_id)
+    if not security_context.has_permission("routing:write", client_id):
+        raise HTTPException(
+            status_code=403, detail=f"Permission denied: routing:write for {client_id}"
+        )
 
-    rule = config_service.update_routing_rule(
-        client_id, category, request.email_address, current_user.username
+    config_bridge = DatabaseConfigBridge(db_session)
+    rule = config_bridge.update_routing_rule(
+        client_id, category, request.email_address, security_context.username
     )
-    config_service.db.commit()
+    db_session.commit()
 
     return {"category": category, "email_address": rule.email_address}
 
@@ -248,18 +268,22 @@ async def update_routing_rule(
 async def delete_routing_rule(
     client_id: Annotated[str, Path(description="Client ID")],
     category: Annotated[str, Path(description="Email category")],
-    config_service: Annotated[ConfigService, Depends(get_config_service)],
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    db_session: Annotated[Session, Depends(get_database_session)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
 ):
     """Delete routing rule for a specific category."""
     # Check permission
-    RBACService.check_permission(current_user, "routing:delete", client_id)
+    if not security_context.has_permission("routing:delete", client_id):
+        raise HTTPException(
+            status_code=403, detail=f"Permission denied: routing:delete for {client_id}"
+        )
 
-    success = config_service.delete_routing_rule(client_id, category, current_user.username)
+    config_bridge = DatabaseConfigBridge(db_session)
+    success = config_bridge.delete_routing_rule(client_id, category, security_context.username)
     if not success:
         raise HTTPException(status_code=404, detail="Routing rule not found")
 
-    config_service.db.commit()
+    db_session.commit()
     return {"message": f"Routing rule for {category} deleted"}
 
 
@@ -271,14 +295,18 @@ async def delete_routing_rule(
 @router.get("/clients/{client_id}/branding", response_model=BrandingResponse)
 async def get_branding_config(
     client_id: Annotated[str, Path(description="Client ID")],
-    config_service: Annotated[ConfigService, Depends(get_config_service)],
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    db_session: Annotated[Session, Depends(get_database_session)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
 ):
     """Get branding configuration for a client."""
     # Check permission
-    RBACService.check_permission(current_user, "branding:read", client_id)
+    if not security_context.has_permission("branding:read", client_id):
+        raise HTTPException(
+            status_code=403, detail=f"Permission denied: branding:read for {client_id}"
+        )
 
-    branding = config_service.get_branding(client_id)
+    config_bridge = DatabaseConfigBridge(db_session)
+    branding = config_bridge.get_branding(client_id)
     if not branding:
         raise HTTPException(status_code=404, detail="Branding configuration not found")
 
@@ -297,18 +325,22 @@ async def get_branding_config(
 async def update_branding_config(
     client_id: Annotated[str, Path(description="Client ID")],
     request: BrandingRequest,
-    config_service: Annotated[ConfigService, Depends(get_config_service)],
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    db_session: Annotated[Session, Depends(get_database_session)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
 ):
     """Update branding configuration for a client."""
     # Check permission
-    RBACService.check_permission(current_user, "branding:write", client_id)
+    if not security_context.has_permission("branding:write", client_id):
+        raise HTTPException(
+            status_code=403, detail=f"Permission denied: branding:write for {client_id}"
+        )
 
     # Filter out None values
     branding_data = {k: v for k, v in request.model_dump().items() if v is not None}
 
-    branding = config_service.update_branding(client_id, branding_data, current_user.username)
-    config_service.db.commit()
+    config_bridge = DatabaseConfigBridge(db_session)
+    branding = config_bridge.update_branding(client_id, branding_data, security_context.username)
+    db_session.commit()
 
     return BrandingResponse(
         company_name=branding.company_name,
@@ -329,14 +361,18 @@ async def update_branding_config(
 @router.get("/clients/{client_id}/response-times", response_model=ResponseTimesResponse)
 async def get_response_times(
     client_id: Annotated[str, Path(description="Client ID")],
-    config_service: Annotated[ConfigService, Depends(get_config_service)],
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    db_session: Annotated[Session, Depends(get_database_session)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
 ):
     """Get response time configuration for a client."""
     # Check permission
-    RBACService.check_permission(current_user, "response_times:read", client_id)
+    if not security_context.has_permission("response_times:read", client_id):
+        raise HTTPException(
+            status_code=403, detail=f"Permission denied: response_times:read for {client_id}"
+        )
 
-    response_times = config_service.get_response_times(client_id)
+    config_bridge = DatabaseConfigBridge(db_session)
+    response_times = config_bridge.get_response_times(client_id)
     times_dict = {
         rt.category: {
             "target_response": rt.target_response,
@@ -353,21 +389,25 @@ async def update_response_time(
     client_id: Annotated[str, Path(description="Client ID")],
     category: Annotated[str, Path(description="Email category")],
     request: ResponseTimeRequest,
-    config_service: Annotated[ConfigService, Depends(get_config_service)],
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    db_session: Annotated[Session, Depends(get_database_session)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
 ):
     """Update response time for a specific category."""
     # Check permission
-    RBACService.check_permission(current_user, "response_times:write", client_id)
+    if not security_context.has_permission("response_times:write", client_id):
+        raise HTTPException(
+            status_code=403, detail=f"Permission denied: response_times:write for {client_id}"
+        )
 
-    response_time = config_service.update_response_time(
+    config_bridge = DatabaseConfigBridge(db_session)
+    response_time = config_bridge.update_response_time(
         client_id,
         category,
         request.target_response,
         request.business_hours_only,
-        current_user.username,
+        security_context.username,
     )
-    config_service.db.commit()
+    db_session.commit()
 
     return {
         "category": category,
@@ -385,14 +425,18 @@ async def update_response_time(
 async def get_ai_prompt(
     client_id: Annotated[str, Path(description="Client ID")],
     prompt_type: Annotated[str, Path(description="Prompt type")],
-    config_service: Annotated[ConfigService, Depends(get_config_service)],
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    db_session: Annotated[Session, Depends(get_database_session)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
 ):
     """Get AI prompt for a specific type."""
     # Check permission
-    RBACService.check_permission(current_user, "ai_prompts:read", client_id)
+    if not security_context.has_permission("ai_prompts:read", client_id):
+        raise HTTPException(
+            status_code=403, detail=f"Permission denied: ai_prompts:read for {client_id}"
+        )
 
-    prompt = config_service.get_ai_prompt(client_id, prompt_type)
+    config_bridge = DatabaseConfigBridge(db_session)
+    prompt = config_bridge.get_ai_prompt(client_id, prompt_type)
     if not prompt:
         raise HTTPException(status_code=404, detail="AI prompt not found")
 
@@ -409,17 +453,21 @@ async def update_ai_prompt(
     client_id: Annotated[str, Path(description="Client ID")],
     prompt_type: Annotated[str, Path(description="Prompt type")],
     request: AIPromptRequest,
-    config_service: Annotated[ConfigService, Depends(get_config_service)],
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    db_session: Annotated[Session, Depends(get_database_session)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
 ):
     """Update AI prompt for a specific type."""
     # Check permission
-    RBACService.check_permission(current_user, "ai_prompts:write", client_id)
+    if not security_context.has_permission("ai_prompts:write", client_id):
+        raise HTTPException(
+            status_code=403, detail=f"Permission denied: ai_prompts:write for {client_id}"
+        )
 
-    prompt = config_service.update_ai_prompt(
-        client_id, prompt_type, request.prompt_content, current_user.username
+    config_bridge = DatabaseConfigBridge(db_session)
+    prompt = config_bridge.update_ai_prompt(
+        client_id, prompt_type, request.prompt_content, security_context.username
     )
-    config_service.db.commit()
+    db_session.commit()
 
     return AIPromptResponse(
         prompt_type=prompt.prompt_type,
@@ -437,14 +485,18 @@ async def update_ai_prompt(
 @router.post("/clients/{client_id}/sync-from-yaml")
 async def sync_from_yaml(
     client_id: Annotated[str, Path(description="Client ID")],
-    config_service: Annotated[ConfigService, Depends(get_config_service)],
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    db_session: Annotated[Session, Depends(get_database_session)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
 ):
     """Sync client configuration from YAML files to database."""
     # Check permission
-    RBACService.check_permission(current_user, "client:admin", client_id)
+    if not security_context.has_permission("client:admin", client_id):
+        raise HTTPException(
+            status_code=403, detail=f"Permission denied: client:admin for {client_id}"
+        )
 
-    success = config_service.sync_from_yaml(client_id)
+    config_bridge = DatabaseConfigBridge(db_session)
+    success = config_bridge.sync_from_yaml(client_id)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to sync from YAML")
 
@@ -454,15 +506,19 @@ async def sync_from_yaml(
 @router.get("/clients/{client_id}/audit-trail")
 async def get_audit_trail(
     client_id: Annotated[str, Path(description="Client ID")],
-    config_service: Annotated[ConfigService, Depends(get_config_service)],
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    db_session: Annotated[Session, Depends(get_database_session)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
     limit: Annotated[int, Query(description="Number of records to return")] = 50,
 ):
     """Get audit trail for client configuration changes."""
     # Check permission
-    RBACService.check_permission(current_user, "client:read", client_id)
+    if not security_context.has_permission("client:read", client_id):
+        raise HTTPException(
+            status_code=403, detail=f"Permission denied: client:read for {client_id}"
+        )
 
-    changes = config_service.get_audit_trail(client_id, limit)
+    config_bridge = DatabaseConfigBridge(db_session)
+    changes = config_bridge.get_audit_trail(client_id, limit)
 
     return {
         "changes": [

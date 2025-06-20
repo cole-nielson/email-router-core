@@ -1,0 +1,35 @@
+# =============================================================================
+# DEVELOPMENT DOCKERFILE - Includes dev tools and hot reloading
+# =============================================================================
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies including development tools
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Copy development requirements
+COPY backend/requirements/dev.txt ./requirements.txt
+
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
+
+# Copy application code (will be mounted as volume in docker-compose)
+COPY backend/src/ ./backend/src/
+COPY clients/ ./clients/
+
+# Set Python path
+ENV PYTHONPATH=/app
+
+# Expose port
+EXPOSE 8080
+
+# Development command with hot reload
+CMD ["python", "-m", "uvicorn", "backend.src.main:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]

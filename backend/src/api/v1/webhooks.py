@@ -13,7 +13,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 from ...application.middleware.auth import DualAuthUser, get_dual_auth_user
 from ...core.clients.manager import ClientManager, get_client_manager
 from ...core.dashboard.service import DashboardService, get_dashboard_service
-from ...core.email.classifier import DynamicClassifier, get_dynamic_classifier
+from ...core.email.classifier import AIClassifier, get_ai_classifier
 from ...core.email.composer import (
     EmailService,
     get_email_service,
@@ -67,7 +67,7 @@ async def mailgun_inbound_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
     client_manager: Annotated[ClientManager, Depends(get_client_manager)],
-    dynamic_classifier: Annotated[DynamicClassifier, Depends(get_dynamic_classifier)],
+    ai_classifier: Annotated[AIClassifier, Depends(get_ai_classifier)],
     routing_engine: Annotated[RoutingEngine, Depends(get_routing_engine)],
     dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
     email_service: Annotated[EmailService, Depends(get_email_service)],
@@ -210,7 +210,7 @@ async def process_email_pipeline(
             )
 
         # Step 1: AI Classification with client-specific prompts
-        classification = await dynamic_classifier.classify_email(email_data, client_id)
+        classification = await ai_classifier.classify_email(email_data, client_id)
 
         category = classification.get("category", "general")
         confidence = classification.get("confidence", 0.0)
@@ -451,7 +451,7 @@ async def test_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
     client_manager: Annotated[ClientManager, Depends(get_client_manager)],
-    dynamic_classifier: Annotated[DynamicClassifier, Depends(get_dynamic_classifier)],
+    ai_classifier: Annotated[AIClassifier, Depends(get_ai_classifier)],
     routing_engine: Annotated[RoutingEngine, Depends(get_routing_engine)],
     dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
     email_service: Annotated[EmailService, Depends(get_email_service)],

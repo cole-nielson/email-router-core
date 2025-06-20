@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from fastapi import HTTPException, Request, status
 
 from ...infrastructure.config.security import SecurityConfig
-from ...infrastructure.legacy.auth_context import AuthenticationType, SecurityContext
+from .context import AuthenticationType, SecurityContext
 
 logger = logging.getLogger(__name__)
 

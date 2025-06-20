@@ -11,14 +11,17 @@ from fastapi.security import HTTPBearer
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
-from ...application.dependencies.auth import require_authenticated_user
+from ...application.dependencies.auth import (
+    require_auth,
+    require_permission,
+)
+from ...core.authentication.context import SecurityContext
 from ...core.authentication.jwt import (
     AuthenticatedUser,
     LoginRequest,
     TokenResponse,
     get_auth_service,
 )
-from ...core.authentication.rbac import RBACService
 from ...infrastructure.database.connection import get_db
 
 logger = logging.getLogger(__name__)
@@ -144,7 +147,7 @@ async def refresh_token(request: RefreshTokenRequest, db: Session = Depends(get_
 
 @router.post("/logout")
 async def logout(
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
     db: Session = Depends(get_db),
 ):
     """Logout user by revoking current token."""
@@ -157,9 +160,13 @@ async def logout(
 
         # Extract token from request (this would need to be improved)
         # For now, we'll revoke all user tokens as a secure logout
-        revoked_count = auth_service.revoke_all_user_tokens(current_user.id, "user_logout")
+        revoked_count = auth_service.revoke_all_user_tokens(
+            int(security_context.user_id), "user_logout"
+        )
 
-        logger.info(f"User '{current_user.username}' logged out, {revoked_count} tokens revoked")
+        logger.info(
+            f"User '{security_context.username}' logged out, {revoked_count} tokens revoked"
+        )
 
         return {"message": "Logged out successfully", "tokens_revoked": revoked_count}
 
@@ -179,13 +186,16 @@ async def logout(
 @router.post("/register", response_model=UserResponse, status_code=201)
 async def register_user(
     request: UserRegistrationRequest,
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
     db: Session = Depends(get_db),
 ):
     """Register a new user (admin only)."""
     try:
         # Check permissions - only super admin can create users
-        RBACService.check_permission(current_user, "users:write")
+        if not security_context.has_permission("users:write"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied: users:write"
+            )
 
         auth_service = get_auth_service(db)
         if not auth_service:
@@ -234,7 +244,7 @@ async def register_user(
         db.commit()
         db.refresh(user)
 
-        logger.info(f"User '{request.username}' registered by admin '{current_user.username}'")
+        logger.info(f"User '{request.username}' registered by admin '{security_context.username}'")
 
         return UserResponse(
             id=user.id,
@@ -260,7 +270,7 @@ async def register_user(
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
     db: Session = Depends(get_db),
 ):
     """Get current user information."""
@@ -269,7 +279,7 @@ async def get_current_user_info(
         # Import User model dynamically
         from ..database.models import User
 
-        user = db.query(User).filter(User.id == current_user.id).first()
+        user = db.query(User).filter(User.id == int(security_context.user_id)).first()
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
@@ -297,7 +307,7 @@ async def get_current_user_info(
 @router.put("/me/password")
 async def change_password(
     request: PasswordChangeRequest,
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
     db: Session = Depends(get_db),
 ):
     """Change current user password."""
@@ -311,7 +321,7 @@ async def change_password(
         # Import User model dynamically
         from ..database.models import User
 
-        user = db.query(User).filter(User.id == current_user.id).first()
+        user = db.query(User).filter(User.id == int(security_context.user_id)).first()
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
@@ -329,7 +339,7 @@ async def change_password(
 
         db.commit()
 
-        logger.info(f"Password changed for user '{current_user.username}'")
+        logger.info(f"Password changed for user '{security_context.username}'")
 
         return {"message": "Password changed successfully. Please log in again."}
 
@@ -350,7 +360,7 @@ async def change_password(
 
 @router.get("/users", response_model=List[UserResponse])
 async def list_users(
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
     client_id: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
@@ -359,7 +369,10 @@ async def list_users(
     """List users (admin only)."""
     try:
         # Check permissions
-        RBACService.check_permission(current_user, "users:read")
+        if not security_context.has_permission("users:read"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied: users:read"
+            )
 
         # Import User model dynamically
         from ..database.models import User
@@ -367,8 +380,8 @@ async def list_users(
         query = db.query(User)
 
         # Filter by client if specified and user is not super admin
-        if current_user.role != "super_admin":
-            query = query.filter(User.client_id == current_user.client_id)
+        if not security_context.is_super_admin:
+            query = query.filter(User.client_id == security_context.client_id)
         elif client_id:
             query = query.filter(User.client_id == client_id)
 
@@ -401,21 +414,24 @@ async def list_users(
 @router.delete("/users/{user_id}")
 async def delete_user(
     user_id: int,
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
     db: Session = Depends(get_db),
 ):
     """Delete user (super admin only)."""
     try:
         # Check permissions - only super admin can delete users
-        RBACService.check_permission(current_user, "users:delete")
+        if not security_context.has_permission("users:delete"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied: users:delete"
+            )
 
-        if current_user.role != "super_admin":
+        if not security_context.is_super_admin:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Only super admin can delete users"
             )
 
         # Prevent self-deletion
-        if user_id == current_user.id:
+        if user_id == int(security_context.user_id):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete your own account"
             )
@@ -440,7 +456,7 @@ async def delete_user(
         db.delete(user)
         db.commit()
 
-        logger.info(f"User '{user.username}' deleted by super admin '{current_user.username}'")
+        logger.info(f"User '{user.username}' deleted by super admin '{security_context.username}'")
 
         return {"message": f"User '{user.username}' deleted successfully"}
 
@@ -461,7 +477,7 @@ async def delete_user(
 
 @router.get("/sessions")
 async def list_active_sessions(
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
     db: Session = Depends(get_db),
 ):
     """List active sessions for current user."""
@@ -472,7 +488,7 @@ async def list_active_sessions(
 
         sessions = (
             db.query(UserSession)
-            .filter(UserSession.user_id == current_user.id, UserSession.is_active)
+            .filter(UserSession.user_id == int(security_context.user_id), UserSession.is_active)
             .order_by(UserSession.created_at.desc())
             .all()
         )
@@ -504,7 +520,7 @@ async def list_active_sessions(
 @router.delete("/sessions/{session_id}")
 async def revoke_session(
     session_id: str,
-    current_user: Annotated[AuthenticatedUser, Depends(require_authenticated_user)],
+    security_context: Annotated[SecurityContext, Depends(require_auth)],
     db: Session = Depends(get_db),
 ):
     """Revoke a specific session."""
@@ -521,7 +537,10 @@ async def revoke_session(
         # Verify session belongs to current user
         session = (
             db.query(UserSession)
-            .filter(UserSession.session_id == session_id, UserSession.user_id == current_user.id)
+            .filter(
+                UserSession.session_id == session_id,
+                UserSession.user_id == int(security_context.user_id),
+            )
             .first()
         )
 

@@ -559,7 +559,7 @@ def get_dashboard_service() -> DashboardService:
     global _dashboard_service
 
     if _dashboard_service is None:
-        from ..services.client_manager import get_client_manager
+        from ..clients.manager import get_client_manager
 
         client_manager = get_client_manager()
         _dashboard_service = DashboardService(client_manager)

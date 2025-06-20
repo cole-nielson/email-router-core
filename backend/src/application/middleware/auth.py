@@ -10,10 +10,10 @@ from typing import Callable, Optional
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from ...core.authentication.context import SecurityContext
 from ...core.authentication.handlers import AuthenticationManager
 from ...core.authentication.manager import SecurityManager
 from ...infrastructure.config.security import get_security_config
-from ...infrastructure.legacy.auth_context import SecurityContext
 
 logger = logging.getLogger(__name__)
 

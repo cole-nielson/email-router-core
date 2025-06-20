@@ -173,7 +173,7 @@ webhooks.py → client_manager → ai_classifier → email_service → email_sen
 4. **Complete processing** in 5-7 seconds with comprehensive audit logging
 
 ### Multi-Tenant Configuration Management
-**Environment Variables** (managed in `app/utils/config.py`):
+**Environment Variables** (managed in `src/infrastructure/config/manager.py`):
 - **Required:** `ANTHROPIC_API_KEY`, `MAILGUN_API_KEY`, `MAILGUN_DOMAIN`
 - **Optional:** `ANTHROPIC_MODEL` (defaults to claude-3-5-sonnet-20241022), `PORT` (8080)
 

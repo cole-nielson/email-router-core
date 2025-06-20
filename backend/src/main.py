@@ -35,14 +35,14 @@ config = get_app_config()
 configure_logging(level=config.server.log_level.value, format_string=config.server.log_format)
 logger = get_logger(__name__)
 
-from .application.middleware.rate_limit import RateLimiterMiddleware
-from .core.models.schemas import APIInfo, HealthResponse
-from .api.v1.clients import router as api_v1_router
-from .api.v2.config import router as api_v2_router
 from .api.v1.auth import router as auth_router
+from .api.v1.clients import router as api_v1_router
 from .api.v1.dashboard import router as dashboard_router
 from .api.v1.webhooks import router as webhook_router
+from .api.v2.config import router as api_v2_router
 from .application.middleware.auth import UnifiedAuthMiddleware as DualAuthMiddleware
+from .application.middleware.rate_limit import RateLimiterMiddleware
+from .core.models.schemas import APIInfo, HealthResponse
 from .infrastructure.monitoring.metrics import MetricsCollector
 from .infrastructure.websockets.manager import get_websocket_manager
 
@@ -620,4 +620,4 @@ if __name__ == "__main__":
     import uvicorn
 
     logger.info(f"Starting Email Router SaaS API {config.app_version} on port {config.server.port}")
-    uvicorn.run("backend.src.main:app", host=config.server.host, port=config.server.port, reload=False)
+    uvicorn.run("src.main:app", host=config.server.host, port=config.server.port, reload=False)

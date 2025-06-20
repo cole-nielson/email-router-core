@@ -11,7 +11,7 @@ from fastapi import Request
 from sqlalchemy.orm import Session
 
 from ...infrastructure.config.security import SecurityConfig
-from ...infrastructure.legacy.auth_context import SecurityContext
+from .context import SecurityContext
 
 logger = logging.getLogger(__name__)
 

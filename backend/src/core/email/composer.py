@@ -217,29 +217,6 @@ class EmailService:
             team_fallback = self._get_hard_fallback_team_analysis(classification)
             return customer_fallback, team_fallback
 
-    async def generate_branded_email_templates(
-        self,
-        email_data: Dict[str, Any],
-        classification: Dict[str, Any],
-        client_id: Optional[str] = None,
-    ) -> Tuple[str, str]:
-        """
-        DEPRECATED: Use generate_plain_text_emails() for human-like responses.
-        Generate both customer acknowledgment and team analysis with branding.
-
-        Args:
-            email_data: Email data from webhook
-            classification: Email classification result
-            client_id: Optional client ID
-
-        Returns:
-            Tuple of (customer_template, team_template) with HTML branding
-        """
-        logger.warning(
-            "generate_branded_email_templates is deprecated, use generate_plain_text_emails"
-        )
-        return await self.generate_plain_text_emails(email_data, classification, client_id)
-
     # =============================================================================
     # TEMPLATE ENGINE FUNCTIONALITY
     # =============================================================================
@@ -954,34 +931,8 @@ def get_email_service() -> EmailService:
 
 
 # =============================================================================
-# BACKWARD COMPATIBILITY FUNCTIONS
+# PUBLIC API FUNCTIONS
 # =============================================================================
-
-
-async def generate_customer_acknowledgment(
-    email_data: Dict[str, Any], classification: Dict[str, Any], client_id: Optional[str] = None
-) -> str:
-    """Backward compatibility function."""
-    email_service = get_email_service()
-    return await email_service.generate_customer_acknowledgment(
-        email_data, classification, client_id
-    )
-
-
-async def generate_team_analysis(
-    email_data: Dict[str, Any], classification: Dict[str, Any], client_id: Optional[str] = None
-) -> str:
-    """Backward compatibility function."""
-    email_service = get_email_service()
-    return await email_service.generate_team_analysis(email_data, classification, client_id)
-
-
-async def generate_branded_email_templates(
-    email_data: Dict[str, Any], classification: Dict[str, Any], client_id: Optional[str] = None
-) -> Tuple[str, str]:
-    """Backward compatibility function - now returns plain text for customers."""
-    email_service = get_email_service()
-    return await email_service.generate_plain_text_emails(email_data, classification, client_id)
 
 
 async def generate_plain_text_emails(
@@ -990,23 +941,3 @@ async def generate_plain_text_emails(
     """Generate human-like plain text customer response and HTML team analysis."""
     email_service = get_email_service()
     return await email_service.generate_plain_text_emails(email_data, classification, client_id)
-
-
-async def generate_response_draft(
-    email_data: Dict[str, Any], classification: Dict[str, Any]
-) -> str:
-    """Backward compatibility function."""
-    return await generate_team_analysis(email_data, classification)
-
-
-# Backward compatibility class aliases
-class EnhancedTemplateEngine(EmailService):
-    """Backward compatibility alias."""
-
-    pass
-
-
-class TemplateEngine(EmailService):
-    """Backward compatibility alias."""
-
-    pass

@@ -1,16 +1,13 @@
 """
-Configuration service for database-backed client management.
-🔧 CRUD operations for client configurations with YAML sync.
+Database Configuration Bridge
+🌉 Bridges the new ConfigManager with legacy database operations.
 """
 
 import logging
 from typing import Any, Dict, List, Optional
 
-from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from ...infrastructure.config.manager import get_config_manager
-from ..database.connection import get_database_session
 from ..database.models import (
     AIPrompt,
     Client,
@@ -19,30 +16,53 @@ from ..database.models import (
     ResponseTime,
     RoutingRule,
 )
+from .manager import ConfigManager, get_config_manager
 
 logger = logging.getLogger(__name__)
 
 
-class ConfigService:
-    """Database-backed configuration service."""
+class DatabaseConfigBridge:
+    """Bridges configuration manager with database operations."""
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, config_manager: Optional[ConfigManager] = None):
         self.db = db
+        self.config_manager = config_manager or get_config_manager()
 
     # =============================================================================
     # CLIENT OPERATIONS
     # =============================================================================
 
     def get_client(self, client_id: str) -> Optional[Client]:
-        """Get client by ID."""
-        return self.db.query(Client).filter(Client.id == client_id).first()
+        """Get client by ID from database or config manager."""
+        # First try database
+        client = self.db.query(Client).filter(Client.id == client_id).first()
+        if client:
+            return client
+
+        # Fall back to config manager and create DB entry
+        config = self.config_manager.get_client_config(client_id)
+        if config:
+            return self._create_client_from_config(config)
+
+        return None
 
     def list_clients(self, status: str = None) -> List[Client]:
         """List all clients, optionally filtered by status."""
+        # Get from database
         query = self.db.query(Client)
         if status:
             query = query.filter(Client.status == status)
-        return query.all()
+        db_clients = {c.id: c for c in query.all()}
+
+        # Merge with config manager clients
+        config_clients = self.config_manager.get_all_clients()
+        for client_id, config in config_clients.items():
+            if client_id not in db_clients:
+                client = self._create_client_from_config(config)
+                if not status or client.status == status:
+                    db_clients[client_id] = client
+
+        return list(db_clients.values())
 
     def create_client(self, client_data: Dict[str, Any], created_by: str = None) -> Client:
         """Create new client configuration."""
@@ -56,7 +76,7 @@ class ConfigService:
         )
 
         self.db.add(client)
-        self.db.flush()  # Get the ID
+        self.db.flush()
 
         # Log creation
         self._log_change("CREATE", "clients", client.id, None, client_data, created_by)
@@ -98,11 +118,24 @@ class ConfigService:
 
     def get_routing_rules(self, client_id: str) -> List[RoutingRule]:
         """Get all routing rules for a client."""
-        return (
+        # First get from database
+        db_rules = (
             self.db.query(RoutingRule)
             .filter(RoutingRule.client_id == client_id, RoutingRule.is_active == True)
             .all()
         )
+
+        # If no DB rules, load from config
+        if not db_rules:
+            config = self.config_manager.get_client_config(client_id)
+            if config and config.routing:
+                for category, email in config.routing.items():
+                    rule = RoutingRule(client_id=client_id, category=category, email_address=email)
+                    self.db.add(rule)
+                    db_rules.append(rule)
+                self.db.flush()
+
+        return db_rules
 
     def update_routing_rule(
         self, client_id: str, category: str, email_address: str, updated_by: str = None
@@ -164,7 +197,31 @@ class ConfigService:
 
     def get_branding(self, client_id: str) -> Optional[ClientBranding]:
         """Get client branding configuration."""
-        return self.db.query(ClientBranding).filter(ClientBranding.client_id == client_id).first()
+        # First try database
+        branding = (
+            self.db.query(ClientBranding).filter(ClientBranding.client_id == client_id).first()
+        )
+        if branding:
+            return branding
+
+        # Fall back to config manager
+        config = self.config_manager.get_client_config(client_id)
+        if config and config.branding:
+            branding = ClientBranding(
+                client_id=client_id,
+                company_name=config.branding.company_name,
+                primary_color=config.branding.primary_color,
+                secondary_color=config.branding.secondary_color,
+                logo_url=config.branding.logo_url,
+                email_signature=config.branding.email_signature,
+                footer_text=config.branding.footer_text,
+                colors=getattr(config.branding, "colors", None),
+            )
+            self.db.add(branding)
+            self.db.flush()
+            return branding
+
+        return None
 
     def update_branding(
         self, client_id: str, branding_data: Dict[str, Any], updated_by: str = None
@@ -208,7 +265,36 @@ class ConfigService:
 
     def get_response_times(self, client_id: str) -> List[ResponseTime]:
         """Get all response time configurations for a client."""
-        return self.db.query(ResponseTime).filter(ResponseTime.client_id == client_id).all()
+        # First get from database
+        db_times = self.db.query(ResponseTime).filter(ResponseTime.client_id == client_id).all()
+
+        # If no DB times, load from config
+        if not db_times:
+            config = self.config_manager.get_client_config(client_id)
+            if config and config.response_times:
+                # Handle different response time categories
+                for category in ["support", "billing", "sales", "general", "urgent"]:
+                    if hasattr(config.response_times, category):
+                        settings = getattr(config.response_times, category)
+                        if settings:
+                            if isinstance(settings, str):
+                                target = settings
+                                business_hours = True
+                            else:
+                                target = settings.target
+                                business_hours = getattr(settings, "business_hours_only", True)
+
+                            response_time = ResponseTime(
+                                client_id=client_id,
+                                category=category,
+                                target_response=target,
+                                business_hours_only=business_hours,
+                            )
+                            self.db.add(response_time)
+                            db_times.append(response_time)
+                self.db.flush()
+
+        return db_times
 
     def update_response_time(
         self,
@@ -267,7 +353,8 @@ class ConfigService:
 
     def get_ai_prompt(self, client_id: str, prompt_type: str) -> Optional[AIPrompt]:
         """Get active AI prompt for a type."""
-        return (
+        # First try database
+        prompt = (
             self.db.query(AIPrompt)
             .filter(
                 AIPrompt.client_id == client_id,
@@ -276,6 +363,27 @@ class ConfigService:
             )
             .first()
         )
+
+        if prompt:
+            return prompt
+
+        # Fall back to config manager
+        try:
+            prompt_content = self.config_manager.load_ai_prompt(client_id, prompt_type)
+            if prompt_content:
+                prompt = AIPrompt(
+                    client_id=client_id,
+                    prompt_type=prompt_type,
+                    prompt_content=prompt_content,
+                    version=1,
+                )
+                self.db.add(prompt)
+                self.db.flush()
+                return prompt
+        except Exception as e:
+            logger.debug(f"Could not load AI prompt from config: {e}")
+
+        return None
 
     def update_ai_prompt(
         self, client_id: str, prompt_type: str, prompt_content: str, updated_by: str = None
@@ -316,8 +424,7 @@ class ConfigService:
         """Load configuration from YAML files into database."""
         try:
             # Load existing YAML configuration
-            config_manager = get_config_manager()
-            config = config_manager.get_client_config(client_id)
+            config = self.config_manager.get_client_config(client_id)
 
             if not config:
                 raise ValueError(f"Client config for {client_id} not found in ConfigManager")
@@ -329,7 +436,7 @@ class ConfigService:
                 "industry": config.industry,
                 "status": "active" if config.active else "inactive",
                 "timezone": config.timezone,
-                "business_hours": "9-17",  # Placeholder, needs to be mapped from new config
+                "business_hours": "9-17",  # Placeholder
             }
 
             existing_client = self.get_client(client_id)
@@ -358,17 +465,14 @@ class ConfigService:
 
             # Sync response times
             if config.response_times:
-                # Handle different response time categories
                 for category in ["support", "billing", "sales", "general", "urgent"]:
                     if hasattr(config.response_times, category):
                         settings = getattr(config.response_times, category)
-                        if settings:  # Skip if None/empty
+                        if settings:
                             if isinstance(settings, str):
-                                # Simple string format
                                 target = settings
                                 business_hours = True
                             else:
-                                # ResponseTimeDetail object
                                 target = settings.target
                                 business_hours = getattr(settings, "business_hours_only", True)
                             self.update_response_time(
@@ -387,7 +491,6 @@ class ConfigService:
     def sync_to_yaml(self, client_id: str) -> bool:
         """Export database configuration to YAML files."""
         # This will be implemented in a later milestone
-        # For now, we'll keep YAML as read-only backup
         logger.info(f"📝 YAML sync for {client_id} (not implemented yet)")
         return True
 
@@ -430,12 +533,29 @@ class ConfigService:
             .all()
         )
 
+    # =============================================================================
+    # PRIVATE HELPERS
+    # =============================================================================
+
+    def _create_client_from_config(self, config) -> Client:
+        """Create a Client model instance from ConfigManager config."""
+        client = Client(
+            id=config.client_id,
+            name=config.name,
+            industry=config.industry,
+            status="active" if config.active else "inactive",
+            timezone=config.timezone,
+            business_hours="9-17",  # Default, could be enhanced
+        )
+        # Don't add to DB session here, just return the model
+        return client
+
 
 # =============================================================================
 # DEPENDENCY INJECTION
 # =============================================================================
 
 
-def get_config_service(db: Session = Depends(get_database_session)) -> ConfigService:
-    """Dependency injection for ConfigService."""
-    return ConfigService(db)
+def get_database_config_bridge(db: Session) -> DatabaseConfigBridge:
+    """Dependency injection for DatabaseConfigBridge."""
+    return DatabaseConfigBridge(db)

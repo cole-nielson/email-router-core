@@ -8,7 +8,7 @@ from typing import Annotated, Optional
 
 from fastapi import Depends, HTTPException, Request, status
 
-from ...infrastructure.legacy.auth_context import AuthenticationType, SecurityContext
+from ...core.authentication.context import AuthenticationType, SecurityContext
 
 logger = logging.getLogger(__name__)
 
@@ -388,17 +388,3 @@ async def get_current_user_optional(
         SecurityContext if authenticated, None otherwise
     """
     return security_context if security_context.is_authenticated else None
-
-
-# =============================================================================
-# BACKWARD COMPATIBILITY DEPENDENCIES
-# =============================================================================
-
-# These aliases provide backward compatibility with existing dependency names
-get_dual_auth_user = get_current_user
-require_dual_auth = require_auth
-get_current_user_from_request = get_current_user
-get_current_user_from_token = require_jwt_only
-require_authenticated_user = require_auth
-require_client_admin_or_super = require_admin
-require_super_admin_dual = require_super_admin
