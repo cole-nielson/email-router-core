@@ -63,7 +63,7 @@ uvicorn src.main:app --reload
 
 ### Frontend Setup
 ```bash
-cd frontend  
+cd frontend
 npm install
 cp .env.example .env.local
 npm run dev
@@ -106,7 +106,7 @@ pytest tests/unit          # Unit tests only
 pytest tests/integration   # Integration tests only
 ```
 
-### Frontend Tests  
+### Frontend Tests
 ```bash
 cd frontend
 npm run test              # Unit tests
@@ -149,7 +149,7 @@ kubectl apply -f infrastructure/kubernetes/
 The codebase follows clean architecture principles:
 
 - **Core**: Business logic independent of frameworks
-- **Infrastructure**: External services and data persistence  
+- **Infrastructure**: External services and data persistence
 - **Application**: Framework-specific middleware and DI
 - **Interface**: API endpoints and external interfaces
 
@@ -162,9 +162,9 @@ The codebase follows clean architecture principles:
 
 ## 📚 Documentation
 
-- [Architecture Overview](docs/architecture/overview.md)
+- [Architecture Overview](docs/architecture/system-architecture.md)
 - [API Documentation](docs/api/endpoints.md)
-- [Development Guide](docs/development/getting-started.md)
+- [Development Guide](docs/development/developer-guide.md)
 - [Deployment Guide](docs/operations/deployment.md)
 
 ## 🤝 Contributing
@@ -184,8 +184,8 @@ The codebase follows clean architecture principles:
    # Backend
    black backend/src backend/tests
    mypy backend/src
-   
-   # Frontend  
+
+   # Frontend
    npm run lint
    npm run format
    ```

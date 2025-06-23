@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 # Get unified configuration
 try:
-    from ..core import get_app_config
+    from ...core import get_app_config
 
     _app_config = get_app_config()
 
