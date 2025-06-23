@@ -27,24 +27,24 @@ except ImportError:
     print("⚠️ python-dotenv not installed, using system environment variables")
 
 # Initialize unified configuration system
-from .infrastructure.config.manager import get_app_config, get_config_manager
-from .infrastructure.logging.logger import configure_logging, get_logger
+from infrastructure.config.manager import get_app_config, get_config_manager
+from infrastructure.logging.logger import configure_logging, get_logger
 
 # Get configuration and set up logging
 config = get_app_config()
 configure_logging(level=config.server.log_level.value, format_string=config.server.log_format)
 logger = get_logger(__name__)
 
-from .api.v1.auth import router as auth_router
-from .api.v1.clients import router as api_v1_router
-from .api.v1.dashboard import router as dashboard_router
-from .api.v1.webhooks import router as webhook_router
-from .api.v2.config import router as api_v2_router
-from .application.middleware.auth import UnifiedAuthMiddleware as DualAuthMiddleware
-from .application.middleware.rate_limit import RateLimiterMiddleware
-from .core.models.schemas import APIInfo, HealthResponse
-from .infrastructure.monitoring.metrics import MetricsCollector
-from .infrastructure.websockets.manager import get_websocket_manager
+from api.v1.auth import router as auth_router
+from api.v1.clients import router as api_v1_router
+from api.v1.dashboard import router as dashboard_router
+from api.v1.webhooks import router as webhook_router
+from api.v2.config import router as api_v2_router
+from application.middleware.auth import UnifiedAuthMiddleware as DualAuthMiddleware
+from application.middleware.rate_limit import RateLimiterMiddleware
+from core.models.schemas import APIInfo, HealthResponse
+from infrastructure.monitoring.metrics import MetricsCollector
+from infrastructure.websockets.manager import get_websocket_manager
 
 # Initialize metrics collector
 metrics = MetricsCollector()
@@ -56,7 +56,7 @@ async def lifespan(app: FastAPI):
     # Startup
     try:
         # Run startup validation first
-        from .application.startup import validate_startup
+        from application.startup import validate_startup
 
         validation_results = validate_startup()
         logger.info(
@@ -64,7 +64,7 @@ async def lifespan(app: FastAPI):
         )
 
         # Initialize database
-        from .infrastructure.database.connection import init_database
+        from infrastructure.database.connection import init_database
 
         init_database()
         logger.info("✅ Database initialized successfully")

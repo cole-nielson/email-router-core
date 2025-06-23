@@ -59,7 +59,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         try:
             # Get environment for header customization
             try:
-                from ...core import get_app_config
+                from core import get_app_config
 
                 environment = get_app_config().environment.value
             except Exception:

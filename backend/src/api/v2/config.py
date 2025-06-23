@@ -10,10 +10,10 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
-from ...application.dependencies.auth import require_auth
-from ...core.authentication.context import SecurityContext
-from ...infrastructure.config.database_bridge import DatabaseConfigBridge
-from ...infrastructure.database.connection import get_database_session
+from application.dependencies.auth import require_auth
+from core.authentication.context import SecurityContext
+from infrastructure.config.database_bridge import DatabaseConfigBridge
+from infrastructure.database.connection import get_database_session
 
 logger = logging.getLogger(__name__)
 

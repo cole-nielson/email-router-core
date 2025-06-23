@@ -10,17 +10,17 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 
-from ...application.middleware.auth import DualAuthUser, get_dual_auth_user
-from ...core.clients.manager import ClientManager, get_client_manager
-from ...core.dashboard.service import DashboardService, get_dashboard_service
-from ...core.email.classifier import AIClassifier, get_ai_classifier
-from ...core.email.composer import (
+from application.middleware.auth import DualAuthUser, get_dual_auth_user
+from core.clients.manager import ClientManager, get_client_manager
+from core.dashboard.service import DashboardService, get_dashboard_service
+from core.email.classifier import AIClassifier, get_ai_classifier
+from core.email.composer import (
     EmailService,
     get_email_service,
 )
-from ...core.email.router import RoutingEngine, get_routing_engine
-from ...infrastructure.config.manager import get_app_config
-from ...infrastructure.external.mailgun import forward_to_team, send_auto_reply
+from core.email.router import RoutingEngine, get_routing_engine
+from infrastructure.config.manager import get_app_config
+from infrastructure.external.mailgun import forward_to_team, send_auto_reply
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
