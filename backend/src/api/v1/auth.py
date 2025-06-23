@@ -11,18 +11,18 @@ from fastapi.security import HTTPBearer
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
-from ...application.dependencies.auth import (
+from application.dependencies.auth import (
     require_auth,
     require_permission,
 )
-from ...core.authentication.context import SecurityContext
-from ...core.authentication.jwt import (
+from core.authentication.context import SecurityContext
+from core.authentication.jwt import (
     AuthenticatedUser,
     LoginRequest,
     TokenResponse,
     get_auth_service,
 )
-from ...infrastructure.database.connection import get_db
+from infrastructure.database.connection import get_db
 
 logger = logging.getLogger(__name__)
 

@@ -10,7 +10,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import HTTPException, Request, status
 
-from ...infrastructure.config.security import SecurityConfig
+from infrastructure.config.security import SecurityConfig
+
 from .context import AuthenticationType, SecurityContext
 
 logger = logging.getLogger(__name__)
@@ -159,7 +160,8 @@ class SecurityManager:
             token = auth_header[7:]  # Remove "Bearer " prefix
 
             # Import here to avoid circular imports
-            from ...infrastructure.database.connection import get_database_session
+            from infrastructure.database.connection import get_database_session
+
             from ..authentication.jwt import get_auth_service
 
             # Validate JWT token

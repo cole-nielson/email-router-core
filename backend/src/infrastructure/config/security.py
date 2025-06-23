@@ -232,7 +232,7 @@ def get_security_config() -> SecurityConfig:
     if _security_config is None:
         try:
             # Import unified config and create security config
-            from ...core import get_app_config
+            from core import get_app_config
 
             unified_config = get_app_config()
             _security_config = SecurityConfig.from_unified_config(unified_config)

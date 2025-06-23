@@ -8,8 +8,9 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from pydantic import BaseModel, Field
 
-from ...infrastructure.config.manager import get_config_manager
-from ...infrastructure.config.schema import ClientConfig
+from infrastructure.config.manager import get_config_manager
+from infrastructure.config.schema import ClientConfig
+
 from .resolver import (
     DomainMatcher,
     calculate_domain_similarity,

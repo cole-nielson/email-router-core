@@ -11,8 +11,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 
-from ...infrastructure.config.manager import get_app_config, get_config_manager
-from ...infrastructure.templates.email import _get_default_branding, create_branded_template
+from infrastructure.config.manager import get_app_config, get_config_manager
+from infrastructure.templates.email import _get_default_branding, create_branded_template
+
 from ..clients.manager import ClientManager
 
 logger = logging.getLogger(__name__)

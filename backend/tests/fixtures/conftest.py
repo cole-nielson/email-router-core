@@ -2,7 +2,6 @@
 Global fixtures for the Email Router test suite.
 """
 
-# Add project root to path to allow module imports
 import os
 import sys
 from pathlib import Path
@@ -244,8 +243,8 @@ def isolated_db_session():
 # =============================================================================
 
 # Import all specialized fixtures to make them available globally
-from backend.tests.fixtures.auth_fixtures import *  # noqa: F401, F403
-from backend.tests.fixtures.client_fixtures import *  # noqa: F401, F403
+from .auth_fixtures import *  # noqa: F401, F403
+from .client_fixtures import *  # noqa: F401, F403
 
 # =============================================================================
 # LEGACY COMPATIBILITY FIXTURES

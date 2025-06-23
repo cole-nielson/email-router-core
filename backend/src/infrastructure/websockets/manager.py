@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional, Set
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-from ...core.models.dashboard import (
+from core.models.dashboard import (
     ActivityUpdateMessage,
     AlertUpdateMessage,
     ClientUpdateMessage,

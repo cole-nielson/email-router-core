@@ -10,17 +10,17 @@ from typing import Annotated, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
-from ...core.models.schemas import (
+from application.middleware.auth import DualAuthUser, require_dual_auth
+from core.clients.manager import ClientManager, get_client_manager
+from core.clients.resolver import normalize_domain
+from core.models.schemas import (
     APIStatusResponse,
     ClientListResponse,
     ClientSummary,
     DomainResolutionResult,
     SystemMetrics,
 )
-from ...application.middleware.auth import DualAuthUser, require_dual_auth
-from ...core.clients.manager import ClientManager, get_client_manager
-from ...infrastructure.monitoring.metrics import MetricsCollector
-from ...core.clients.resolver import normalize_domain
+from infrastructure.monitoring.metrics import MetricsCollector
 
 logger = logging.getLogger(__name__)
 

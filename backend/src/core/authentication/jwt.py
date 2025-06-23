@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 # Get unified configuration
 try:
-    from ...core import get_app_config
+    from core import get_app_config
 
     _app_config = get_app_config()
 
@@ -124,7 +124,7 @@ class AuthService:
 
         # Import models dynamically to avoid circular imports
         try:
-            from ...infrastructure.database.models import User, UserRole, UserSession, UserStatus
+            from infrastructure.database.models import User, UserRole, UserSession, UserStatus
 
             self.User = User
             self.UserRole = UserRole

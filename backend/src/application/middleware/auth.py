@@ -10,10 +10,10 @@ from typing import Callable, Optional
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from ...core.authentication.context import SecurityContext
-from ...core.authentication.handlers import AuthenticationManager
-from ...core.authentication.manager import SecurityManager
-from ...infrastructure.config.security import get_security_config
+from core.authentication.context import SecurityContext
+from core.authentication.handlers import AuthenticationManager
+from core.authentication.manager import SecurityManager
+from infrastructure.config.security import get_security_config
 
 logger = logging.getLogger(__name__)
 
@@ -368,7 +368,7 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
         try:
             # Get environment from unified config for header customization
             try:
-                from ...core import get_app_config
+                from core import get_app_config
 
                 environment = get_app_config().environment.value
             except Exception:
