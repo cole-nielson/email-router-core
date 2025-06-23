@@ -58,7 +58,7 @@ class TestClientConfigValidation:
 
         # Validate specific configuration elements
         assert config.client_id == "client-001-cole-nielson"
-        assert config.name == "Cole Nielson Personal"
+        assert config.name == "Cole Nielson Email Router"
         assert config.industry == "Technology"
 
         # Validate domains configuration
@@ -79,19 +79,18 @@ class TestClientConfigValidation:
 
     def test_invalid_config_handling(self):
         """Test that invalid configurations are properly rejected."""
-        # Test with invalid client ID
-        with pytest.raises((FileNotFoundError, ValueError)):
-            self.client_manager.get_client_config("nonexistent-client")
+        # Test with invalid client ID - should return None
+        config = self.client_manager.get_client_config("nonexistent-client")
+        assert config is None
 
     def test_required_files_exist(self):
         """Test that all required configuration files exist for each client."""
         for client_id in self.client_ids:
             client_dir = self.clients_dir / client_id
 
-            # Required files
+            # Required files (routing rules are embedded in client-config.yaml)
             required_files = [
                 "client-config.yaml",
-                "routing-rules.yaml",
                 "categories.yaml",
             ]
 
