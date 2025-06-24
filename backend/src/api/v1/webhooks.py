@@ -6,7 +6,7 @@ Webhook handlers for incoming emails with multi-tenant support.
 import hashlib
 import hmac
 import logging
-from typing import Annotated, Optional
+from typing import Annotated, Any, Dict, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 
@@ -71,7 +71,7 @@ async def mailgun_inbound_webhook(
     routing_engine: Annotated[RoutingEngine, Depends(get_routing_engine)],
     dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
     email_service: Annotated[EmailService, Depends(get_email_service)],
-):
+) -> Dict[str, Any]:
     """
     🎯 CORE MVP ENDPOINT: Receive inbound emails from Mailgun with multi-tenant support
 
@@ -95,9 +95,9 @@ async def mailgun_inbound_webhook(
         logger.info(f"📋 Form fields: {list(form_data.keys())}")
 
         # Extract Mailgun signature verification fields
-        timestamp = form_data.get("timestamp", "")
-        token = form_data.get("token", "")
-        signature = form_data.get("signature", "")
+        timestamp = str(form_data.get("timestamp", ""))
+        token = str(form_data.get("token", ""))
+        signature = str(form_data.get("signature", ""))
 
         # Get Mailgun API key for signature verification
         config = get_app_config()
@@ -111,7 +111,7 @@ async def mailgun_inbound_webhook(
                     f"❌ Invalid Mailgun signature from {request.client.host if request.client else 'unknown'}"
                 )
                 logger.warning(
-                    f"🔐 Signature details - timestamp: {timestamp}, token: {token[:8]}..., signature: {signature[:8]}..."
+                    f"🔐 Signature details - timestamp: {timestamp}, token: {str(token)[:8]}..., signature: {str(signature)[:8]}..."
                 )
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature"
@@ -154,7 +154,7 @@ async def mailgun_inbound_webhook(
             process_email_pipeline,
             email_data,
             client_id,
-            dynamic_classifier,
+            ai_classifier,
             client_manager,
             routing_engine,
             dashboard_service,
@@ -175,14 +175,14 @@ async def mailgun_inbound_webhook(
 
 
 async def process_email_pipeline(
-    email_data: dict,
+    email_data: Dict[str, Any],
     client_id: Optional[str],
-    dynamic_classifier,
-    client_manager,
-    routing_engine,
-    dashboard_service,
-    email_service,
-):
+    ai_classifier: AIClassifier,
+    client_manager: ClientManager,
+    routing_engine: RoutingEngine,
+    dashboard_service: DashboardService,
+    email_service: EmailService,
+) -> None:
     """
     🔄 Background task: Complete multi-tenant email processing pipeline
     """
@@ -348,7 +348,9 @@ async def process_email_pipeline(
             logger.error(f"❌ Failed to send failure notification: {notification_error}")
 
 
-async def _send_failure_notification(email_data: dict, error_message: str, admin_email: str):
+async def _send_failure_notification(
+    email_data: Dict[str, Any], error_message: str, admin_email: str
+) -> None:
     """
     Send notification about email processing failure.
 
@@ -388,7 +390,7 @@ Please review this email manually.
 async def webhook_status(
     client_manager: Annotated[ClientManager, Depends(get_client_manager)],
     current_user: Annotated[Optional[DualAuthUser], Depends(get_dual_auth_user)] = None,
-):
+) -> Dict[str, Any]:
     """
     Get webhook processing status and client information.
 
@@ -455,7 +457,7 @@ async def test_webhook(
     routing_engine: Annotated[RoutingEngine, Depends(get_routing_engine)],
     dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
     email_service: Annotated[EmailService, Depends(get_email_service)],
-):
+) -> Dict[str, Any]:
     """
     Test endpoint for webhook functionality.
 
@@ -488,7 +490,7 @@ async def test_webhook(
             process_email_pipeline,
             email_data,
             client_id,
-            dynamic_classifier,
+            ai_classifier,
             client_manager,
             routing_engine,
             dashboard_service,
@@ -508,7 +510,7 @@ async def test_webhook(
 
 
 @router.get("/mailgun/env-check", response_model=None)
-async def check_environment_variables():
+async def check_environment_variables() -> Dict[str, Any]:
     """
     🔧 ENV CHECK: Verify which environment variables are actually loaded in production
     """
@@ -539,7 +541,7 @@ async def check_environment_variables():
 
 
 @router.post("/mailgun/debug", response_model=None)
-async def mailgun_debug_webhook(request: Request):
+async def mailgun_debug_webhook(request: Request) -> Dict[str, Any]:
     """
     🚧 DEBUG ENDPOINT: Capture and log all Mailgun webhook data for troubleshooting.
 
