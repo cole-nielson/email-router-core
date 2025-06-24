@@ -4,7 +4,7 @@ Dynamic email routing engine using client-specific rules.
 """
 
 import logging
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from typing import Any, Dict, List, Optional
 
 import pytz
@@ -35,7 +35,10 @@ class RoutingEngine:
         self.client_manager = client_manager
 
     def route_email(
-        self, client_id: str, classification: Dict[str, Any], email_data: Dict[str, Any] = None
+        self,
+        client_id: str,
+        classification: Dict[str, Any],
+        email_data: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Route email to appropriate team member.
@@ -120,7 +123,7 @@ class RoutingEngine:
         self,
         client_id: str,
         classification: Dict[str, Any],
-        email_data: Dict[str, Any],
+        email_data: Optional[Dict[str, Any]],
         client_config: ClientConfig,
     ) -> Optional[Dict[str, Any]]:
         """
@@ -152,7 +155,7 @@ class RoutingEngine:
         """
         for rule in client_config.routing:
             if rule.category == category and rule.enabled:
-                return rule.email
+                return str(rule.email) if rule.email else None
         return None
 
     def _get_backup_destination(self, client_config: ClientConfig, category: str) -> Optional[str]:
@@ -168,7 +171,7 @@ class RoutingEngine:
         """
         for rule in client_config.routing:
             if rule.category == category and rule.enabled:
-                return rule.backup_email
+                return str(rule.backup_email) if rule.backup_email else None
         return None
 
     def _get_backup_destinations(self, client_config: ClientConfig, category: str) -> List[str]:
@@ -280,7 +283,7 @@ class RoutingEngine:
         Returns:
             List of escalation steps with timing and destinations
         """
-        escalation_schedule = []
+        escalation_schedule: List[Dict[str, Any]] = []
 
         try:
             if not client_config.sla.escalation_enabled or not client_config.sla.escalation_rules:
@@ -314,7 +317,7 @@ class RoutingEngine:
         Returns:
             ISO timestamp for escalation time
         """
-        escalation_time = datetime.utcnow() + datetime.timedelta(hours=hours_after)
+        escalation_time = datetime.utcnow() + timedelta(hours=hours_after)
         return escalation_time.isoformat()
 
     def _get_confidence_level(self, confidence: float) -> str:
@@ -339,7 +342,7 @@ class RoutingEngine:
             return "very_low"
 
     def _get_special_handling(
-        self, client_id: str, email_data: Dict[str, Any], client_config: ClientConfig
+        self, client_id: str, email_data: Optional[Dict[str, Any]], client_config: ClientConfig
     ) -> List[str]:
         """
         Get special handling flags for email.
@@ -352,7 +355,7 @@ class RoutingEngine:
         Returns:
             List of special handling flags
         """
-        flags = []
+        flags: List[str] = []
 
         try:
             if not email_data:
@@ -402,13 +405,20 @@ class RoutingEngine:
         """
         try:
             client_config = self.client_manager.get_client_config(client_id)
-            primary_contact = client_config.contacts.primary_contact
+            if client_config is not None and client_config.contacts is not None:
+                primary_contact = client_config.contacts.primary_contact
+            else:
+                primary_contact = "admin@example.com"
 
             return {
                 "client_id": client_id,
                 "category": classification.get("category", "general"),
                 "primary_destination": primary_contact,
-                "backup_destinations": [client_config.contacts.escalation_contact],
+                "backup_destinations": (
+                    [client_config.contacts.escalation_contact]
+                    if client_config is not None and client_config.contacts is not None
+                    else []
+                ),
                 "escalation_schedule": [],
                 "business_hours_applied": False,
                 "confidence_level": "unknown",
@@ -456,11 +466,15 @@ class RoutingEngine:
         }
 
 
-def get_routing_engine():
+_routing_engine_instance: Optional[RoutingEngine] = None
+
+
+def get_routing_engine() -> RoutingEngine:
     """Dependency injection function for RoutingEngine."""
-    if not hasattr(get_routing_engine, "_instance"):
+    global _routing_engine_instance
+    if _routing_engine_instance is None:
         from ..clients.manager import get_client_manager
 
         client_manager = get_client_manager()
-        get_routing_engine._instance = RoutingEngine(client_manager)
-    return get_routing_engine._instance
+        _routing_engine_instance = RoutingEngine(client_manager)
+    return _routing_engine_instance
