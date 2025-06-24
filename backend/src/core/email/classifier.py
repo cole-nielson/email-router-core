@@ -72,7 +72,7 @@ class AIClassifier:
                 return await self._classify_with_fallback(email_data)
 
             # Check if AI classification is enabled for this client
-            if not client_config.settings.ai_classification_enabled:
+            if client_config is None or not client_config.settings.ai_classification_enabled:
                 logger.info(f"AI classification disabled for client {client_id}, using fallback")
                 return self._classify_with_keywords(client_id, email_data)
 
@@ -121,20 +121,30 @@ class AIClassifier:
         # Try to identify from recipient (TO field)
         recipient = email_data.get("to") or email_data.get("recipient", "")
         if recipient:
-            client_id = self.client_manager.identify_client_by_email(recipient)
-            if client_id:
-                logger.debug(f"Identified client {client_id} from recipient: {recipient}")
-                return client_id
+            client_result = self.client_manager.identify_client_by_email(recipient)
+            if hasattr(client_result, "client_id") and client_result.client_id:
+                logger.debug(
+                    f"Identified client {client_result.client_id} from recipient: {recipient}"
+                )
+                return client_result.client_id
+            elif isinstance(client_result, str) and client_result:
+                logger.debug(f"Identified client {client_result} from recipient: {recipient}")
+                return client_result
 
         # Try to identify from sender domain (less reliable, but possible for replies)
         sender = email_data.get("from", "")
         if sender:
             domain = extract_domain_from_email(sender)
             if domain:
-                client_id = self.client_manager.identify_client_by_domain(domain)
-                if client_id:
-                    logger.debug(f"Identified client {client_id} from sender domain: {domain}")
-                    return client_id
+                client_result = self.client_manager.identify_client_by_domain(domain)
+                if hasattr(client_result, "client_id") and client_result.client_id:
+                    logger.debug(
+                        f"Identified client {client_result.client_id} from sender domain: {domain}"
+                    )
+                    return client_result.client_id
+                elif isinstance(client_result, str) and client_result:
+                    logger.debug(f"Identified client {client_result} from sender domain: {domain}")
+                    return client_result
 
         return None
 
@@ -185,7 +195,7 @@ class AIClassifier:
                     classification["confidence"] = 0.5
 
                 logger.debug(f"✅ Successfully parsed AI classification: {classification}")
-                return classification
+                return dict(classification)
 
             except json.JSONDecodeError as e:
                 logger.error(
@@ -314,7 +324,10 @@ class AIClassifier:
         }
 
     async def classify_with_context(
-        self, email_data: Dict[str, Any], client_id: str, additional_context: Dict[str, Any] = None
+        self,
+        email_data: Dict[str, Any],
+        client_id: str,
+        additional_context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Classify email with additional context.
@@ -371,20 +384,24 @@ class AIClassifier:
             return {}
 
 
-def get_ai_classifier():
+_ai_classifier_instance: Optional[AIClassifier] = None
+
+
+def get_ai_classifier() -> AIClassifier:
     """Dependency injection function for AIClassifier."""
-    if not hasattr(get_ai_classifier, "_instance"):
+    global _ai_classifier_instance
+    if _ai_classifier_instance is None:
         from ..clients.manager import get_client_manager
 
         client_manager = get_client_manager()
-        get_ai_classifier._instance = AIClassifier(client_manager)
-    return get_ai_classifier._instance
+        _ai_classifier_instance = AIClassifier(client_manager)
+    return _ai_classifier_instance
 
 
 # Backward compatibility aliases
 DynamicClassifier = AIClassifier
 
 
-def get_dynamic_classifier():
+def get_dynamic_classifier() -> AIClassifier:
     """Backward compatibility function - use get_ai_classifier() instead."""
     return get_ai_classifier()
