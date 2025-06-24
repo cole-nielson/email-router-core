@@ -46,7 +46,7 @@ class DatabaseConfigBridge:
 
         return None
 
-    def list_clients(self, status: str = None) -> List[Client]:
+    def list_clients(self, status: Optional[str] = None) -> List[Client]:
         """List all clients, optionally filtered by status."""
         # Get from database
         query = self.db.query(Client)
@@ -64,7 +64,9 @@ class DatabaseConfigBridge:
 
         return list(db_clients.values())
 
-    def create_client(self, client_data: Dict[str, Any], created_by: str = None) -> Client:
+    def create_client(
+        self, client_data: Dict[str, Any], created_by: Optional[str] = None
+    ) -> Client:
         """Create new client configuration."""
         client = Client(
             id=client_data["id"],
@@ -85,7 +87,7 @@ class DatabaseConfigBridge:
         return client
 
     def update_client(
-        self, client_id: str, updates: Dict[str, Any], updated_by: str = None
+        self, client_id: str, updates: Dict[str, Any], updated_by: Optional[str] = None
     ) -> Optional[Client]:
         """Update client information."""
         client = self.get_client(client_id)
@@ -138,7 +140,7 @@ class DatabaseConfigBridge:
         return db_rules
 
     def update_routing_rule(
-        self, client_id: str, category: str, email_address: str, updated_by: str = None
+        self, client_id: str, category: str, email_address: str, updated_by: Optional[str] = None
     ) -> RoutingRule:
         """Update or create routing rule for a category."""
         rule = (
@@ -174,7 +176,9 @@ class DatabaseConfigBridge:
         logger.info(f"📍 Updated routing rule: {client_id} -> {category}: {email_address}")
         return rule
 
-    def delete_routing_rule(self, client_id: str, category: str, deleted_by: str = None) -> bool:
+    def delete_routing_rule(
+        self, client_id: str, category: str, deleted_by: Optional[str] = None
+    ) -> bool:
         """Delete routing rule for a category."""
         rule = (
             self.db.query(RoutingRule)
@@ -224,7 +228,7 @@ class DatabaseConfigBridge:
         return None
 
     def update_branding(
-        self, client_id: str, branding_data: Dict[str, Any], updated_by: str = None
+        self, client_id: str, branding_data: Dict[str, Any], updated_by: Optional[str] = None
     ) -> ClientBranding:
         """Update client branding configuration."""
         branding = self.get_branding(client_id)
@@ -302,7 +306,7 @@ class DatabaseConfigBridge:
         category: str,
         target_response: str,
         business_hours_only: bool = True,
-        updated_by: str = None,
+        updated_by: Optional[str] = None,
     ) -> ResponseTime:
         """Update response time for a category."""
         response_time = (
@@ -386,7 +390,11 @@ class DatabaseConfigBridge:
         return None
 
     def update_ai_prompt(
-        self, client_id: str, prompt_type: str, prompt_content: str, updated_by: str = None
+        self,
+        client_id: str,
+        prompt_type: str,
+        prompt_content: str,
+        updated_by: Optional[str] = None,
     ) -> AIPrompt:
         """Update AI prompt content."""
         # Deactivate current prompt
@@ -503,10 +511,10 @@ class DatabaseConfigBridge:
         change_type: str,
         table_name: str,
         record_id: Any,
-        old_values: Dict = None,
-        new_values: Dict = None,
-        changed_by: str = None,
-    ):
+        old_values: Optional[Dict[Any, Any]] = None,
+        new_values: Optional[Dict[Any, Any]] = None,
+        changed_by: Optional[str] = None,
+    ) -> None:
         """Log configuration change for audit trail."""
         change = ConfigurationChange(
             client_id=(
@@ -537,7 +545,7 @@ class DatabaseConfigBridge:
     # PRIVATE HELPERS
     # =============================================================================
 
-    def _create_client_from_config(self, config) -> Client:
+    def _create_client_from_config(self, config: Any) -> Client:
         """Create a Client model instance from ConfigManager config."""
         client = Client(
             id=config.client_id,

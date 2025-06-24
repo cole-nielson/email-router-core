@@ -19,7 +19,7 @@ class BaseEmailGenerator(ABC):
     for all email generation classes in the system.
     """
 
-    def __init__(self, client_manager, ai_client, fallback_provider):
+    def __init__(self, client_manager: Any, ai_client: Any, fallback_provider: Any) -> None:
         """
         Initialize the base email generator.
 

@@ -5,9 +5,9 @@ Loads templates from the filesystem and manages the template cache lifecycle.
 """
 
 import logging
-from typing import Dict, Optional
+from typing import Any, Dict, List, Optional
 
-from infrastructure.config.manager import get_config_manager
+from infrastructure.config.manager import get_config_manager  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class TemplateLoader:
     """Loads and caches email templates from client configurations."""
 
-    def __init__(self, template_validator=None):
+    def __init__(self, template_validator: Optional[Any] = None) -> None:
         """
         Initialize the template loader.
 
@@ -47,7 +47,7 @@ class TemplateLoader:
 
         try:
             logger.debug(f"Loading template from config manager: {cache_key}")
-            template = get_config_manager().load_ai_prompt(client_id, template_type)
+            template: str = get_config_manager().load_ai_prompt(client_id, template_type)
 
             # Validate template if validator is available
             if self._template_validator:
@@ -85,13 +85,13 @@ class TemplateLoader:
         cache_key = f"{client_id}:{template_type}"
         return self._template_cache.get(cache_key)
 
-    def clear_cache(self):
+    def clear_cache(self) -> None:
         """Clear the template cache."""
         cache_size = len(self._template_cache)
         self._template_cache.clear()
         logger.info(f"Template cache cleared ({cache_size} entries removed)")
 
-    def clear_client_cache(self, client_id: str):
+    def clear_client_cache(self, client_id: str) -> None:
         """
         Clear cache for a specific client.
 
@@ -122,7 +122,9 @@ class TemplateLoader:
             ),
         }
 
-    def preload_client_templates(self, client_id: str, template_types: list = None):
+    def preload_client_templates(
+        self, client_id: str, template_types: Optional[List[str]] = None
+    ) -> None:
         """
         Preload templates for a client to improve performance.
 
@@ -145,7 +147,7 @@ class TemplateLoader:
             f"Preloaded {loaded_count}/{len(template_types)} templates for client {client_id}"
         )
 
-    def set_validator(self, template_validator):
+    def set_validator(self, template_validator: Any) -> None:
         """
         Set the template validator instance.
 
@@ -157,10 +159,10 @@ class TemplateLoader:
 
 
 # Singleton instance
-_template_loader_instance = None
+_template_loader_instance: Optional[TemplateLoader] = None
 
 
-def get_template_loader(template_validator=None):
+def get_template_loader(template_validator: Optional[Any] = None) -> TemplateLoader:
     """
     Get or create the singleton TemplateLoader instance.
 

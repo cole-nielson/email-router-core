@@ -7,7 +7,7 @@ and size limits.
 
 import logging
 import re
-from typing import List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,12 @@ logger = logging.getLogger(__name__)
 class ValidationResult:
     """Template validation result."""
 
-    def __init__(self, is_valid: bool = True, errors: List[str] = None, warnings: List[str] = None):
+    def __init__(
+        self,
+        is_valid: bool = True,
+        errors: Optional[List[str]] = None,
+        warnings: Optional[List[str]] = None,
+    ):
         self.is_valid = is_valid
         self.errors = errors or []
         self.warnings = warnings or []
@@ -24,9 +29,9 @@ class ValidationResult:
 class TemplateValidator:
     """Validates email templates for correctness and security."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the template validator with default rules."""
-        self.validation_rules = {
+        self.validation_rules: Dict[str, Any] = {
             "required_variables": ["client.name"],
             "max_template_size": 50000,  # 50KB limit
             "allowed_html_tags": ["p", "div", "span", "br", "strong", "em", "a", "img"],
@@ -62,7 +67,7 @@ class TemplateValidator:
 
         # Check for balanced HTML tags
         html_tags = re.findall(r"<(/?)([a-zA-Z][a-zA-Z0-9]*)", template_content)
-        tag_stack = []
+        tag_stack: List[str] = []
 
         for is_closing, tag_name in html_tags:
             if is_closing:
@@ -102,7 +107,7 @@ class TemplateValidator:
         is_valid = len(errors) == 0
         return ValidationResult(is_valid, errors, warnings)
 
-    def update_validation_rules(self, rules: dict):
+    def update_validation_rules(self, rules: dict) -> None:
         """
         Update validation rules.
 
@@ -111,7 +116,7 @@ class TemplateValidator:
         """
         self.validation_rules.update(rules)
 
-    def get_validation_rules(self) -> dict:
+    def get_validation_rules(self) -> Dict[str, Any]:
         """
         Get current validation rules.
 

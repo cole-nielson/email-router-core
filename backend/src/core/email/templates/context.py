@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class TemplateContextBuilder:
     """Builds context dictionaries for template variable injection."""
 
-    def __init__(self, client_manager):
+    def __init__(self, client_manager: Any) -> None:
         """
         Initialize the context builder.
 
@@ -88,7 +88,7 @@ class TemplateContextBuilder:
             return {"client": {"name": "Unknown Client"}, "email": {}}
 
     @staticmethod
-    def get_nested_value(data: Dict[str, Any], path: str, default: Optional[str] = None) -> str:
+    def get_nested_value(data: Dict[str, Any], path: str, default: Optional[str] = None) -> Any:
         """
         Get nested value from dictionary using dot notation.
 
@@ -178,10 +178,10 @@ class TemplateContextBuilder:
 
 
 # Singleton instance
-_context_builder_instance = None
+_context_builder_instance: Optional[TemplateContextBuilder] = None
 
 
-def get_template_context_builder(client_manager=None):
+def get_template_context_builder(client_manager: Optional[Any] = None) -> TemplateContextBuilder:
     """
     Get or create the singleton TemplateContextBuilder instance.
 

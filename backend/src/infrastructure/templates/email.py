@@ -5,6 +5,7 @@ Enhanced with logo support and dynamic color injection.
 """
 
 import logging
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ def generate_ticket_id() -> str:
 
 
 def create_customer_template(
-    draft_response: str, classification: dict, branding: dict = None
+    draft_response: str, classification: dict, branding: Optional[dict] = None
 ) -> tuple[str, str]:
     """
     Create customer-facing auto-reply with client-specific branding (text + HTML).
@@ -198,7 +199,7 @@ personally with a detailed response.
 
 
 def create_team_template(
-    email_data: dict, classification: dict, draft_response: str, branding: dict = None
+    email_data: dict, classification: dict, draft_response: str, branding: Optional[dict] = None
 ) -> tuple[str, str]:
     """
     Create team-facing forwarded email with client-specific branding (text + HTML).
@@ -428,7 +429,7 @@ MESSAGE CONTENT:
 
 
 def create_branded_template(
-    template_type: str, context: dict, branding: dict = None
+    template_type: str, context: dict, branding: Optional[dict] = None
 ) -> tuple[str, str]:
     """
     Create branded email template with client-specific styling.
