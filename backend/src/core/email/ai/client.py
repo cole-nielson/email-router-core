@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional
 
 import httpx
 
-from infrastructure.config.manager import get_app_config
+from infrastructure.config.manager import get_app_config  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class AIClient:
     """Client for communicating with Anthropic Claude API."""
 
-    def __init__(self, config=None):
+    def __init__(self, config: Optional[Any] = None) -> None:
         """
         Initialize the AI client.
 
@@ -32,7 +32,7 @@ class AIClient:
         self.api_url = "https://api.anthropic.com/v1/messages"
         self.api_version = "2023-06-01"
 
-    async def call_ai_service(self, prompt: str, **kwargs) -> str:
+    async def call_ai_service(self, prompt: str, **kwargs: Any) -> str:
         """
         Call Anthropic Claude API with composed prompt.
 
@@ -101,7 +101,7 @@ class AIClient:
         Returns:
             AI response text
         """
-        kwargs = {}
+        kwargs: Dict[str, Any] = {}
         if max_tokens is not None:
             kwargs["max_tokens"] = max_tokens
         if temperature is not None:
@@ -111,7 +111,7 @@ class AIClient:
 
         return await self.call_ai_service(prompt, **kwargs)
 
-    async def batch_generate(self, prompts: list, **kwargs) -> list:
+    async def batch_generate(self, prompts: list, **kwargs: Any) -> list:
         """
         Generate responses for multiple prompts.
 
@@ -134,7 +134,7 @@ class AIClient:
 
         return responses
 
-    def _validate_prompt_quality(self, prompt: str):
+    def _validate_prompt_quality(self, prompt: str) -> None:
         """
         Validate prompt quality before sending to AI.
 
@@ -157,7 +157,7 @@ class AIClient:
         if len(prompt) > 100000:  # 100KB limit
             logger.warning(f"⚠️ Large prompt size: {len(prompt)} characters")
 
-    def _validate_response_quality(self, response: str):
+    def _validate_response_quality(self, response: str) -> None:
         """
         Validate AI response quality.
 
@@ -187,7 +187,7 @@ class AIClient:
             "anthropic-version": self.api_version,
         }
 
-    def _prepare_request_params(self, prompt: str, **kwargs) -> Dict[str, Any]:
+    def _prepare_request_params(self, prompt: str, **kwargs: Any) -> Dict[str, Any]:
         """
         Prepare request parameters for API call.
 
@@ -219,7 +219,7 @@ class AIClient:
             ValueError: If response format is invalid
         """
         try:
-            return result["content"][0]["text"]
+            return str(result["content"][0]["text"])
         except (KeyError, IndexError, TypeError) as e:
             logger.error(f"Invalid response format: {result}")
             raise ValueError(f"Failed to extract response text: {e}")
@@ -240,7 +240,7 @@ class AIClient:
             "default_timeout": self.default_timeout,
         }
 
-    def update_config(self, **kwargs):
+    def update_config(self, **kwargs: Any) -> None:
         """
         Update client configuration.
 
@@ -256,10 +256,10 @@ class AIClient:
 
 
 # Singleton instance
-_ai_client_instance = None
+_ai_client_instance: Optional[AIClient] = None
 
 
-def get_ai_client(config=None):
+def get_ai_client(config: Optional[Any] = None) -> AIClient:
     """
     Get or create the singleton AIClient instance.
 

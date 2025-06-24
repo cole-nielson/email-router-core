@@ -8,7 +8,7 @@ branding data from various sources.
 import logging
 from typing import Any, Dict, Optional
 
-from infrastructure.templates.email import _get_default_branding
+from infrastructure.templates.email import _get_default_branding  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class BrandingManager:
     """Manages client branding configurations with caching."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the branding manager."""
         self._branding_cache: Dict[str, Dict[str, Any]] = {}
 
@@ -73,9 +73,10 @@ class BrandingManager:
 
         except Exception as e:
             logger.error(f"Failed to load branding for {client_id}: {e}")
-            return _get_default_branding()
+            default_branding: Dict[str, Any] = _get_default_branding()
+            return default_branding
 
-    def clear_cache(self):
+    def clear_cache(self) -> None:
         """Clear the branding cache."""
         self._branding_cache.clear()
         logger.info("Branding cache cleared")
@@ -94,7 +95,7 @@ class BrandingManager:
 
 
 # Singleton instance
-_branding_manager_instance = None
+_branding_manager_instance: Optional[BrandingManager] = None
 
 
 def get_branding_manager() -> BrandingManager:

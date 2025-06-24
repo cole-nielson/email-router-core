@@ -8,6 +8,7 @@ import os
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,31 +28,31 @@ except ImportError:
     print("⚠️ python-dotenv not installed, using system environment variables")
 
 # Initialize unified configuration system
-from infrastructure.config.manager import get_app_config, get_config_manager
-from infrastructure.logging.logger import configure_logging, get_logger
+from infrastructure.config.manager import get_app_config, get_config_manager  # type: ignore
+from infrastructure.logging.logger import configure_logging, get_logger  # type: ignore
 
 # Get configuration and set up logging
 config = get_app_config()
 configure_logging(level=config.server.log_level.value, format_string=config.server.log_format)
 logger = get_logger(__name__)
 
-from api.v1.auth import router as auth_router
-from api.v1.clients import router as api_v1_router
-from api.v1.dashboard import router as dashboard_router
-from api.v1.webhooks import router as webhook_router
-from api.v2.config import router as api_v2_router
-from application.middleware.auth import UnifiedAuthMiddleware as DualAuthMiddleware
-from application.middleware.rate_limit import RateLimiterMiddleware
-from core.models.schemas import APIInfo, HealthResponse
-from infrastructure.monitoring.metrics import MetricsCollector
-from infrastructure.websockets.manager import get_websocket_manager
+from api.v1.auth import router as auth_router  # type: ignore
+from api.v1.clients import router as api_v1_router  # type: ignore
+from api.v1.dashboard import router as dashboard_router  # type: ignore
+from api.v1.webhooks import router as webhook_router  # type: ignore
+from api.v2.config import router as api_v2_router  # type: ignore
+from application.middleware.auth import UnifiedAuthMiddleware as DualAuthMiddleware  # type: ignore
+from application.middleware.rate_limit import RateLimiterMiddleware  # type: ignore
+from core.models.schemas import APIInfo, HealthResponse  # type: ignore
+from infrastructure.monitoring.metrics import MetricsCollector  # type: ignore
+from infrastructure.websockets.manager import get_websocket_manager  # type: ignore
 
 # Initialize metrics collector
 metrics = MetricsCollector()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI):  # type: ignore
     """Application lifespan handler for startup and shutdown events."""
     # Startup
     try:
@@ -173,7 +174,7 @@ if config.security.enable_cors:
 
 
 # Custom OpenAPI schema
-def custom_openapi():
+def custom_openapi():  # type: ignore
     """Generate custom OpenAPI schema with enhanced metadata."""
     if app.openapi_schema:
         return app.openapi_schema
@@ -250,7 +251,9 @@ app.include_router(dashboard_router, prefix="/api/v1/dashboard", tags=["Dashboar
 
 # WebSocket endpoint for real-time dashboard updates
 @app.websocket("/ws/client/{client_id}")
-async def websocket_endpoint(websocket: WebSocket, client_id: str, token: str = None):
+async def websocket_endpoint(
+    websocket: WebSocket, client_id: str, token: Optional[str] = None
+) -> None:
     """
     WebSocket endpoint for real-time dashboard updates.
 
@@ -283,7 +286,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str, token: str = 
 
 # Custom documentation endpoints
 @app.get("/docs", include_in_schema=False)
-async def custom_swagger_ui_html():
+async def custom_swagger_ui_html():  # type: ignore
     """Custom Swagger UI with branding."""
     return get_swagger_ui_html(
         openapi_url=app.openapi_url,
@@ -302,7 +305,7 @@ async def custom_swagger_ui_html():
 
 
 @app.get("/redoc", include_in_schema=False)
-async def redoc_html():
+async def redoc_html():  # type: ignore
     """Custom ReDoc documentation."""
     return get_redoc_html(
         openapi_url=app.openapi_url,
@@ -311,7 +314,7 @@ async def redoc_html():
 
 
 @app.get("/", response_model=APIInfo, tags=["API Management"])
-async def root():
+async def root():  # type: ignore
     """
     Root endpoint providing API information and navigation links.
 

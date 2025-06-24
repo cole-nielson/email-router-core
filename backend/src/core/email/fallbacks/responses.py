@@ -6,7 +6,7 @@ for use when AI services are unavailable.
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -122,9 +122,13 @@ This is an automated acknowledgment, but a real person will review your message 
 # DEPENDENCY INJECTION FUNCTION
 # =============================================================================
 
+# Singleton instance
+_fallback_provider_instance: Optional[FallbackResponseProvider] = None
+
 
 def get_fallback_response_provider() -> FallbackResponseProvider:
     """Dependency injection function for FallbackResponseProvider."""
-    if not hasattr(get_fallback_response_provider, "_instance"):
-        get_fallback_response_provider._instance = FallbackResponseProvider()
-    return get_fallback_response_provider._instance
+    global _fallback_provider_instance
+    if _fallback_provider_instance is None:
+        _fallback_provider_instance = FallbackResponseProvider()
+    return _fallback_provider_instance

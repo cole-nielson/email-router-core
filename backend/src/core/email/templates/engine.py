@@ -7,7 +7,7 @@ handling default values and nested variable access.
 
 import logging
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from .context import TemplateContextBuilder
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class TemplateEngine:
     """Processes email templates by injecting variables from context."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the template engine."""
         self._pattern = re.compile(r"{{\s*([^}]+)\s*}}")
 
@@ -34,7 +34,7 @@ class TemplateEngine:
         """
         missing_variables = []
 
-        def replace_variable(match):
+        def replace_variable(match: Any) -> str:
             var_expression = match.group(1).strip()
 
             # Handle default values: {{variable|default:"fallback"}}
@@ -57,7 +57,7 @@ class TemplateEngine:
             return str(value)
 
         # Replace all {{variable}} patterns
-        result = self._pattern.sub(replace_variable, template)
+        result: str = self._pattern.sub(replace_variable, template)
 
         # Log missing variables
         if missing_variables:
@@ -179,7 +179,7 @@ class TemplateEngine:
 
         return results
 
-    def _validate_rendered_output(self, rendered: str):
+    def _validate_rendered_output(self, rendered: str) -> None:
         """
         Validate the rendered template output.
 
@@ -205,7 +205,7 @@ class TemplateEngine:
         if not rendered.strip():
             raise ValueError("Template rendered to empty content")
 
-    def set_variable_pattern(self, pattern: str):
+    def set_variable_pattern(self, pattern: str) -> None:
         """
         Set a custom variable pattern for template processing.
 
@@ -221,10 +221,10 @@ class TemplateEngine:
 
 
 # Singleton instance
-_template_engine_instance = None
+_template_engine_instance: Optional[TemplateEngine] = None
 
 
-def get_template_engine():
+def get_template_engine() -> TemplateEngine:
     """
     Get or create the singleton TemplateEngine instance.
 

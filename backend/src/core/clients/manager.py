@@ -84,13 +84,13 @@ class EnhancedClientManager:
         self.enable_fuzzy_matching = True
         self.enable_hierarchy_matching = True
 
-    def _ensure_initialized(self):
+    def _ensure_initialized(self) -> None:
         """Ensure client manager is initialized."""
         if not self._initialized:
             self._build_comprehensive_domain_mapping()
             self._initialized = True
 
-    def _build_comprehensive_domain_mapping(self):
+    def _build_comprehensive_domain_mapping(self) -> None:
         """
         Build comprehensive mapping from domains to client IDs with support for:
         - Multiple domains per client
@@ -249,7 +249,8 @@ class EnhancedClientManager:
         """
         self._ensure_initialized()
 
-        domain = normalize_domain(domain)
+        normalized_domain = normalize_domain(domain)
+        domain = normalized_domain if normalized_domain is not None else ""
         if not domain:
             return ClientIdentificationResult(method="invalid_domain")
 
@@ -301,7 +302,7 @@ class EnhancedClientManager:
                 )
 
         # Strategy 4: Similarity-based fallback
-        all_client_domains = []
+        all_client_domains: List[str] = []
         for client_domains in self._client_to_domains_cache.values():
             all_client_domains.extend(client_domains)
 
@@ -389,21 +390,27 @@ class EnhancedClientManager:
         """
         try:
             routing_rules = self.get_routing_rules(client_id)
-            destination = routing_rules.routing.get(category)
+            if routing_rules is not None:
+                destination = routing_rules.routing.get(category)
+            else:
+                return None
 
             if destination:
                 logger.debug(f"Routing {category} for {client_id} to {destination}")
                 return destination
 
             # Try backup routing
-            if routing_rules.backup_routing:
+            if routing_rules is not None and routing_rules.backup_routing:
                 backup_destination = routing_rules.backup_routing.get(category)
                 if backup_destination:
                     logger.info(f"Using backup routing for {category} -> {backup_destination}")
                     return backup_destination
 
             # Fallback to general if category not found
-            general_destination = routing_rules.routing.get("general")
+            if routing_rules is not None:
+                general_destination = routing_rules.routing.get("general")
+            else:
+                general_destination = None
             if general_destination:
                 logger.info(f"Fallback routing {category} -> general for {client_id}")
                 return general_destination
@@ -466,7 +473,8 @@ class EnhancedClientManager:
         """
         self._ensure_initialized()
 
-        domain = normalize_domain(domain)
+        normalized_domain = normalize_domain(domain)
+        domain = normalized_domain if normalized_domain is not None else ""
         if not domain:
             return []
 
@@ -486,7 +494,7 @@ class EnhancedClientManager:
         client_similarities.sort(key=lambda x: x[1], reverse=True)
         return client_similarities[:limit]
 
-    def add_domain_alias(self, alias_domain: str, canonical_domain: str):
+    def add_domain_alias(self, alias_domain: str, canonical_domain: str) -> None:
         """
         Add domain alias for better matching.
 
@@ -497,7 +505,7 @@ class EnhancedClientManager:
         self._domain_matcher.add_alias(alias_domain, canonical_domain)
         logger.info(f"Added domain alias: {alias_domain} -> {canonical_domain}")
 
-    def refresh_client(self, client_id: str):
+    def refresh_client(self, client_id: str) -> None:
         """
         Refresh configuration for a specific client.
 
@@ -512,7 +520,7 @@ class EnhancedClientManager:
         else:
             logger.error(f"Failed to refresh client {client_id}")
 
-    def refresh_all_clients(self):
+    def refresh_all_clients(self) -> None:
         """Refresh configurations for all clients."""
         logger.info("Refreshing all client configurations...")
 
@@ -614,8 +622,12 @@ class EnhancedClientManager:
 ClientManager = EnhancedClientManager
 
 
-def get_client_manager():
+_client_manager_instance: Optional[EnhancedClientManager] = None
+
+
+def get_client_manager() -> EnhancedClientManager:
     """Dependency injection function for ClientManager."""
-    if not hasattr(get_client_manager, "_instance"):
-        get_client_manager._instance = EnhancedClientManager()
-    return get_client_manager._instance
+    global _client_manager_instance
+    if _client_manager_instance is None:
+        _client_manager_instance = EnhancedClientManager()
+    return _client_manager_instance

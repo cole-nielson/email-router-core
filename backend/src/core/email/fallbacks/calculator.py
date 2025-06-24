@@ -6,7 +6,7 @@ for SLA commitments.
 """
 
 import logging
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class ResponseTimeCalculator:
     and fallback policies.
     """
 
-    def __init__(self, client_manager):
+    def __init__(self, client_manager: Any) -> None:
         """
         Initialize the response time calculator.
 
@@ -57,16 +57,18 @@ class ResponseTimeCalculator:
                 if hasattr(response_times, category):
                     category_config = getattr(response_times, category)
                     if hasattr(category_config, "target"):
-                        target = category_config.target
+                        client_target: str = str(category_config.target)
                         logger.debug(
-                            f"Using client-specific response time for {client_id}:{category}: {target}"
+                            f"Using client-specific response time for {client_id}:{category}: {client_target}"
                         )
-                        return target
+                        return client_target
 
             # Apply fallback targets based on category
-            target = self._get_fallback_response_time(category)
-            logger.debug(f"Using fallback response time for {client_id}:{category}: {target}")
-            return target
+            fallback_target: str = self._get_fallback_response_time(category)
+            logger.debug(
+                f"Using fallback response time for {client_id}:{category}: {fallback_target}"
+            )
+            return fallback_target
 
         except Exception as e:
             logger.warning(f"Could not get response time target for {client_id}:{category}: {e}")
@@ -144,7 +146,8 @@ class ResponseTimeCalculator:
                 if hasattr(response_times, category):
                     category_config = getattr(response_times, category)
                     if hasattr(category_config, "escalation_threshold"):
-                        return category_config.escalation_threshold
+                        threshold: Optional[str] = category_config.escalation_threshold
+                        return threshold
 
             return None
 
@@ -157,8 +160,11 @@ class ResponseTimeCalculator:
 # DEPENDENCY INJECTION FUNCTION
 # =============================================================================
 
+# Singleton instance
+_calculator_instance: Optional[ResponseTimeCalculator] = None
 
-def get_response_time_calculator(client_manager=None) -> ResponseTimeCalculator:
+
+def get_response_time_calculator(client_manager: Optional[Any] = None) -> ResponseTimeCalculator:
     """
     Dependency injection function for ResponseTimeCalculator.
 
@@ -168,8 +174,9 @@ def get_response_time_calculator(client_manager=None) -> ResponseTimeCalculator:
     Returns:
         ResponseTimeCalculator instance
     """
-    if not hasattr(get_response_time_calculator, "_instance"):
+    global _calculator_instance
+    if _calculator_instance is None:
         if client_manager is None:
             raise ValueError("client_manager is required for first initialization")
-        get_response_time_calculator._instance = ResponseTimeCalculator(client_manager)
-    return get_response_time_calculator._instance
+        _calculator_instance = ResponseTimeCalculator(client_manager)
+    return _calculator_instance
