@@ -4,8 +4,8 @@ Provides email classification, routing, composition, and sending services.
 """
 
 from .classifier import AIClassifier, get_ai_classifier
-from .composer import EmailService, generate_plain_text_emails, get_email_service
 from .router import RoutingEngine, get_routing_engine
+from .service import EmailService, generate_plain_text_emails, get_email_service
 
 __all__ = [
     # Classifier

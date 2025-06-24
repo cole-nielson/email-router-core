@@ -15,7 +15,7 @@ from infrastructure.config.manager import get_app_config, get_config_manager
 
 from ..clients.manager import ClientManager
 from ..clients.resolver import extract_domain_from_email
-from ..email.composer import EmailService
+from ..email.service import EmailService
 
 logger = logging.getLogger(__name__)
 
