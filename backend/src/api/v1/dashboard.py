@@ -4,7 +4,7 @@ Dashboard API Router - Endpoints for client dashboard data and real-time updates
 
 import logging
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
@@ -73,8 +73,8 @@ async def get_client_metrics(
 
         metrics = await dashboard_service.get_system_metrics(client_id, timeframe)
 
-        # TODO: Calculate metric changes compared to previous period
-        changes = {}  # Would implement comparison logic here
+        # Trend analysis will be implemented in issue #49
+        changes: Dict[str, Any] = {}  # Would implement comparison logic here
 
         return MetricsResponse(metrics=metrics, changes=changes, timestamp=datetime.utcnow())
 
@@ -317,7 +317,7 @@ async def get_dashboard_data(
             alerts=alerts,
             automations=automations,
             integrations=integrations,
-            analytics=None,  # TODO: Implement analytics
+            analytics=None,  # Analytics module will be implemented in issue #50
             last_updated=datetime.utcnow(),
         )
 

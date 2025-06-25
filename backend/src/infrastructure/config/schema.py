@@ -153,6 +153,8 @@ class ServiceConfig(BaseModel):
     google_cloud_project: Optional[str] = None
     google_cloud_region: str = "us-central1"
 
+    default_admin_email: str = "admin@example.com"
+
     enable_fallbacks: bool = True
     max_retries: int = Field(default=3, ge=0, le=10)
     retry_delay_seconds: int = Field(default=1, ge=0, le=30)

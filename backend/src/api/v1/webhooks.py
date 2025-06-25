@@ -263,7 +263,8 @@ async def process_email_pipeline(
                 logger.info(f"🚨 Special handling: {', '.join(special_handling)}")
         else:
             # Fallback routing when no client identified
-            forward_to = "admin@example.com"  # TODO: Make this configurable
+            app_config = get_app_config()
+            forward_to = app_config.services.default_admin_email
             logger.warning("Using fallback routing for unknown client")
 
         # Step 3: Generate human-like plain text customer response and HTML team analysis
@@ -340,7 +341,8 @@ async def process_email_pipeline(
                 client_config = client_manager.get_client_config(client_id)
                 admin_email = client_config.contacts.primary_contact
             else:
-                admin_email = "admin@example.com"  # TODO: Make this configurable
+                app_config = get_app_config()
+                admin_email = app_config.services.default_admin_email
 
             await _send_failure_notification(email_data, str(e), admin_email)
 

@@ -266,7 +266,7 @@ async def websocket_endpoint(
     websocket_manager = get_websocket_manager()
 
     try:
-        # TODO: Validate token and get user info
+        # Token validation will be implemented in issue #48
         user_info = {"client_id": client_id}  # Would extract from token
 
         # Connect to WebSocket manager

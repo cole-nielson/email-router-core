@@ -371,7 +371,7 @@ class AIClassifier:
             Dictionary of available categories and their properties
         """
         try:
-            # TODO: Load from categories.yaml when implemented
+            # Client-specific categories will be loaded in issue #51
             # For now, return standard categories
             return {
                 "support": {"name": "Technical Support", "priority": "high"},

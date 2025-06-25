@@ -260,6 +260,7 @@ class ConfigManager:
             "mailgun_webhook_signing_key": os.getenv("MAILGUN_WEBHOOK_SIGNING_KEY"),
             "google_cloud_project": os.getenv("GOOGLE_CLOUD_PROJECT"),
             "google_cloud_region": os.getenv("GOOGLE_CLOUD_REGION", "us-central1"),
+            "default_admin_email": os.getenv("DEFAULT_ADMIN_EMAIL", "admin@example.com"),
         }
         config["services"] = services_config
 
