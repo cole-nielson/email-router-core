@@ -83,36 +83,36 @@ def test_enhanced_client_manager_email_identification():
     assert client_id == "client-001-cole-nielson"
 
 
-def test_enhanced_client_manager_routing():
+async def test_enhanced_client_manager_routing():
     """Test enhanced routing with confidence-based decisions"""
     manager = EnhancedClientManager()
 
     # Test category routing
-    destination = manager.get_routing_destination("client-001-cole-nielson", "support")
+    destination = await manager.get_routing_destination("client-001-cole-nielson", "support")
     assert destination == "colenielson.re@gmail.com"
 
-    destination = manager.get_routing_destination("client-001-cole-nielson", "billing")
+    destination = await manager.get_routing_destination("client-001-cole-nielson", "billing")
     assert destination == "colenielson8@gmail.com"
 
 
-def test_enhanced_client_manager_response_times():
+async def test_enhanced_client_manager_response_times():
     """Test response time lookup with enhanced configuration"""
     manager = EnhancedClientManager()
 
     # Test specific category response times
-    response_time = manager.get_response_time("client-001-cole-nielson", "support")
+    response_time = await manager.get_response_time("client-001-cole-nielson", "support")
     assert response_time == "within 4 hours"
 
-    response_time = manager.get_response_time("client-001-cole-nielson", "billing")
+    response_time = await manager.get_response_time("client-001-cole-nielson", "billing")
     assert response_time == "within 24 hours"
 
 
-def test_client_validation():
+async def test_client_validation():
     """Test enhanced client configuration validation"""
     manager = EnhancedClientManager()
 
     # Valid client should pass validation
-    is_valid = manager.validate_client_setup("client-001-cole-nielson")
+    is_valid = await manager.validate_client_setup("client-001-cole-nielson")
     assert is_valid == True
 
 
@@ -131,14 +131,14 @@ def test_unknown_client_handling():
     assert client_id is None
 
 
-def test_invalid_client_id():
+async def test_invalid_client_id():
     """Test handling of invalid client IDs with enhanced error reporting"""
     manager = EnhancedClientManager()
 
     # The new config manager returns None for invalid clients, it does not raise an error
     # on get_client_config. An error would be raised on initialization if a config is malformed.
     # We can test that get_client_config returns None.
-    config = manager.get_client_config("invalid-client-id")
+    config = await manager.get_client_config("invalid-client-id")
     assert config is None
 
 
@@ -221,12 +221,12 @@ def test_domain_matcher_advanced_strategies():
     assert method == "alias_resolution"
 
 
-def test_client_domains_management():
+async def test_client_domains_management():
     """Test client domain management features"""
     manager = EnhancedClientManager()
 
     # Test getting client domains
-    domains = manager.get_client_domains("client-001-cole-nielson")
+    domains = await manager.get_client_domains("client-001-cole-nielson")
     assert isinstance(domains, set)
     assert len(domains) > 0
     assert "colenielson.dev" in domains
@@ -246,11 +246,11 @@ def test_similar_clients_discovery():
         assert 0.0 <= score <= 1.0
 
 
-def test_client_summary_generation():
+async def test_client_summary_generation():
     """Test comprehensive client summary generation"""
     manager = EnhancedClientManager()
 
-    summary = manager.get_client_summary("client-001-cole-nielson")
+    summary = await manager.get_client_summary("client-001-cole-nielson")
 
     assert summary["client_id"] == "client-001-cole-nielson"
     assert summary["name"] == "Cole Nielson Email Router"

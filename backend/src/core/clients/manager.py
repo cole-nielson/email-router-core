@@ -8,6 +8,8 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from pydantic import BaseModel, Field
 
+from core.models.schemas import ClientSummary
+from core.ports.client_repository import ClientRepository
 from infrastructure.config.manager import get_config_manager
 from infrastructure.config.schema import ClientConfig
 
@@ -71,8 +73,13 @@ class EnhancedClientManager:
     fuzzy matching, and confidence scoring. Designed for complex enterprise scenarios.
     """
 
-    def __init__(self) -> None:
-        """Initialize the enhanced client manager."""
+    def __init__(self, client_repository: Optional[ClientRepository] = None) -> None:
+        """Initialize the enhanced client manager.
+
+        Args:
+            client_repository: Repository for client data operations
+        """
+        self._client_repository = client_repository
         self._clients_cache: Dict[str, ClientConfig] = {}
         self._domain_to_client_cache: Dict[str, str] = {}
         self._client_to_domains_cache: Dict[str, Set[str]] = {}
@@ -182,7 +189,26 @@ class EnhancedClientManager:
             f"for {len(available_clients)} clients"
         )
 
-    def get_available_clients(self) -> List[str]:
+    async def _convert_summary_to_config(self, summary: ClientSummary) -> Optional[ClientConfig]:
+        """
+        Convert ClientSummary to ClientConfig for backward compatibility.
+
+        Args:
+            summary: ClientSummary from repository
+
+        Returns:
+            ClientConfig or None if conversion fails
+        """
+        try:
+            # This is a simplified conversion - in practice you might need
+            # to fetch additional data from the repository or fall back to file config
+            # For now, fall back to file-based config for missing data
+            return get_config_manager().get_client_config(summary.client_id)
+        except Exception as e:
+            logger.error(f"Failed to convert ClientSummary to ClientConfig: {e}")
+            return None
+
+    async def get_available_clients(self) -> List[str]:
         """
         Get list of available client IDs.
 
@@ -190,9 +216,20 @@ class EnhancedClientManager:
             List of client IDs
         """
         self._ensure_initialized()
+
+        # Use repository if available, otherwise fall back to config manager
+        if self._client_repository:
+            try:
+                clients = await self._client_repository.list_all_clients(limit=1000)
+                return [client.client_id for client in clients]
+            except Exception as e:
+                logger.warning(
+                    f"Failed to get clients from repository: {e}, falling back to config"
+                )
+
         return list(get_config_manager().get_all_clients().keys())
 
-    def get_client_config(self, client_id: str) -> Optional[ClientConfig]:
+    async def get_client_config(self, client_id: str) -> Optional[ClientConfig]:
         """
         Get client configuration by ID.
 
@@ -203,9 +240,20 @@ class EnhancedClientManager:
             ClientConfig object or None
         """
         self._ensure_initialized()
+
+        # Use repository if available, otherwise fall back to config manager
+        if self._client_repository:
+            try:
+                client_summary = await self._client_repository.find_by_id(client_id)
+                if client_summary:
+                    # Convert ClientSummary back to ClientConfig for compatibility
+                    return await self._convert_summary_to_config(client_summary)
+            except Exception as e:
+                logger.warning(f"Failed to get client from repository: {e}, falling back to config")
+
         return get_config_manager().get_client_config(client_id)
 
-    def get_routing_rules(self, client_id: str) -> Optional[RoutingRules]:
+    async def get_routing_rules(self, client_id: str) -> Optional[RoutingRules]:
         """
         Get routing rules for a client.
 
@@ -216,7 +264,19 @@ class EnhancedClientManager:
             RoutingRules object or None
         """
         self._ensure_initialized()
-        client_config = self.get_client_config(client_id)
+
+        # Use repository if available, otherwise fall back to config manager
+        if self._client_repository:
+            try:
+                routing_rules = await self._client_repository.get_routing_rules(client_id)
+                if routing_rules:
+                    return RoutingRules(routing=routing_rules)
+            except Exception as e:
+                logger.warning(
+                    f"Failed to get routing rules from repository: {e}, falling back to config"
+                )
+
+        client_config = await self.get_client_config(client_id)
         if not client_config:
             return None
 
@@ -224,7 +284,7 @@ class EnhancedClientManager:
         routing_data = {"routing": {rule.category: rule.email for rule in client_config.routing}}
         return RoutingRules(**routing_data)
 
-    def get_client_domains(self, client_id: str) -> Set[str]:
+    async def get_client_domains(self, client_id: str) -> Set[str]:
         """
         Get all domains associated with a client.
 
@@ -235,6 +295,14 @@ class EnhancedClientManager:
             Set of domains for the client
         """
         self._ensure_initialized()
+
+        # Use repository if available, otherwise fall back to cache
+        if self._client_repository:
+            try:
+                return await self._client_repository.get_client_domains(client_id)
+            except Exception as e:
+                logger.warning(f"Failed to get domains from repository: {e}, falling back to cache")
+
         return self._client_to_domains_cache.get(client_id, set())
 
     def identify_client_by_domain(self, domain: str) -> ClientIdentificationResult:
@@ -377,7 +445,7 @@ class EnhancedClientManager:
         result = self.identify_client_by_domain(domain)
         return result.client_id if result.is_successful else None
 
-    def get_routing_destination(self, client_id: str, category: str) -> Optional[str]:
+    async def get_routing_destination(self, client_id: str, category: str) -> Optional[str]:
         """
         Get routing destination email for a category.
 
@@ -389,7 +457,7 @@ class EnhancedClientManager:
             Destination email address if found, None otherwise
         """
         try:
-            routing_rules = self.get_routing_rules(client_id)
+            routing_rules = await self.get_routing_rules(client_id)
             if routing_rules is not None:
                 destination = routing_rules.routing.get(category)
             else:
@@ -422,7 +490,7 @@ class EnhancedClientManager:
             logger.error(f"Failed to get routing destination: {e}")
             return None
 
-    def get_response_time(self, client_id: str, category: str) -> str:
+    async def get_response_time(self, client_id: str, category: str) -> str:
         """
         Get expected response time for a category.
 
@@ -434,7 +502,28 @@ class EnhancedClientManager:
             Response time string (e.g., 'within 4 hours')
         """
         try:
-            client_config = self.get_client_config(client_id)
+            # Use repository if available, otherwise fall back to config
+            if self._client_repository:
+                try:
+                    response_times = await self._client_repository.get_response_times(client_id)
+                    if response_times and category in response_times:
+                        response_time_minutes = response_times[category]
+                        # Convert to appropriate time unit
+                        if response_time_minutes >= 60:  # 1 hour or more
+                            hours = response_time_minutes // 60
+                            if hours >= 48:  # 48 hours or more, use days
+                                days = hours // 24
+                                return f"within {days} day{'s' if days > 1 else ''}"
+                            else:
+                                return f"within {hours} hour{'s' if hours > 1 else ''}"
+                        else:
+                            return f"within {response_time_minutes} minutes"
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to get response times from repository: {e}, falling back to config"
+                    )
+
+            client_config = await self.get_client_config(client_id)
             if not client_config:
                 raise ValueError("Client config not found")
 
@@ -530,7 +619,7 @@ class EnhancedClientManager:
 
         logger.info("Completed refreshing all client configurations")
 
-    def validate_client_setup(self, client_id: str) -> bool:
+    async def validate_client_setup(self, client_id: str) -> bool:
         """
         Validate that a client is properly configured.
 
@@ -542,12 +631,12 @@ class EnhancedClientManager:
         """
         try:
             # Test loading all required configurations
-            client_config = self.get_client_config(client_id)
+            client_config = await self.get_client_config(client_id)
             if not client_config:
                 logger.error(f"Client config not found for {client_id}")
                 return False
 
-            routing_rules = self.get_routing_rules(client_id)
+            routing_rules = await self.get_routing_rules(client_id)
 
             # Basic validation checks
             if not client_config.client_id == client_id:
@@ -567,7 +656,7 @@ class EnhancedClientManager:
                     logger.warning(f"Missing routing rule for {category} in {client_id}")
 
             # Validate domains
-            domains = self.get_client_domains(client_id)
+            domains = await self.get_client_domains(client_id)
             if not domains:
                 logger.error(f"No domains configured for {client_id}")
                 return False
@@ -579,7 +668,7 @@ class EnhancedClientManager:
             logger.error(f"Client validation failed for {client_id}: {e}")
             return False
 
-    def get_client_summary(self, client_id: str) -> Dict:
+    async def get_client_summary(self, client_id: str) -> Dict:
         """
         Get comprehensive summary of client configuration.
 
@@ -590,12 +679,35 @@ class EnhancedClientManager:
             Dictionary with client summary information
         """
         try:
-            client_config = self.get_client_config(client_id)
+            # Use repository if available for getting summary directly
+            if self._client_repository:
+                try:
+                    client_summary = await self._client_repository.find_by_id(client_id)
+                    if client_summary:
+                        return {
+                            "client_id": client_summary.client_id,
+                            "name": client_summary.name,
+                            "industry": client_summary.industry,
+                            "status": client_summary.status,
+                            "domains": client_summary.domains,
+                            "primary_domain": client_summary.primary_domain,
+                            "routing_categories": client_summary.routing_categories,
+                            "total_domains": client_summary.total_domains,
+                            "settings": client_summary.settings,
+                            "created_at": client_summary.created_at,
+                            "updated_at": client_summary.updated_at,
+                        }
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to get client summary from repository: {e}, falling back to config"
+                    )
+
+            client_config = await self.get_client_config(client_id)
             if not client_config:
                 return {"client_id": client_id, "error": "Client not found"}
 
-            routing_rules = self.get_routing_rules(client_id)
-            domains = self.get_client_domains(client_id)
+            routing_rules = await self.get_routing_rules(client_id)
+            domains = await self.get_client_domains(client_id)
 
             return {
                 "client_id": client_id,
@@ -622,12 +734,17 @@ class EnhancedClientManager:
 ClientManager = EnhancedClientManager
 
 
-_client_manager_instance: Optional[EnhancedClientManager] = None
+def get_client_manager(
+    client_repository: Optional[ClientRepository] = None,
+) -> EnhancedClientManager:
+    """Dependency injection function for ClientManager.
 
+    Args:
+        client_repository: Optional ClientRepository instance for database operations
 
-def get_client_manager() -> EnhancedClientManager:
-    """Dependency injection function for ClientManager."""
-    global _client_manager_instance
-    if _client_manager_instance is None:
-        _client_manager_instance = EnhancedClientManager()
-    return _client_manager_instance
+    Returns:
+        EnhancedClientManager instance
+    """
+    # Always create a new instance when repository is provided
+    # This allows proper dependency injection in FastAPI
+    return EnhancedClientManager(client_repository)
