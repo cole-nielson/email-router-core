@@ -219,7 +219,9 @@ async def require_admin(
     admin_roles = ["super_admin", "client_admin"]
 
     if not security_context.has_role(admin_roles):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
+        )
 
     return security_context
 

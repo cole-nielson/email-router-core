@@ -37,7 +37,9 @@ class Permission(BaseModel):
         """Get permission as string format."""
         return f"{self.resource}:{self.action}"
 
-    def matches(self, permission_string: str, target_client_id: Optional[str] = None) -> bool:
+    def matches(
+        self, permission_string: str, target_client_id: Optional[str] = None
+    ) -> bool:
         """
         Check if this permission matches a permission string.
 
@@ -296,7 +298,10 @@ class RBACManager:
             role: Role name
             permission: Permission to remove
         """
-        if role in self._role_permissions and permission in self._role_permissions[role]:
+        if (
+            role in self._role_permissions
+            and permission in self._role_permissions[role]
+        ):
             self._role_permissions[role].remove(permission)
             logger.info(f"Removed permission {permission} from role {role}")
 
@@ -314,13 +319,17 @@ class RBACManager:
             raise ValueError(f"Invalid permissions: {errors}")
 
         self._role_permissions[role_name] = permissions.copy()
-        logger.info(f"Created custom role {role_name} with {len(permissions)} permissions")
+        logger.info(
+            f"Created custom role {role_name} with {len(permissions)} permissions"
+        )
 
     # =========================================================================
     # UTILITY METHODS
     # =========================================================================
 
-    def get_user_effective_permissions(self, security_context: SecurityContext) -> List[str]:
+    def get_user_effective_permissions(
+        self, security_context: SecurityContext
+    ) -> List[str]:
         """
         Get all effective permissions for a user.
 
@@ -345,7 +354,9 @@ class RBACManager:
 
         return sorted(list(permissions))
 
-    def get_accessible_resources(self, security_context: SecurityContext) -> Dict[str, List[str]]:
+    def get_accessible_resources(
+        self, security_context: SecurityContext
+    ) -> Dict[str, List[str]]:
         """
         Get resources accessible to the user.
 
@@ -429,4 +440,6 @@ def require_permission(
     security_context: SecurityContext, permission: str, client_id: Optional[str] = None
 ) -> None:
     """Require permission using global RBAC manager."""
-    get_rbac_manager().check_permission(security_context, permission, client_id, raise_on_deny=True)
+    get_rbac_manager().check_permission(
+        security_context, permission, client_id, raise_on_deny=True
+    )

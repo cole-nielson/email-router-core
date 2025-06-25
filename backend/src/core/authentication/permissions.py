@@ -240,7 +240,9 @@ class PermissionUtils:
         for attr_name in dir(Permissions):
             if not attr_name.startswith("_"):
                 permission = getattr(Permissions, attr_name)
-                if isinstance(permission, str) and permission.startswith(f"{resource}:"):
+                if isinstance(permission, str) and permission.startswith(
+                    f"{resource}:"
+                ):
                     permissions.append(permission)
 
         return permissions

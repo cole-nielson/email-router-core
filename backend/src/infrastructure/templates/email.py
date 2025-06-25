@@ -229,9 +229,13 @@ def create_team_template(
 
     # Dynamic confidence color and text based on percentage
     confidence_color = (
-        "#16a34a" if confidence >= 0.8 else "#f59e0b" if confidence >= 0.6 else "#ef4444"
+        "#16a34a"
+        if confidence >= 0.8
+        else "#f59e0b" if confidence >= 0.6 else "#ef4444"
     )
-    confidence_text = "HIGH" if confidence >= 0.8 else "MEDIUM" if confidence >= 0.6 else "LOW"
+    confidence_text = (
+        "HIGH" if confidence >= 0.8 else "MEDIUM" if confidence >= 0.6 else "LOW"
+    )
 
     # Enhanced plain text version with client branding and improved structure
     text_body = f"""
@@ -272,7 +276,9 @@ MESSAGE CONTENT:
 
     # Enhanced HTML with client branding
     analysis_html = draft_response.replace("\n", "<br>")
-    email_body_html = (email_data["stripped_text"] or email_data["body_text"]).replace("\n", "<br>")
+    email_body_html = (email_data["stripped_text"] or email_data["body_text"]).replace(
+        "\n", "<br>"
+    )
 
     # Hide logo if URL is empty
     logo_url = branding.get("logo_url", "")

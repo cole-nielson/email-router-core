@@ -67,7 +67,9 @@ class DashboardService:
                 # Initialize integrations
                 self._generate_demo_integrations(client_id)
 
-            logger.info(f"✅ Initialized demo data for {len(available_clients)} clients")
+            logger.info(
+                f"✅ Initialized demo data for {len(available_clients)} clients"
+            )
 
         except Exception as e:
             logger.error(f"❌ Failed to initialize demo data: {e}")
@@ -91,7 +93,9 @@ class DashboardService:
             logger.error(f"❌ Failed to get client info for {client_id}: {e}")
             raise
 
-    async def get_system_metrics(self, client_id: str, timeframe: str = "24h") -> DashboardMetrics:
+    async def get_system_metrics(
+        self, client_id: str, timeframe: str = "24h"
+    ) -> DashboardMetrics:
         """Get aggregated system metrics for a client."""
         try:
             # Get cached metrics or calculate real ones
@@ -136,7 +140,9 @@ class DashboardService:
             activities = self._activities_cache.get(client_id, [])
 
             # Sort by timestamp (newest first) and limit
-            sorted_activities = sorted(activities, key=lambda x: x.timestamp, reverse=True)
+            sorted_activities = sorted(
+                activities, key=lambda x: x.timestamp, reverse=True
+            )
             return sorted_activities[:limit]
 
         except Exception as e:
@@ -149,7 +155,9 @@ class DashboardService:
             alerts = self._alerts_cache.get(client_id, [])
 
             # Sort by timestamp (newest first) and return unresolved first
-            sorted_alerts = sorted(alerts, key=lambda x: (x.resolved, -x.timestamp.timestamp()))
+            sorted_alerts = sorted(
+                alerts, key=lambda x: (x.resolved, -x.timestamp.timestamp())
+            )
             return sorted_alerts
 
         except Exception as e:
@@ -174,7 +182,9 @@ class DashboardService:
             logger.error(f"❌ Failed to get integrations for {client_id}: {e}")
             return []
 
-    async def resolve_alert(self, client_id: str, alert_id: str, resolved_by: str) -> bool:
+    async def resolve_alert(
+        self, client_id: str, alert_id: str, resolved_by: str
+    ) -> bool:
         """Mark an alert as resolved."""
         try:
             alerts = self._alerts_cache.get(client_id, [])
@@ -199,7 +209,9 @@ class DashboardService:
         try:
             # Map stage to activity type and generate appropriate title/description
             stage = email_data.get("stage", "email_processed")
-            activity_type, title, description = self._get_activity_details(stage, email_data)
+            activity_type, title, description = self._get_activity_details(
+                stage, email_data
+            )
 
             activity = ProcessingActivity(
                 id=str(uuid.uuid4()),
@@ -217,7 +229,9 @@ class DashboardService:
             self._activities_cache[client_id].append(activity)
 
             # Keep only last 1000 activities per client
-            self._activities_cache[client_id] = self._activities_cache[client_id][-1000:]
+            self._activities_cache[client_id] = self._activities_cache[client_id][
+                -1000:
+            ]
 
             # Update metrics
             self._update_metrics_cache(client_id, activity)
@@ -255,7 +269,11 @@ class DashboardService:
             ),
             "delivery_complete": (
                 ActivityType.EMAIL_PROCESSED,
-                ("✅ Email processing complete" if success else "❌ Email processing failed"),
+                (
+                    "✅ Email processing complete"
+                    if success
+                    else "❌ Email processing failed"
+                ),
                 f"Completed processing '{subject}' in {email_data.get('processing_time_ms', 0)}ms",
             ),
             "processing_error": (
@@ -328,7 +346,9 @@ class DashboardService:
 
         # Calculate derived metrics
         avg_response_time = (
-            (total_processing_time / processing_count / 1000) if processing_count > 0 else 3.5
+            (total_processing_time / processing_count / 1000)
+            if processing_count > 0
+            else 3.5
         )
         classification_accuracy = (
             (successful_classifications / classification_attempts)
@@ -398,11 +418,15 @@ class DashboardService:
             if activity_type == ActivityType.EMAIL_PROCESSED:
                 sender = random.choice(senders)
                 title = f"{prefix} {sender}"
-                description = f"Successfully processed and classified email from {sender}"
+                description = (
+                    f"Successfully processed and classified email from {sender}"
+                )
             elif activity_type == ActivityType.CLASSIFICATION_COMPLETE:
                 category = random.choice(categories)
                 title = f"{prefix} {category}"
-                description = f"AI classified email with {random.randint(85, 98)}% confidence"
+                description = (
+                    f"AI classified email with {random.randint(85, 98)}% confidence"
+                )
             elif activity_type == ActivityType.ROUTING_EXECUTED:
                 destination = random.choice(destinations)
                 title = f"{prefix} {destination}"
@@ -414,7 +438,8 @@ class DashboardService:
             activity = ProcessingActivity(
                 id=str(uuid.uuid4()),
                 type=activity_type,
-                timestamp=now - timedelta(minutes=random.randint(1, 1440)),  # Last 24 hours
+                timestamp=now
+                - timedelta(minutes=random.randint(1, 1440)),  # Last 24 hours
                 client_id=client_id,
                 title=title,
                 description=description,
@@ -469,7 +494,9 @@ class DashboardService:
                 message=message,
                 timestamp=now - timedelta(minutes=random.randint(1, 720)),
                 resolved=(
-                    random.choice([True, False]) if severity != AlertSeverity.CRITICAL else False
+                    random.choice([True, False])
+                    if severity != AlertSeverity.CRITICAL
+                    else False
                 ),
                 metadata={"demo": True},
             )

@@ -47,11 +47,15 @@ class TemplateLoader:
 
         try:
             logger.debug(f"Loading template from config manager: {cache_key}")
-            template: str = get_config_manager().load_ai_prompt(client_id, template_type)
+            template: str = get_config_manager().load_ai_prompt(
+                client_id, template_type
+            )
 
             # Validate template if validator is available
             if self._template_validator:
-                validation = self._template_validator.validate_template(template, client_id)
+                validation = self._template_validator.validate_template(
+                    template, client_id
+                )
                 if not validation.is_valid:
                     logger.warning(
                         f"Template validation failed for {client_id}:{template_type}: {validation.errors}"
@@ -68,7 +72,9 @@ class TemplateLoader:
             return template
 
         except Exception as e:
-            logger.error(f"Failed to load template {template_type} for {client_id}: {e}")
+            logger.error(
+                f"Failed to load template {template_type} for {client_id}: {e}"
+            )
             raise
 
     def get_cached_template(self, client_id: str, template_type: str) -> Optional[str]:
@@ -99,7 +105,9 @@ class TemplateLoader:
             client_id: Client identifier
         """
         keys_to_remove = [
-            key for key in self._template_cache.keys() if key.startswith(f"{client_id}:")
+            key
+            for key in self._template_cache.keys()
+            if key.startswith(f"{client_id}:")
         ]
         for key in keys_to_remove:
             del self._template_cache[key]
@@ -116,9 +124,15 @@ class TemplateLoader:
         """
         return {
             "total_entries": len(self._template_cache),
-            "clients": len(set(key.split(":")[0] for key in self._template_cache.keys())),
+            "clients": len(
+                set(key.split(":")[0] for key in self._template_cache.keys())
+            ),
             "template_types": len(
-                set(key.split(":")[1] for key in self._template_cache.keys() if ":" in key)
+                set(
+                    key.split(":")[1]
+                    for key in self._template_cache.keys()
+                    if ":" in key
+                )
             ),
         }
 
@@ -141,7 +155,9 @@ class TemplateLoader:
                 self.load_template(client_id, template_type)
                 loaded_count += 1
             except Exception as e:
-                logger.warning(f"Failed to preload template {template_type} for {client_id}: {e}")
+                logger.warning(
+                    f"Failed to preload template {template_type} for {client_id}: {e}"
+                )
 
         logger.info(
             f"Preloaded {loaded_count}/{len(template_types)} templates for client {client_id}"

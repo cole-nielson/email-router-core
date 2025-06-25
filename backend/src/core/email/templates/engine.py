@@ -47,7 +47,9 @@ class TemplateEngine:
                 default_value = f"[{var_name}]"  # Less disruptive placeholder
 
             # Get nested value
-            value = TemplateContextBuilder.get_nested_value(context, var_name, default_value)
+            value = TemplateContextBuilder.get_nested_value(
+                context, var_name, default_value
+            )
 
             # Track missing variables for logging
             if value == default_value and "|default:" not in var_expression:
@@ -127,7 +129,9 @@ class TemplateEngine:
 
         return variables
 
-    def preview_rendering(self, template: str, context: Dict[str, Any]) -> Dict[str, Any]:
+    def preview_rendering(
+        self, template: str, context: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Preview template rendering without actually processing it.
 
@@ -156,7 +160,9 @@ class TemplateEngine:
             "has_missing": len(missing_vars) > 0,
         }
 
-    def batch_render(self, templates: Dict[str, str], context: Dict[str, Any]) -> Dict[str, str]:
+    def batch_render(
+        self, templates: Dict[str, str], context: Dict[str, Any]
+    ) -> Dict[str, str]:
         """
         Render multiple templates with the same context.
 
@@ -171,7 +177,9 @@ class TemplateEngine:
 
         for template_name, template_content in templates.items():
             try:
-                results[template_name] = self.inject_variables(template_content, context)
+                results[template_name] = self.inject_variables(
+                    template_content, context
+                )
                 logger.debug(f"Rendered template: {template_name}")
             except Exception as e:
                 logger.error(f"Failed to render template {template_name}: {e}")

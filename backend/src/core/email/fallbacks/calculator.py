@@ -50,7 +50,10 @@ class ResponseTimeCalculator:
             client_config = self.client_manager.get_client_config(client_id)
 
             # Check if response_times exists in config
-            if hasattr(client_config, "response_times") and client_config.response_times:
+            if (
+                hasattr(client_config, "response_times")
+                and client_config.response_times
+            ):
                 response_times = client_config.response_times
 
                 # Get the specific category target
@@ -71,7 +74,9 @@ class ResponseTimeCalculator:
             return fallback_target
 
         except Exception as e:
-            logger.warning(f"Could not get response time target for {client_id}:{category}: {e}")
+            logger.warning(
+                f"Could not get response time target for {client_id}:{category}: {e}"
+            )
             return self._get_fallback_response_time(category)
 
     def _get_fallback_response_time(self, category: str) -> str:
@@ -110,7 +115,8 @@ class ResponseTimeCalculator:
         """
         categories = ["support", "billing", "sales", "urgent", "general"]
         return {
-            category: self.get_response_time_target(client_id, category) for category in categories
+            category: self.get_response_time_target(client_id, category)
+            for category in categories
         }
 
     def is_urgent_category(self, category: str) -> bool:
@@ -140,7 +146,10 @@ class ResponseTimeCalculator:
         try:
             client_config = self.client_manager.get_client_config(client_id)
 
-            if hasattr(client_config, "response_times") and client_config.response_times:
+            if (
+                hasattr(client_config, "response_times")
+                and client_config.response_times
+            ):
                 response_times = client_config.response_times
 
                 if hasattr(response_times, category):
@@ -152,7 +161,9 @@ class ResponseTimeCalculator:
             return None
 
         except Exception as e:
-            logger.debug(f"Could not get escalation threshold for {client_id}:{category}: {e}")
+            logger.debug(
+                f"Could not get escalation threshold for {client_id}:{category}: {e}"
+            )
             return None
 
 

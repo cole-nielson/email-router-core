@@ -84,7 +84,9 @@ class AcknowledgmentGenerator(BaseEmailGenerator):
         """
         try:
             # Compose acknowledgment prompt using client templates
-            prompt = self._compose_acknowledgment_prompt(client_id, email_data, classification)
+            prompt = self._compose_acknowledgment_prompt(
+                client_id, email_data, classification
+            )
 
             # Generate acknowledgment using AI
             acknowledgment = await self._ai_client.call_ai_service(prompt)
@@ -93,7 +95,9 @@ class AcknowledgmentGenerator(BaseEmailGenerator):
             return acknowledgment
 
         except Exception as e:
-            logger.error(f"Client-specific acknowledgment generation failed for {client_id}: {e}")
+            logger.error(
+                f"Client-specific acknowledgment generation failed for {client_id}: {e}"
+            )
             raise
 
     async def generate_generic(
@@ -199,7 +203,9 @@ class AcknowledgmentGenerator(BaseEmailGenerator):
             return prompt
 
         except Exception as e:
-            logger.error(f"Failed to compose acknowledgment prompt for {client_id}: {e}")
+            logger.error(
+                f"Failed to compose acknowledgment prompt for {client_id}: {e}"
+            )
             # Return fallback prompt
             return self._get_fallback_acknowledgment_prompt(client_id, classification)
 
@@ -273,7 +279,9 @@ def get_acknowledgment_generator(
             template_validator = get_template_validator()
             template_loader = template_loader or get_template_loader(template_validator)
             template_engine = template_engine or get_template_engine()
-            context_builder = context_builder or get_template_context_builder(client_manager)
+            context_builder = context_builder or get_template_context_builder(
+                client_manager
+            )
 
         get_acknowledgment_generator._instance = AcknowledgmentGenerator(
             client_manager,

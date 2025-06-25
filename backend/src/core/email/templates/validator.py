@@ -63,7 +63,9 @@ class TemplateValidator:
         for required_var in self.validation_rules["required_variables"]:
             pattern = r"{{\s*" + re.escape(required_var) + r"\s*}}"
             if not re.search(pattern, template_content):
-                warnings.append(f"Required variable '{required_var}' not found in template")
+                warnings.append(
+                    f"Required variable '{required_var}' not found in template"
+                )
 
         # Check for balanced HTML tags
         html_tags = re.findall(r"<(/?)([a-zA-Z][a-zA-Z0-9]*)", template_content)

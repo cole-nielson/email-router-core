@@ -44,7 +44,9 @@ class WebSocketManager:
             "connection_errors": 0,
         }
 
-    async def connect(self, websocket: WebSocket, client_id: str, user_info: Optional[Dict] = None):
+    async def connect(
+        self, websocket: WebSocket, client_id: str, user_info: Optional[Dict] = None
+    ):
         """
         Accept a new WebSocket connection and register it for a client.
         """
@@ -88,7 +90,9 @@ class WebSocketManager:
             )
 
         except Exception as e:
-            logger.error(f"❌ Failed to establish WebSocket connection for {client_id}: {e}")
+            logger.error(
+                f"❌ Failed to establish WebSocket connection for {client_id}: {e}"
+            )
             self._stats["connection_errors"] += 1
             raise
 
@@ -131,7 +135,9 @@ class WebSocketManager:
             connections = self._connections.get(client_id, set())
 
             if not connections:
-                logger.debug(f"📱 No active connections for client {client_id}, queuing message")
+                logger.debug(
+                    f"📱 No active connections for client {client_id}, queuing message"
+                )
                 self._message_queue[client_id].append(message.model_dump())
                 # Keep only last 100 messages per client
                 self._message_queue[client_id] = self._message_queue[client_id][-100:]
@@ -147,11 +153,15 @@ class WebSocketManager:
                     self._stats["messages_sent"] += 1
 
                 except WebSocketDisconnect:
-                    logger.debug(f"🔌 WebSocket disconnected during broadcast for {client_id}")
+                    logger.debug(
+                        f"🔌 WebSocket disconnected during broadcast for {client_id}"
+                    )
                     disconnected_websockets.append(websocket)
 
                 except Exception as e:
-                    logger.error(f"❌ Failed to send message to WebSocket for {client_id}: {e}")
+                    logger.error(
+                        f"❌ Failed to send message to WebSocket for {client_id}: {e}"
+                    )
                     disconnected_websockets.append(websocket)
 
             # Clean up disconnected websockets
@@ -294,7 +304,9 @@ class WebSocketManager:
                 self._message_queue[client_id].clear()
 
             if queued_messages:
-                logger.debug(f"📬 Sent {len(queued_messages)} queued messages to {client_id}")
+                logger.debug(
+                    f"📬 Sent {len(queued_messages)} queued messages to {client_id}"
+                )
 
         except Exception as e:
             logger.error(f"❌ Failed to send queued messages to {client_id}: {e}")
@@ -313,10 +325,13 @@ class WebSocketManager:
             **self._stats,
             "clients_connected": len(self._connections),
             "connections_by_client": {
-                client_id: len(connections) for client_id, connections in self._connections.items()
+                client_id: len(connections)
+                for client_id, connections in self._connections.items()
             },
             "queue_sizes": {
-                client_id: len(queue) for client_id, queue in self._message_queue.items() if queue
+                client_id: len(queue)
+                for client_id, queue in self._message_queue.items()
+                if queue
             },
         }
 

@@ -41,13 +41,21 @@ class SystemStatus(str, Enum):
 
 # Dashboard Metrics Models
 class DashboardMetrics(BaseModel):
-    emails_processed_24h: int = Field(..., description="Total emails processed in last 24 hours")
-    emails_processed_7d: int = Field(..., description="Total emails processed in last 7 days")
+    emails_processed_24h: int = Field(
+        ..., description="Total emails processed in last 24 hours"
+    )
+    emails_processed_7d: int = Field(
+        ..., description="Total emails processed in last 7 days"
+    )
     classification_accuracy: float = Field(
         ..., ge=0, le=1, description="AI classification accuracy (0-1)"
     )
-    average_response_time: float = Field(..., description="Average processing time in seconds")
-    active_automations: int = Field(..., description="Number of currently active automations")
+    average_response_time: float = Field(
+        ..., description="Average processing time in seconds"
+    )
+    active_automations: int = Field(
+        ..., description="Number of currently active automations"
+    )
     successful_routes: int = Field(..., description="Successfully routed emails in 24h")
     failed_routes: int = Field(..., description="Failed routing attempts in 24h")
     uptime_hours: float = Field(..., description="System uptime in hours")
@@ -66,9 +74,15 @@ class ProcessingActivity(BaseModel):
     client_id: str
     title: str = Field(..., description="Human-readable activity title")
     description: str = Field(..., description="Detailed activity description")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional activity data")
-    success: bool = Field(default=True, description="Whether the activity was successful")
-    duration_ms: Optional[int] = Field(None, description="Activity duration in milliseconds")
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict, description="Additional activity data"
+    )
+    success: bool = Field(
+        default=True, description="Whether the activity was successful"
+    )
+    duration_ms: Optional[int] = Field(
+        None, description="Activity duration in milliseconds"
+    )
 
 
 class SystemAlert(BaseModel):
@@ -87,7 +101,9 @@ class SystemAlert(BaseModel):
 class AutomationStatus(BaseModel):
     id: str = Field(..., description="Automation identifier")
     name: str = Field(..., description="Human-readable automation name")
-    type: str = Field(..., description="Automation type (e.g., 'email_processing', 'lead_scoring')")
+    type: str = Field(
+        ..., description="Automation type (e.g., 'email_processing', 'lead_scoring')"
+    )
     status: SystemStatus
     last_run: Optional[datetime] = None
     success_rate: float = Field(..., ge=0, le=1, description="Success rate (0-1)")

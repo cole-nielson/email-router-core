@@ -137,7 +137,9 @@ class SecurityConfig(BaseModel):
         errors = []
 
         if len(password) < self.min_password_length:
-            errors.append(f"Password must be at least {self.min_password_length} characters long")
+            errors.append(
+                f"Password must be at least {self.min_password_length} characters long"
+            )
 
         if self.password_require_uppercase and not any(c.isupper() for c in password):
             errors.append("Password must contain at least one uppercase letter")
@@ -211,7 +213,9 @@ class SecurityConfig(BaseModel):
         # Adjust headers based on environment
         if environment == "development":
             # Relax CSP for development
-            headers["Content-Security-Policy"] = "default-src 'self' 'unsafe-inline' 'unsafe-eval'"
+            headers["Content-Security-Policy"] = (
+                "default-src 'self' 'unsafe-inline' 'unsafe-eval'"
+            )
 
         return headers
 
@@ -240,7 +244,9 @@ def get_security_config() -> SecurityConfig:
             logger.info("Security configuration loaded from unified config system")
 
         except Exception as e:
-            logger.warning(f"Failed to load unified config, using default security config: {e}")
+            logger.warning(
+                f"Failed to load unified config, using default security config: {e}"
+            )
             _security_config = SecurityConfig()
 
     return _security_config

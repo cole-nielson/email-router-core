@@ -109,7 +109,9 @@ class DatabaseConfigBridge:
                 setattr(client, key, value)
 
         # Log change
-        self._log_change("UPDATE", "clients", client_id, old_values, updates, updated_by)
+        self._log_change(
+            "UPDATE", "clients", client_id, old_values, updates, updated_by
+        )
 
         logger.info(f"📝 Updated client: {client_id}")
         return client
@@ -132,7 +134,9 @@ class DatabaseConfigBridge:
             config = self.config_manager.get_client_config(client_id)
             if config and config.routing:
                 for category, email in config.routing.items():
-                    rule = RoutingRule(client_id=client_id, category=category, email_address=email)
+                    rule = RoutingRule(
+                        client_id=client_id, category=category, email_address=email
+                    )
                     self.db.add(rule)
                     db_rules.append(rule)
                 self.db.flush()
@@ -149,7 +153,9 @@ class DatabaseConfigBridge:
         """Update or create routing rule for a category."""
         rule = (
             self.db.query(RoutingRule)
-            .filter(RoutingRule.client_id == client_id, RoutingRule.category == category)
+            .filter(
+                RoutingRule.client_id == client_id, RoutingRule.category == category
+            )
             .first()
         )
 
@@ -165,7 +171,9 @@ class DatabaseConfigBridge:
                 updated_by,
             )
         else:
-            rule = RoutingRule(client_id=client_id, category=category, email_address=email_address)
+            rule = RoutingRule(
+                client_id=client_id, category=category, email_address=email_address
+            )
             self.db.add(rule)
             self.db.flush()
             self._log_change(
@@ -177,7 +185,9 @@ class DatabaseConfigBridge:
                 updated_by,
             )
 
-        logger.info(f"📍 Updated routing rule: {client_id} -> {category}: {email_address}")
+        logger.info(
+            f"📍 Updated routing rule: {client_id} -> {category}: {email_address}"
+        )
         return rule
 
     def delete_routing_rule(
@@ -186,7 +196,9 @@ class DatabaseConfigBridge:
         """Delete routing rule for a category."""
         rule = (
             self.db.query(RoutingRule)
-            .filter(RoutingRule.client_id == client_id, RoutingRule.category == category)
+            .filter(
+                RoutingRule.client_id == client_id, RoutingRule.category == category
+            )
             .first()
         )
 
@@ -196,7 +208,9 @@ class DatabaseConfigBridge:
                 "email_address": rule.email_address,
             }
             rule.is_active = False
-            self._log_change("DELETE", "routing_rules", rule.id, old_values, None, deleted_by)
+            self._log_change(
+                "DELETE", "routing_rules", rule.id, old_values, None, deleted_by
+            )
             logger.info(f"🗑️ Deleted routing rule: {client_id} -> {category}")
             return True
 
@@ -210,7 +224,9 @@ class DatabaseConfigBridge:
         """Get client branding configuration."""
         # First try database
         branding = (
-            self.db.query(ClientBranding).filter(ClientBranding.client_id == client_id).first()
+            self.db.query(ClientBranding)
+            .filter(ClientBranding.client_id == client_id)
+            .first()
         )
         if branding:
             return branding
@@ -290,7 +306,11 @@ class DatabaseConfigBridge:
     def get_response_times(self, client_id: str) -> List[ResponseTime]:
         """Get all response time configurations for a client."""
         # First get from database
-        db_times = self.db.query(ResponseTime).filter(ResponseTime.client_id == client_id).all()
+        db_times = (
+            self.db.query(ResponseTime)
+            .filter(ResponseTime.client_id == client_id)
+            .all()
+        )
 
         # If no DB times, load from config
         if not db_times:
@@ -306,7 +326,9 @@ class DatabaseConfigBridge:
                                 business_hours = True
                             else:
                                 target = settings.target
-                                business_hours = getattr(settings, "business_hours_only", True)
+                                business_hours = getattr(
+                                    settings, "business_hours_only", True
+                                )
 
                             response_time = ResponseTime(
                                 client_id=client_id,
@@ -331,7 +353,9 @@ class DatabaseConfigBridge:
         """Update response time for a category."""
         response_time = (
             self.db.query(ResponseTime)
-            .filter(ResponseTime.client_id == client_id, ResponseTime.category == category)
+            .filter(
+                ResponseTime.client_id == client_id, ResponseTime.category == category
+            )
             .first()
         )
 
@@ -371,7 +395,9 @@ class DatabaseConfigBridge:
                 updated_by,
             )
 
-        logger.info(f"⏱️ Updated response time: {client_id} -> {category}: {target_response}")
+        logger.info(
+            f"⏱️ Updated response time: {client_id} -> {category}: {target_response}"
+        )
         return response_time
 
     # =============================================================================
@@ -444,7 +470,9 @@ class DatabaseConfigBridge:
             updated_by,
         )
 
-        logger.info(f"🤖 Updated AI prompt: {client_id} -> {prompt_type} (v{prompt.version})")
+        logger.info(
+            f"🤖 Updated AI prompt: {client_id} -> {prompt_type} (v{prompt.version})"
+        )
         return prompt
 
     # =============================================================================
@@ -458,7 +486,9 @@ class DatabaseConfigBridge:
             config = self.config_manager.get_client_config(client_id)
 
             if not config:
-                raise ValueError(f"Client config for {client_id} not found in ConfigManager")
+                raise ValueError(
+                    f"Client config for {client_id} not found in ConfigManager"
+                )
 
             # Create or update client
             client_data = {
@@ -505,7 +535,9 @@ class DatabaseConfigBridge:
                                 business_hours = True
                             else:
                                 target = settings.target
-                                business_hours = getattr(settings, "business_hours_only", True)
+                                business_hours = getattr(
+                                    settings, "business_hours_only", True
+                                )
                             self.update_response_time(
                                 client_id, category, target, business_hours, "yaml_sync"
                             )
@@ -554,7 +586,9 @@ class DatabaseConfigBridge:
         )
         self.db.add(change)
 
-    def get_audit_trail(self, client_id: str, limit: int = 100) -> List[ConfigurationChange]:
+    def get_audit_trail(
+        self, client_id: str, limit: int = 100
+    ) -> List[ConfigurationChange]:
         """Get audit trail for a client."""
         return (
             self.db.query(ConfigurationChange)

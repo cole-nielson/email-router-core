@@ -16,8 +16,12 @@ class HealthResponse(BaseModel):
     timestamp: datetime = Field(..., description="Health check timestamp")
     version: str = Field(..., description="API version")
     uptime_seconds: Optional[int] = Field(None, description="System uptime in seconds")
-    response_time_ms: Optional[int] = Field(None, description="Health check response time")
-    components: Dict[str, str] = Field(..., description="Individual component health status")
+    response_time_ms: Optional[int] = Field(
+        None, description="Health check response time"
+    )
+    components: Dict[str, str] = Field(
+        ..., description="Individual component health status"
+    )
 
 
 class APIInfo(BaseModel):
@@ -55,7 +59,9 @@ class ClientSummary(BaseModel):
     status: str = Field(..., description="Client status")
     domains: List[str] = Field(..., description="Associated domains")
     primary_domain: str = Field(..., description="Primary domain")
-    routing_categories: List[str] = Field(..., description="Available routing categories")
+    routing_categories: List[str] = Field(
+        ..., description="Available routing categories"
+    )
     total_domains: int = Field(..., description="Total number of domains")
     settings: Dict[str, bool] = Field(..., description="Client settings")
     created_at: Optional[datetime] = Field(None, description="Client creation date")
@@ -67,7 +73,9 @@ class ClientListResponse(BaseModel):
 
     total: int = Field(..., description="Total number of clients")
     clients: List[ClientSummary] = Field(..., description="Client summaries")
-    pagination: Optional[Dict[str, Any]] = Field(None, description="Pagination information")
+    pagination: Optional[Dict[str, Any]] = Field(
+        None, description="Pagination information"
+    )
 
 
 class SystemMetrics(BaseModel):
@@ -99,7 +107,9 @@ class EmailClassificationResponse(BaseModel):
     confidence: float = Field(..., description="Classification confidence score")
     reasoning: str = Field(..., description="AI reasoning for classification")
     suggested_actions: List[str] = Field(..., description="Recommended actions")
-    processing_time_ms: float = Field(..., description="Processing time in milliseconds")
+    processing_time_ms: float = Field(
+        ..., description="Processing time in milliseconds"
+    )
     client_id: Optional[str] = Field(None, description="Client identifier")
     method: str = Field(..., description="Classification method used")
     timestamp: datetime = Field(..., description="Classification timestamp")
@@ -112,7 +122,9 @@ class RoutingResult(BaseModel):
     destination: str = Field(..., description="Routing destination")
     confidence: float = Field(..., description="Routing confidence")
     method: str = Field(..., description="Routing method")
-    special_handling: List[str] = Field(default=[], description="Special handling flags")
+    special_handling: List[str] = Field(
+        default=[], description="Special handling flags"
+    )
     escalated: bool = Field(default=False, description="Whether email was escalated")
     business_hours: bool = Field(..., description="Routed during business hours")
 
@@ -137,7 +149,9 @@ class ErrorResponse(BaseModel):
     path: str = Field(..., description="Request path")
     method: str = Field(..., description="HTTP method")
     request_id: Optional[str] = Field(None, description="Request identifier")
-    details: Optional[Dict[str, Any]] = Field(None, description="Additional error details")
+    details: Optional[Dict[str, Any]] = Field(
+        None, description="Additional error details"
+    )
 
 
 class RateLimitInfo(BaseModel):

@@ -67,7 +67,9 @@ async def get_api_status(
                 logger.warning(f"Failed to get info for client {client_id}: {e}")
 
         # Calculate health score
-        health_score = (valid_clients / len(available_clients) * 100) if available_clients else 100
+        health_score = (
+            (valid_clients / len(available_clients) * 100) if available_clients else 100
+        )
 
         # Get enabled features
         features_enabled = [
@@ -130,10 +132,16 @@ async def get_api_status(
 async def list_clients(
     client_manager: Annotated[ClientManager, Depends(get_client_manager)],
     current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
-    limit: int = Query(default=50, ge=1, le=100, description="Maximum number of clients to return"),
+    limit: int = Query(
+        default=50, ge=1, le=100, description="Maximum number of clients to return"
+    ),
     offset: int = Query(default=0, ge=0, description="Number of clients to skip"),
-    status_filter: Optional[str] = Query(default=None, description="Filter by client status"),
-    industry_filter: Optional[str] = Query(default=None, description="Filter by industry"),
+    status_filter: Optional[str] = Query(
+        default=None, description="Filter by client status"
+    ),
+    industry_filter: Optional[str] = Query(
+        default=None, description="Filter by industry"
+    ),
 ):
     """
     List all configured clients with pagination and filtering.
@@ -229,7 +237,9 @@ async def list_clients(
         )
 
 
-@router.get("/clients/{client_id}", response_model=ClientSummary, tags=["Client Management"])
+@router.get(
+    "/clients/{client_id}", response_model=ClientSummary, tags=["Client Management"]
+)
 async def get_client(
     client_manager: Annotated[ClientManager, Depends(get_client_manager)],
     current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
@@ -380,7 +390,9 @@ async def validate_client(
         )
 
 
-@router.post("/domain/resolve", response_model=DomainResolutionResult, tags=["Domain Resolution"])
+@router.post(
+    "/domain/resolve", response_model=DomainResolutionResult, tags=["Domain Resolution"]
+)
 async def resolve_domain(
     client_manager: Annotated[ClientManager, Depends(get_client_manager)],
     current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],

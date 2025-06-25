@@ -49,12 +49,16 @@ async def get_client_info(
         )
 
 
-@router.get("/clients/{client_id}/metrics", response_model=MetricsResponse, tags=["Dashboard"])
+@router.get(
+    "/clients/{client_id}/metrics", response_model=MetricsResponse, tags=["Dashboard"]
+)
 async def get_client_metrics(
     current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
     dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
     client_id: str = Path(..., description="Client identifier"),
-    timeframe: str = Query(default="24h", description="Time range (1h, 6h, 12h, 24h, 7d, 30d)"),
+    timeframe: str = Query(
+        default="24h", description="Time range (1h, 6h, 12h, 24h, 7d, 30d)"
+    ),
 ):
     """
     Get aggregated system metrics for client dashboard.
@@ -76,7 +80,9 @@ async def get_client_metrics(
         # Trend analysis will be implemented in issue #49
         changes: Dict[str, Any] = {}  # Would implement comparison logic here
 
-        return MetricsResponse(metrics=metrics, changes=changes, timestamp=datetime.utcnow())
+        return MetricsResponse(
+            metrics=metrics, changes=changes, timestamp=datetime.utcnow()
+        )
 
     except HTTPException:
         raise
@@ -97,7 +103,9 @@ async def get_client_activity(
     current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
     dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
     client_id: str = Path(..., description="Client identifier"),
-    limit: int = Query(default=50, ge=1, le=100, description="Maximum number of activities"),
+    limit: int = Query(
+        default=50, ge=1, le=100, description="Maximum number of activities"
+    ),
     offset: int = Query(default=0, ge=0, description="Number of activities to skip"),
 ):
     """
@@ -108,7 +116,9 @@ async def get_client_activity(
     """
     try:
         # Get activities (offset handling would be implemented in service layer)
-        activities = await dashboard_service.get_recent_activities(client_id, limit + offset)
+        activities = await dashboard_service.get_recent_activities(
+            client_id, limit + offset
+        )
 
         # Apply pagination
         paginated_activities = activities[offset : offset + limit]
@@ -128,7 +138,9 @@ async def get_client_activity(
         )
 
 
-@router.get("/clients/{client_id}/alerts", response_model=AlertsResponse, tags=["Dashboard"])
+@router.get(
+    "/clients/{client_id}/alerts", response_model=AlertsResponse, tags=["Dashboard"]
+)
 async def get_client_alerts(
     current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
     dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
@@ -145,7 +157,9 @@ async def get_client_alerts(
 
         # Calculate counts
         unread_count = len([a for a in alerts if not a.resolved])
-        critical_count = len([a for a in alerts if a.severity == "critical" and not a.resolved])
+        critical_count = len(
+            [a for a in alerts if a.severity == "critical" and not a.resolved]
+        )
 
         return AlertsResponse(
             alerts=alerts,
@@ -176,7 +190,9 @@ async def resolve_alert(
     """
     try:
         resolved_by = current_user.email if current_user else "system"
-        success = await dashboard_service.resolve_alert(client_id, alert_id, resolved_by)
+        success = await dashboard_service.resolve_alert(
+            client_id, alert_id, resolved_by
+        )
 
         if not success:
             raise HTTPException(

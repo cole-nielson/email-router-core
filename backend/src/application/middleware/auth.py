@@ -296,7 +296,9 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
 
             # Skip authentication for public endpoints
             if self._is_public_endpoint(str(request.url.path)):
-                logger.debug(f"Skipping authentication for public endpoint: {request.url.path}")
+                logger.debug(
+                    f"Skipping authentication for public endpoint: {request.url.path}"
+                )
                 response = await call_next(request)
                 self._add_security_headers(response)
                 return response
@@ -332,7 +334,9 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
             self.security_manager.log_security_event(
                 "middleware_error",
                 {"error": str(e), "path": str(request.url.path)},
-                getattr(request.state, "security_context", SecurityContext()).ip_address,
+                getattr(
+                    request.state, "security_context", SecurityContext()
+                ).ip_address,
             )
             logger.error(f"Unified auth middleware error: {e}")
             raise

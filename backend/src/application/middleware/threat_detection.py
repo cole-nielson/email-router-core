@@ -43,7 +43,9 @@ class ThreatDetectionMiddleware(BaseHTTPMiddleware):
         self._suspicious_ips: Dict[str, List[float]] = {}
         self._blocked_ips: Dict[str, float] = {}
 
-        logger.info(f"Threat detection middleware initialized (enabled: {enable_detection})")
+        logger.info(
+            f"Threat detection middleware initialized (enabled: {enable_detection})"
+        )
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
@@ -134,8 +136,12 @@ class ThreatDetectionMiddleware(BaseHTTPMiddleware):
         # Check against suspicious patterns
         for pattern in self.security_config.suspicious_patterns:
             if pattern in decoded_url:
-                logger.warning(f"Suspicious pattern detected in URL: {pattern} from {client_ip}")
-                self._record_suspicious_activity(client_ip, f"suspicious_pattern:{pattern}")
+                logger.warning(
+                    f"Suspicious pattern detected in URL: {pattern} from {client_ip}"
+                )
+                self._record_suspicious_activity(
+                    client_ip, f"suspicious_pattern:{pattern}"
+                )
 
                 # Block certain high-risk patterns immediately
                 if pattern in ["../", "union select", "drop table"]:
@@ -180,7 +186,9 @@ class ThreatDetectionMiddleware(BaseHTTPMiddleware):
         if content_length:
             try:
                 size = int(content_length)
-                if not self.security_config.is_request_size_valid(size, str(request.url.path)):
+                if not self.security_config.is_request_size_valid(
+                    size, str(request.url.path)
+                ):
                     logger.warning(f"Request too large from {client_ip}: {size} bytes")
                     self._record_suspicious_activity(client_ip, "large_request")
                     raise HTTPException(
@@ -200,7 +208,9 @@ class ThreatDetectionMiddleware(BaseHTTPMiddleware):
         if not user_agent:
             logger.debug(f"Missing user agent from {client_ip}")
             # Don't block, but record for monitoring
-            self._record_suspicious_activity(client_ip, "missing_user_agent", severity="low")
+            self._record_suspicious_activity(
+                client_ip, "missing_user_agent", severity="low"
+            )
 
         # Extremely long user agent (potential buffer overflow attempt)
         elif len(user_agent) > 1000:

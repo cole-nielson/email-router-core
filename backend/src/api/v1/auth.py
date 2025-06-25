@@ -247,7 +247,9 @@ async def register_user(
         db.commit()
         db.refresh(user)
 
-        logger.info(f"User '{request.username}' registered by admin '{security_context.username}'")
+        logger.info(
+            f"User '{request.username}' registered by admin '{security_context.username}'"
+        )
 
         return UserResponse(
             id=user.id,
@@ -258,7 +260,9 @@ async def register_user(
             client_id=user.client_id,
             status=user.status.value,
             created_at=user.created_at.isoformat(),
-            last_login_at=(user.last_login_at.isoformat() if user.last_login_at else None),
+            last_login_at=(
+                user.last_login_at.isoformat() if user.last_login_at else None
+            ),
         )
 
     except HTTPException:
@@ -284,7 +288,9 @@ async def get_current_user_info(
 
         user = db.query(User).filter(User.id == int(security_context.user_id)).first()
         if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            )
 
         return UserResponse(
             id=user.id,
@@ -295,7 +301,9 @@ async def get_current_user_info(
             client_id=user.client_id,
             status=user.status.value,
             created_at=user.created_at.isoformat(),
-            last_login_at=(user.last_login_at.isoformat() if user.last_login_at else None),
+            last_login_at=(
+                user.last_login_at.isoformat() if user.last_login_at else None
+            ),
         )
 
     except HTTPException:
@@ -327,10 +335,14 @@ async def change_password(
 
         user = db.query(User).filter(User.id == int(security_context.user_id)).first()
         if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            )
 
         # Verify current password
-        if not auth_service.verify_password(request.current_password, user.password_hash):
+        if not auth_service.verify_password(
+            request.current_password, user.password_hash
+        ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Current password is incorrect",
@@ -403,7 +415,9 @@ async def list_users(
                 client_id=user.client_id,
                 status=user.status.value,
                 created_at=user.created_at.isoformat(),
-                last_login_at=(user.last_login_at.isoformat() if user.last_login_at else None),
+                last_login_at=(
+                    user.last_login_at.isoformat() if user.last_login_at else None
+                ),
             )
             for user in users
         ]
@@ -457,7 +471,9 @@ async def delete_user(
 
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            )
 
         # Revoke all user tokens
         auth_service.revoke_all_user_tokens(user_id, "account_deleted")
@@ -466,7 +482,9 @@ async def delete_user(
         db.delete(user)
         db.commit()
 
-        logger.info(f"User '{user.username}' deleted by super admin '{security_context.username}'")
+        logger.info(
+            f"User '{user.username}' deleted by super admin '{security_context.username}'"
+        )
 
         return {"message": f"User '{user.username}' deleted successfully"}
 
@@ -513,7 +531,9 @@ async def list_active_sessions(
                     "token_type": session.token_type,
                     "created_at": session.created_at.isoformat(),
                     "last_used_at": (
-                        session.last_used_at.isoformat() if session.last_used_at else None
+                        session.last_used_at.isoformat()
+                        if session.last_used_at
+                        else None
                     ),
                     "expires_at": session.expires_at.isoformat(),
                     "ip_address": session.ip_address,
@@ -559,7 +579,9 @@ async def revoke_session(
         )
 
         if not session:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+            )
 
         # Revoke session
         success = auth_service.revoke_token(session_id, "user_revoked")

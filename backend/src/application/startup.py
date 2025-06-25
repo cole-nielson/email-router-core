@@ -63,7 +63,9 @@ class StartupValidator:
 
         # Log results
         if self.validation_errors:
-            logger.error(f"Startup validation failed with {len(self.validation_errors)} errors")
+            logger.error(
+                f"Startup validation failed with {len(self.validation_errors)} errors"
+            )
             for error in self.validation_errors:
                 logger.error(f"  - {error}")
             raise StartupValidationError(
@@ -108,7 +110,9 @@ class StartupValidator:
             if not value:
                 missing_service.append(var)
             elif var.endswith("_KEY") and len(value) < 10:
-                self.validation_warnings.append(f"{var} appears to be too short (< 10 chars)")
+                self.validation_warnings.append(
+                    f"{var} appears to be too short (< 10 chars)"
+                )
 
         if missing_service:
             self.validation_warnings.append(
@@ -142,7 +146,9 @@ class StartupValidator:
         # Check permissions
         for dir_path in ["data", "logs"]:
             if Path(dir_path).exists() and not os.access(dir_path, os.W_OK):
-                self.validation_errors.append(f"No write permission for directory: {dir_path}")
+                self.validation_errors.append(
+                    f"No write permission for directory: {dir_path}"
+                )
 
     def _validate_database(self) -> None:
         """Validate database connection and schema."""
@@ -166,7 +172,9 @@ class StartupValidator:
                     try:
                         conn.execute(text(f"SELECT 1 FROM {table} LIMIT 1"))
                     except Exception:
-                        self.validation_errors.append(f"Required table missing: {table}")
+                        self.validation_errors.append(
+                            f"Required table missing: {table}"
+                        )
 
         except Exception as e:
             self.validation_errors.append(f"Database validation failed: {str(e)}")
@@ -178,7 +186,9 @@ class StartupValidator:
             try:
                 import anthropic
 
-                client = anthropic.Anthropic(api_key=self.config.services.anthropic_api_key)
+                client = anthropic.Anthropic(
+                    api_key=self.config.services.anthropic_api_key
+                )
                 # Note: We don't actually call the API here to avoid costs
                 # Just validate the client can be created
                 if not client.api_key:
@@ -188,7 +198,9 @@ class StartupValidator:
                     "Anthropic package not installed - AI features will be unavailable"
                 )
             except Exception as e:
-                self.validation_errors.append(f"Anthropic API validation failed: {str(e)}")
+                self.validation_errors.append(
+                    f"Anthropic API validation failed: {str(e)}"
+                )
 
         # Test Mailgun API key format
         mailgun_key = self.config.services.mailgun_api_key
@@ -211,7 +223,9 @@ class StartupValidator:
         # Use config manager to get client configurations
         clients = self.config_manager.get_all_clients()
         if not clients:
-            self.validation_warnings.append(f"No client configurations found in {clients_dir}/")
+            self.validation_warnings.append(
+                f"No client configurations found in {clients_dir}/"
+            )
             return
 
         # Validate each client configuration
@@ -229,7 +243,9 @@ class StartupValidator:
             # Validate client configuration structure
             try:
                 if not client_config.domains.primary:
-                    self.validation_errors.append(f"Client {client_id} missing primary domain")
+                    self.validation_errors.append(
+                        f"Client {client_id} missing primary domain"
+                    )
 
                 if not client_config.routing:
                     self.validation_warnings.append(

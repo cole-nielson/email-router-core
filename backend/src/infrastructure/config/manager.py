@@ -118,7 +118,9 @@ class ConfigManager:
 
             # Check if required variable is missing
             if rules.get("required", False) and not value:
-                missing_vars.append({"name": var_name, "description": rules.get("description", "")})
+                missing_vars.append(
+                    {"name": var_name, "description": rules.get("description", "")}
+                )
                 continue
 
             # Skip validation if variable is not set and not required
@@ -127,7 +129,11 @@ class ConfigManager:
 
             # Validate minimum length
             min_length = rules.get("min_length")
-            if min_length is not None and isinstance(min_length, int) and len(value) < min_length:
+            if (
+                min_length is not None
+                and isinstance(min_length, int)
+                and len(value) < min_length
+            ):
                 validation_errors.append(
                     f"{var_name} must be at least {min_length} characters long"
                 )
@@ -135,7 +141,9 @@ class ConfigManager:
             # Validate starts_with patterns
             starts_with = rules.get("starts_with")
             if starts_with is not None:
-                patterns = starts_with if isinstance(starts_with, list) else [starts_with]
+                patterns = (
+                    starts_with if isinstance(starts_with, list) else [starts_with]
+                )
                 if not any(value.startswith(pattern) for pattern in patterns):
                     validation_errors.append(
                         f"{var_name} must start with one of: {', '.join(patterns)}"
@@ -157,7 +165,9 @@ class ConfigManager:
                 and isinstance(allowed_values, list)
                 and value not in allowed_values
             ):
-                validation_errors.append(f"{var_name} must be one of: {', '.join(allowed_values)}")
+                validation_errors.append(
+                    f"{var_name} must be one of: {', '.join(allowed_values)}"
+                )
 
         # Handle missing required variables
         if missing_vars:
@@ -192,7 +202,9 @@ class ConfigManager:
         self._env_loaded = True
         logger.info(f"Environment variables loaded and validated successfully")
         if validation_warnings:
-            logger.info(f"Configuration loaded with {len(validation_warnings)} warnings")
+            logger.info(
+                f"Configuration loaded with {len(validation_warnings)} warnings"
+            )
 
     def _build_app_config(self) -> AppConfig:
         """Build main application configuration from environment and files."""
@@ -229,7 +241,11 @@ class ConfigManager:
             db_config["url"] = db_url
         else:
             db_port_str = os.getenv("DB_PORT", "0")
-            db_port = int(db_port_str) if db_port_str.isdigit() and int(db_port_str) > 0 else None
+            db_port = (
+                int(db_port_str)
+                if db_port_str.isdigit() and int(db_port_str) > 0
+                else None
+            )
             db_config.update(
                 {
                     "type": os.getenv("DB_TYPE", "sqlite"),
@@ -246,8 +262,12 @@ class ConfigManager:
         security_config: Dict[str, Any] = {
             "jwt_secret_key": os.getenv("JWT_SECRET_KEY", ""),
             "jwt_algorithm": os.getenv("JWT_ALGORITHM", "HS256"),
-            "access_token_expire_minutes": int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")),
-            "refresh_token_expire_days": int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30")),
+            "access_token_expire_minutes": int(
+                os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
+            ),
+            "refresh_token_expire_days": int(
+                os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30")
+            ),
             "max_login_attempts": int(os.getenv("MAX_LOGIN_ATTEMPTS", "5")),
             "enable_cors": os.getenv("ENABLE_CORS", "true").lower() == "true",
         }
@@ -260,13 +280,17 @@ class ConfigManager:
         # Services configuration
         services_config: Dict[str, Any] = {
             "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY", ""),
-            "anthropic_model": os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022"),
+            "anthropic_model": os.getenv(
+                "ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022"
+            ),
             "mailgun_api_key": os.getenv("MAILGUN_API_KEY", ""),
             "mailgun_domain": os.getenv("MAILGUN_DOMAIN", ""),
             "mailgun_webhook_signing_key": os.getenv("MAILGUN_WEBHOOK_SIGNING_KEY"),
             "google_cloud_project": os.getenv("GOOGLE_CLOUD_PROJECT"),
             "google_cloud_region": os.getenv("GOOGLE_CLOUD_REGION", "us-central1"),
-            "default_admin_email": os.getenv("DEFAULT_ADMIN_EMAIL", "admin@example.com"),
+            "default_admin_email": os.getenv(
+                "DEFAULT_ADMIN_EMAIL", "admin@example.com"
+            ),
         }
         config["services"] = services_config
 
@@ -291,7 +315,8 @@ class ConfigManager:
         # Monitoring configuration
         monitoring_config: Dict[str, Any] = {
             "enable_tracing": os.getenv("ENABLE_TRACING", "false").lower() == "true",
-            "enable_profiling": os.getenv("ENABLE_PROFILING", "false").lower() == "true",
+            "enable_profiling": os.getenv("ENABLE_PROFILING", "false").lower()
+            == "true",
             "error_tracking_dsn": os.getenv("ERROR_TRACKING_DSN"),
         }
         config["monitoring"] = monitoring_config
@@ -306,18 +331,26 @@ class ConfigManager:
         # Production-specific validations
         if self._config.is_production():
             if self._config.debug:
-                logger.warning("Debug mode enabled in production - this is not recommended")
+                logger.warning(
+                    "Debug mode enabled in production - this is not recommended"
+                )
 
             if self._config.security.jwt_secret_key == "dev-secret":
-                raise ConfigurationError("Production environment requires a secure JWT secret")
+                raise ConfigurationError(
+                    "Production environment requires a secure JWT secret"
+                )
 
             if not self._config.services.mailgun_webhook_signing_key:
-                logger.warning("Mailgun webhook signing key not set - webhook security is reduced")
+                logger.warning(
+                    "Mailgun webhook signing key not set - webhook security is reduced"
+                )
 
         # Development-specific validations
         if self._config.is_development():
             if len(self._config.security.jwt_secret_key) < 32:
-                logger.warning("JWT secret key is shorter than recommended (32+ characters)")
+                logger.warning(
+                    "JWT secret key is shorter than recommended (32+ characters)"
+                )
 
         logger.debug("Configuration validation completed")
 
@@ -422,7 +455,9 @@ class ConfigManager:
             Dictionary of active client configurations
         """
         return {
-            client_id: config for client_id, config in self._client_cache.items() if config.active
+            client_id: config
+            for client_id, config in self._client_cache.items()
+            if config.active
         }
 
     def load_ai_prompt(self, client_id: str, prompt_type: str) -> str:
@@ -607,7 +642,9 @@ class ConfigManager:
             "python_version": sys.version,
             "config_loaded": self._config is not None,
             "clients_loaded": len(self._client_cache),
-            "features_enabled": sum(1 for enabled in self._config.features.values() if enabled),
+            "features_enabled": sum(
+                1 for enabled in self._config.features.values() if enabled
+            ),
         }
 
 

@@ -26,7 +26,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def verify_mailgun_signature(timestamp: str, token: str, signature: str, api_key: str) -> bool:
+def verify_mailgun_signature(
+    timestamp: str, token: str, signature: str, api_key: str
+) -> bool:
     """
     Verify Mailgun webhook signature using HMAC-SHA256.
 
@@ -140,8 +142,14 @@ async def mailgun_inbound_webhook(
         )
 
         # Identify client from recipient domain
-        identification_result = client_manager.identify_client_by_email(email_data["to"])
-        client_id = identification_result.client_id if identification_result.is_successful else None
+        identification_result = client_manager.identify_client_by_email(
+            email_data["to"]
+        )
+        client_id = (
+            identification_result.client_id
+            if identification_result.is_successful
+            else None
+        )
 
         if client_id:
             logger.info(
@@ -242,7 +250,9 @@ async def process_email_pipeline(
 
         # Step 2: Routing with client-specific rules
         if client_id:
-            routing_result = routing_engine.route_email(client_id, classification, email_data)
+            routing_result = routing_engine.route_email(
+                client_id, classification, email_data
+            )
             forward_to = routing_result["primary_destination"]
 
             logger.info(f"📍 Routing: {category} → {forward_to}")
@@ -273,15 +283,19 @@ async def process_email_pipeline(
             logger.warning("Using fallback routing for unknown client")
 
         # Step 3: Generate human-like plain text customer response and HTML team analysis
-        customer_response, team_analysis = await email_service.generate_plain_text_emails(
-            email_data, classification, client_id
+        customer_response, team_analysis = (
+            await email_service.generate_plain_text_emails(
+                email_data, classification, client_id
+            )
         )
 
         # Step 4: Send plain text customer acknowledgment (human-like)
         await send_auto_reply(email_data, classification, customer_response, client_id)
 
         # Step 5: Forward HTML team analysis to team
-        await forward_to_team(email_data, forward_to, classification, team_analysis, client_id)
+        await forward_to_team(
+            email_data, forward_to, classification, team_analysis, client_id
+        )
 
         # Record successful completion
         if client_id:
@@ -322,7 +336,9 @@ async def process_email_pipeline(
         if client_id:
             try:
                 processing_time_ms = (
-                    int((time.time() - start_time) * 1000) if "start_time" in locals() else 0
+                    int((time.time() - start_time) * 1000)
+                    if "start_time" in locals()
+                    else 0
                 )
                 await dashboard_service.record_email_processed(
                     client_id,
@@ -338,7 +354,9 @@ async def process_email_pipeline(
                     },
                 )
             except Exception as dashboard_error:
-                logger.error(f"❌ Failed to record dashboard activity: {dashboard_error}")
+                logger.error(
+                    f"❌ Failed to record dashboard activity: {dashboard_error}"
+                )
 
         # Try to send a basic notification about the failure
         try:
@@ -352,7 +370,9 @@ async def process_email_pipeline(
             await _send_failure_notification(email_data, str(e), admin_email)
 
         except Exception as notification_error:
-            logger.error(f"❌ Failed to send failure notification: {notification_error}")
+            logger.error(
+                f"❌ Failed to send failure notification: {notification_error}"
+            )
 
 
 async def _send_failure_notification(
@@ -385,7 +405,9 @@ Body: {email_data.get('stripped_text') or email_data.get('body_text', '')[:200]}
 Please review this email manually.
 """
 
-        await forward_to_team(email_data, admin_email, failure_classification, failure_message)
+        await forward_to_team(
+            email_data, admin_email, failure_classification, failure_message
+        )
 
         logger.info(f"📧 Failure notification sent to {admin_email}")
 
@@ -489,8 +511,14 @@ async def test_webhook(
         logger.info(f"🧪 Test email from {email_data['from']}: {email_data['subject']}")
 
         # Identify client
-        identification_result = client_manager.identify_client_by_email(email_data["to"])
-        client_id = identification_result.client_id if identification_result.is_successful else None
+        identification_result = client_manager.identify_client_by_email(
+            email_data["to"]
+        )
+        client_id = (
+            identification_result.client_id
+            if identification_result.is_successful
+            else None
+        )
 
         # Process in background
         background_tasks.add_task(

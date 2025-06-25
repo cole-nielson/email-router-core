@@ -20,7 +20,9 @@ class BrandingManager:
         """Initialize the branding manager."""
         self._branding_cache: Dict[str, Dict[str, Any]] = {}
 
-    def load_client_branding(self, client_id: str, client_config: Any) -> Dict[str, Any]:
+    def load_client_branding(
+        self, client_id: str, client_config: Any
+    ) -> Dict[str, Any]:
         """
         Load and cache client branding configuration.
 
@@ -56,13 +58,17 @@ class BrandingManager:
                         if "email" in colors_data:
                             email_colors = colors_data["email"]
                             if "header_background" in email_colors:
-                                branding["header_gradient"] = email_colors["header_background"]
+                                branding["header_gradient"] = email_colors[
+                                    "header_background"
+                                ]
                             branding.update(email_colors)
 
                         # Add other color categories if needed
                         for category, colors in colors_data.items():
                             if isinstance(colors, dict):
-                                branding.update({f"{category}_{k}": v for k, v in colors.items()})
+                                branding.update(
+                                    {f"{category}_{k}": v for k, v in colors.items()}
+                                )
 
             except Exception as e:
                 logger.debug(f"Could not load consolidated colors for {client_id}: {e}")

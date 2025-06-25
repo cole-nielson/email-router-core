@@ -565,7 +565,9 @@ class DomainMatcher:
             self.patterns.append(pattern)
             logger.debug(f"Added domain pattern: {pattern}")
 
-    def match_domain(self, domain: str, candidates: List[str]) -> Tuple[Optional[str], float, str]:
+    def match_domain(
+        self, domain: str, candidates: List[str]
+    ) -> Tuple[Optional[str], float, str]:
         """
         Match domain against candidates using multiple strategies.
 

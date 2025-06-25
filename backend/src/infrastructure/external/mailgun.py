@@ -70,7 +70,9 @@ async def send_auto_reply(
             # Use human-like response as-is (plain text only)
             text_body = draft_response.strip()
             html_body = None  # No HTML formatting for human-like responses
-            logger.info(f"📤 Sending human-like plain text response ({len(text_body)} chars)")
+            logger.info(
+                f"📤 Sending human-like plain text response ({len(text_body)} chars)"
+            )
         else:
             # Fallback to template system for legacy responses
             logger.warning("📧 Using template fallback for response without disclaimer")
@@ -79,7 +81,9 @@ async def send_auto_reply(
                     client_id, draft_response, classification, client_manager
                 )
             else:
-                text_body, html_body = create_customer_template(draft_response, classification)
+                text_body, html_body = create_customer_template(
+                    draft_response, classification
+                )
 
         # Send email with client-specific sender
         result = await _send_email(
@@ -142,7 +146,9 @@ async def forward_to_team(
 
                 # Check if team forwarding is enabled for this client
                 if not client_config.settings.team_forwarding_enabled:
-                    logger.info(f"Team forwarding disabled for client {client_id}, skipping")
+                    logger.info(
+                        f"Team forwarding disabled for client {client_id}, skipping"
+                    )
                     return
 
             except Exception as e:
@@ -163,7 +169,9 @@ async def forward_to_team(
                 client_id, email_data, classification, draft_response, client_manager
             )
         else:
-            text_body, html_body = create_team_template(email_data, classification, draft_response)
+            text_body, html_body = create_team_template(
+                email_data, classification, draft_response
+            )
 
         # Send email with client-specific sender
         result = await _send_email(
@@ -178,7 +186,9 @@ async def forward_to_team(
                 "X-Classification": category,
                 "X-Confidence": str(confidence),
                 "X-Client-ID": client_id or "unknown",
-                "Reply-To": email_data.get("from", ""),  # Allow direct replies to customer
+                "Reply-To": email_data.get(
+                    "from", ""
+                ),  # Allow direct replies to customer
             },
         )
 
@@ -291,7 +301,9 @@ This is an automated acknowledgment from {company_name}. A team member will foll
         return text_body, html_body
 
     except Exception as e:
-        logger.error(f"Failed to create client-specific customer template for {client_id}: {e}")
+        logger.error(
+            f"Failed to create client-specific customer template for {client_id}: {e}"
+        )
         # Fall back to generic template
         return create_customer_template(draft_response, classification)
 
@@ -326,7 +338,9 @@ def create_client_team_template(
         reasoning = classification.get("reasoning", "No reasoning provided")
 
         # Get routing destination
-        routing_destination = client_manager.get_routing_destination(client_id, category)
+        routing_destination = client_manager.get_routing_destination(
+            client_id, category
+        )
 
         # Create text version with client context
         text_body = f"""
@@ -437,7 +451,9 @@ Routing destination: {routing_destination}
         return text_body, html_body
 
     except Exception as e:
-        logger.error(f"Failed to create client-specific team template for {client_id}: {e}")
+        logger.error(
+            f"Failed to create client-specific team template for {client_id}: {e}"
+        )
         # Fall back to generic template
         return create_team_template(email_data, classification, draft_response)
 

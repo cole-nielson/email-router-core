@@ -43,7 +43,9 @@ class TemplateContextBuilder:
         try:
             client_config = self.client_manager.get_client_config(client_id)
             if not client_config:
-                logger.error(f"Could not load client config for {client_id} to prepare context")
+                logger.error(
+                    f"Could not load client config for {client_id} to prepare context"
+                )
                 return {"client": {"name": "Unknown Client"}, "email": {}}
 
             context = {
@@ -62,7 +64,9 @@ class TemplateContextBuilder:
                         "footer_text": client_config.branding.footer_text,
                     },
                 },
-                "today": (str(datetime.now().date()) if "datetime" in globals() else "today"),
+                "today": (
+                    str(datetime.now().date()) if "datetime" in globals() else "today"
+                ),
                 "timestamp": str(datetime.now()) if "datetime" in globals() else "now",
             }
 
@@ -88,7 +92,9 @@ class TemplateContextBuilder:
             return {"client": {"name": "Unknown Client"}, "email": {}}
 
     @staticmethod
-    def get_nested_value(data: Dict[str, Any], path: str, default: Optional[str] = None) -> Any:
+    def get_nested_value(
+        data: Dict[str, Any], path: str, default: Optional[str] = None
+    ) -> Any:
         """
         Get nested value from dictionary using dot notation.
 
@@ -159,11 +165,15 @@ class TemplateContextBuilder:
         Returns:
             Context dictionary with routing information
         """
-        context = self.create_context_with_classification(client_id, email_data, classification)
+        context = self.create_context_with_classification(
+            client_id, email_data, classification
+        )
 
         # Add routing-specific context
         category = classification.get("category", "general")
-        routing_destination = self.client_manager.get_routing_destination(client_id, category)
+        routing_destination = self.client_manager.get_routing_destination(
+            client_id, category
+        )
 
         context.update(
             {

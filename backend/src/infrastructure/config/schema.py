@@ -123,7 +123,9 @@ class SecurityConfig(BaseModel):
     api_rate_limit_per_minute: int = Field(default=300, ge=50, le=5000)
     api_rate_limit_burst: int = Field(default=50, ge=10, le=200)
     enable_cors: bool = True
-    allowed_origins: List[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    allowed_origins: List[str] = Field(
+        default_factory=lambda: ["http://localhost:3000"]
+    )
     trusted_proxies: List[str] = Field(default_factory=list)
     enable_https_redirect: bool = False
     hsts_max_age: int = Field(default=31536000, ge=300)

@@ -78,7 +78,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             logger.warning(f"Failed to add security headers: {e}")
 
-    def _add_custom_headers(self, response: Response, request: Request, environment: str) -> None:
+    def _add_custom_headers(
+        self, response: Response, request: Request, environment: str
+    ) -> None:
         """
         Add custom security headers based on request context.
 

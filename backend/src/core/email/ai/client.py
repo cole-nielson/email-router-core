@@ -149,7 +149,9 @@ class AIClient:
             )
             logger.error(f"Prompt preview: {prompt[:200]}...")
         elif "[" in prompt and "]" in prompt:
-            logger.warning("⚠️ Prompt contains placeholder brackets - may affect AI quality")
+            logger.warning(
+                "⚠️ Prompt contains placeholder brackets - may affect AI quality"
+            )
 
         if not prompt.strip():
             logger.error("🚨 CRITICAL: Empty prompt sent to AI")

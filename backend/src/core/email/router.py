@@ -74,13 +74,19 @@ class RoutingEngine:
 
             if not primary_destination:
                 # Try backup routing
-                backup_destination = self._get_backup_destination(client_config, category)
+                backup_destination = self._get_backup_destination(
+                    client_config, category
+                )
                 if backup_destination:
-                    logger.warning(f"Using backup routing for {category} -> {backup_destination}")
+                    logger.warning(
+                        f"Using backup routing for {category} -> {backup_destination}"
+                    )
                     primary_destination = backup_destination
                 else:
                     # Final fallback to general
-                    primary_destination = self._get_primary_destination(client_config, "general")
+                    primary_destination = self._get_primary_destination(
+                        client_config, "general"
+                    )
                     if not primary_destination:
                         logger.error(
                             f"No routing destination found for {client_id}, using primary contact"
@@ -102,7 +108,9 @@ class RoutingEngine:
                 "client_id": client_id,
                 "category": category,
                 "primary_destination": final_destination,
-                "backup_destinations": self._get_backup_destinations(client_config, category),
+                "backup_destinations": self._get_backup_destinations(
+                    client_config, category
+                ),
                 "escalation_schedule": escalation_schedule,
                 "business_hours_applied": final_destination != primary_destination,
                 "confidence_level": self._get_confidence_level(confidence),
@@ -112,7 +120,9 @@ class RoutingEngine:
                 "timestamp": datetime.utcnow().isoformat(),
             }
 
-            logger.info(f"📍 Routed {category} email for {client_id} to {final_destination}")
+            logger.info(
+                f"📍 Routed {category} email for {client_id} to {final_destination}"
+            )
             return routing_result
 
         except Exception as e:
@@ -142,7 +152,9 @@ class RoutingEngine:
         # For now, we'll bypass this check as it requires more info on escalation rules in new schema
         return None
 
-    def _get_primary_destination(self, client_config: ClientConfig, category: str) -> Optional[str]:
+    def _get_primary_destination(
+        self, client_config: ClientConfig, category: str
+    ) -> Optional[str]:
         """
         Get primary routing destination for category.
 
@@ -158,7 +170,9 @@ class RoutingEngine:
                 return str(rule.email) if rule.email else None
         return None
 
-    def _get_backup_destination(self, client_config: ClientConfig, category: str) -> Optional[str]:
+    def _get_backup_destination(
+        self, client_config: ClientConfig, category: str
+    ) -> Optional[str]:
         """
         Get backup routing destination for category.
 
@@ -174,7 +188,9 @@ class RoutingEngine:
                 return str(rule.backup_email) if rule.backup_email else None
         return None
 
-    def _get_backup_destinations(self, client_config: ClientConfig, category: str) -> List[str]:
+    def _get_backup_destinations(
+        self, client_config: ClientConfig, category: str
+    ) -> List[str]:
         """
         Get list of backup destinations for category.
 
@@ -226,7 +242,9 @@ class RoutingEngine:
             return primary_destination
 
         except Exception as e:
-            logger.warning(f"Failed to apply business hours routing for {client_id}: {e}")
+            logger.warning(
+                f"Failed to apply business hours routing for {client_id}: {e}"
+            )
             return primary_destination
 
     def _is_business_hours(self, client_config: ClientConfig) -> bool:
@@ -286,7 +304,10 @@ class RoutingEngine:
         escalation_schedule: List[Dict[str, Any]] = []
 
         try:
-            if not client_config.sla.escalation_enabled or not client_config.sla.escalation_rules:
+            if (
+                not client_config.sla.escalation_enabled
+                or not client_config.sla.escalation_rules
+            ):
                 return escalation_schedule
 
             for i, rule in enumerate(client_config.sla.escalation_rules):
@@ -298,7 +319,9 @@ class RoutingEngine:
                             "step": i + 1,
                             "hours_after": rule.trigger_value,
                             "escalate_to": rule.target_email,
-                            "escalation_time": self._calculate_escalation_time(rule.trigger_value),
+                            "escalation_time": self._calculate_escalation_time(
+                                rule.trigger_value
+                            ),
                             "category": category,
                         }
                     )
@@ -369,7 +392,9 @@ class RoutingEngine:
 
             # Check for urgent keywords in subject/body
             subject = email_data.get("subject", "").lower()
-            body = (email_data.get("stripped_text") or email_data.get("body_text", "")).lower()
+            body = (
+                email_data.get("stripped_text") or email_data.get("body_text", "")
+            ).lower()
             text = f"{subject} {body}"
 
             urgent_keywords = ["urgent", "emergency", "critical", "asap", "immediate"]
@@ -445,7 +470,9 @@ class RoutingEngine:
                 "timestamp": datetime.utcnow().isoformat(),
             }
 
-    def get_routing_analytics(self, client_id: str, time_period_hours: int = 24) -> Dict[str, Any]:
+    def get_routing_analytics(
+        self, client_id: str, time_period_hours: int = 24
+    ) -> Dict[str, Any]:
         """
         Get routing analytics for a client.
 

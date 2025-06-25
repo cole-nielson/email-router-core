@@ -152,7 +152,9 @@ def backup_database(backup_path: Path = None):
             database_path = Path(database_url.replace("sqlite:///", ""))
 
             if backup_path is None:
-                backup_path = database_path.with_suffix(f".backup.{int(time.time())}.db")
+                backup_path = database_path.with_suffix(
+                    f".backup.{int(time.time())}.db"
+                )
 
             if database_path.exists():
                 shutil.copy2(database_path, backup_path)

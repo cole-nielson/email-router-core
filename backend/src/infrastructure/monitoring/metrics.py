@@ -41,7 +41,9 @@ class MetricsCollector:
         self.total_requests = 0
         self.successful_requests = 0
         self.failed_requests = 0
-        self.response_times: deque[float] = deque(maxlen=1000)  # Last 1000 response times
+        self.response_times: deque[float] = deque(
+            maxlen=1000
+        )  # Last 1000 response times
 
         # Status code tracking
         self.status_codes: defaultdict[int, int] = defaultdict(int)
@@ -90,7 +92,9 @@ class MetricsCollector:
         """Initialize time series data."""
         now = datetime.utcnow()
         # Round down to nearest 5-minute mark
-        rounded_time = now.replace(minute=(now.minute // 5) * 5, second=0, microsecond=0)
+        rounded_time = now.replace(
+            minute=(now.minute // 5) * 5, second=0, microsecond=0
+        )
 
         self.time_series["requests"].append(0)
         self.time_series["errors"].append(0)
@@ -142,7 +146,9 @@ class MetricsCollector:
 
             self._update_time_series("errors", 1)
 
-    def record_response_time(self, response_time: float, endpoint: Optional[str] = None) -> None:
+    def record_response_time(
+        self, response_time: float, endpoint: Optional[str] = None
+    ) -> None:
         """Record response time for a request."""
         with self._lock:
             self.response_times.append(response_time)
@@ -153,7 +159,9 @@ class MetricsCollector:
                 # Update average (simple moving average)
                 total_requests = metrics["requests"]
                 if total_requests > 0:
-                    metrics["avg_response_time"] = metrics["total_response_time"] / total_requests
+                    metrics["avg_response_time"] = (
+                        metrics["total_response_time"] / total_requests
+                    )
 
             self._update_time_series("response_times", response_time)
 
@@ -198,7 +206,9 @@ class MetricsCollector:
         """Update time series data."""
         now = datetime.utcnow()
         # Round down to nearest 5-minute mark
-        rounded_time = now.replace(minute=(now.minute // 5) * 5, second=0, microsecond=0)
+        rounded_time = now.replace(
+            minute=(now.minute // 5) * 5, second=0, microsecond=0
+        )
 
         # Check if we need a new bucket
         if rounded_time > self.current_bucket_start:
@@ -221,7 +231,9 @@ class MetricsCollector:
                 # Update average response time for this bucket
                 current_avg = self.time_series["response_times"][-1]
                 current_count = (
-                    self.time_series["requests"][-1] if self.time_series["requests"] else 1
+                    self.time_series["requests"][-1]
+                    if self.time_series["requests"]
+                    else 1
                 )
                 self.time_series["response_times"][-1] = (
                     current_avg * (current_count - 1) + value
@@ -266,7 +278,9 @@ class MetricsCollector:
                 "requests_per_minute": self.get_requests_per_minute(),
                 "health_checks": self.health_checks,
                 "last_health_check": (
-                    self.last_health_check.isoformat() if self.last_health_check else None
+                    self.last_health_check.isoformat()
+                    if self.last_health_check
+                    else None
                 ),
                 "emails_processed": self.emails_processed,
                 "emails_classified": self.emails_classified,
@@ -314,11 +328,14 @@ class MetricsCollector:
             # Get the last N buckets
             return {
                 "timestamps": [
-                    ts.isoformat() for ts in list(self.time_series["timestamps"])[-buckets_needed:]
+                    ts.isoformat()
+                    for ts in list(self.time_series["timestamps"])[-buckets_needed:]
                 ],
                 "requests": list(self.time_series["requests"])[-buckets_needed:],
                 "errors": list(self.time_series["errors"])[-buckets_needed:],
-                "response_times": list(self.time_series["response_times"])[-buckets_needed:],
+                "response_times": list(self.time_series["response_times"])[
+                    -buckets_needed:
+                ],
             }
 
     def get_prometheus_metrics(self) -> str:
@@ -375,7 +392,9 @@ class MetricsCollector:
 
             # Status code metrics
             metrics.append("")
-            metrics.append("# HELP email_router_http_requests_total HTTP requests by status code")
+            metrics.append(
+                "# HELP email_router_http_requests_total HTTP requests by status code"
+            )
             metrics.append("# TYPE email_router_http_requests_total counter")
             for status_code, count in self.status_codes.items():
                 metrics.append(
