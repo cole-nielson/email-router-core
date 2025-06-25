@@ -17,7 +17,7 @@ sqlalchemy==2.0.23
 alembic==1.16.2
 
 # Authentication & Security
-PyJWT[crypto]==2.8.0
+PyJWT[crypto]==2.10.1
 passlib[bcrypt]==1.7.4
 
 # Configuration Management
