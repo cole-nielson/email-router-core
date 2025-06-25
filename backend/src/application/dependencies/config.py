@@ -25,11 +25,11 @@ logger = logging.getLogger(__name__)
 def get_config_provider() -> ConfigurationProvider:
     """
     Get the configuration provider instance.
-    
+
     This is the primary dependency for accessing configuration services
     in the application. It provides the abstract ConfigurationProvider
     interface implemented by the ConfigManagerAdapter.
-    
+
     Returns:
         ConfigurationProvider instance
     """
@@ -41,10 +41,10 @@ def get_config_provider() -> ConfigurationProvider:
 def get_client_manager() -> EnhancedClientManager:
     """
     Get the client manager instance with dependency injection.
-    
+
     This function provides the ClientManager with the proper ConfigurationProvider
     for FastAPI dependency injection.
-    
+
     Returns:
         EnhancedClientManager instance
     """
