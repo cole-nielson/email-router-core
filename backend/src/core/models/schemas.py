@@ -6,7 +6,7 @@ Pydantic models for API request/response schemas.
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 
 class HealthResponse(BaseModel):
@@ -176,3 +176,155 @@ class APIStatusResponse(BaseModel):
     features_enabled: List[str] = Field(..., description="Enabled features")
     metrics: SystemMetrics = Field(..., description="System metrics")
     component_status: Dict[str, str] = Field(..., description="Component health status")
+
+
+# =============================================================================
+# USER MANAGEMENT SCHEMAS
+# =============================================================================
+
+
+class UserSession(BaseModel):
+    """User session information."""
+
+    id: int = Field(..., description="Session ID")
+    user_id: int = Field(..., description="User ID")
+    session_id: str = Field(..., description="Session identifier")
+    token_type: str = Field(..., description="Token type (access/refresh)")
+    ip_address: Optional[str] = Field(None, description="IP address")
+    user_agent: Optional[str] = Field(None, description="User agent")
+    location: Optional[str] = Field(None, description="Geographic location")
+    issued_at: datetime = Field(..., description="Session issued timestamp")
+    expires_at: datetime = Field(..., description="Session expiration timestamp")
+    last_used_at: Optional[datetime] = Field(None, description="Last activity timestamp")
+    is_active: bool = Field(..., description="Whether session is active")
+    revoked_at: Optional[datetime] = Field(None, description="Revocation timestamp")
+    revoked_reason: Optional[str] = Field(None, description="Revocation reason")
+
+
+class UserPermission(BaseModel):
+    """User permission information."""
+
+    id: int = Field(..., description="Permission ID")
+    user_id: int = Field(..., description="User ID")
+    resource: str = Field(..., description="Resource name")
+    action: str = Field(..., description="Action name")
+    client_id: Optional[str] = Field(None, description="Client scoping")
+    conditions: Optional[Dict[str, Any]] = Field(None, description="Conditional rules")
+    granted_at: datetime = Field(..., description="Grant timestamp")
+    granted_by: Optional[int] = Field(None, description="Granter user ID")
+
+
+class AuthenticatedUser(BaseModel):
+    """Authenticated user information for API responses."""
+
+    id: int = Field(..., description="User ID")
+    username: str = Field(..., description="Username")
+    email: EmailStr = Field(..., description="Email address")
+    full_name: str = Field(..., description="Full name")
+    role: str = Field(..., description="User role")
+    client_id: Optional[str] = Field(None, description="Associated client ID")
+    permissions: List[str] = Field(default=[], description="User permissions")
+    rate_limit_tier: str = Field(default="standard", description="Rate limit tier")
+    status: str = Field(..., description="Account status")
+    last_login_at: Optional[datetime] = Field(None, description="Last login timestamp")
+    created_at: datetime = Field(..., description="Account creation timestamp")
+
+
+class UserWithPermissions(BaseModel):
+    """User model with detailed information and permissions."""
+
+    id: int = Field(..., description="User ID")
+    username: str = Field(..., description="Username")
+    email: EmailStr = Field(..., description="Email address")
+    password_hash: str = Field(..., description="Password hash")
+    full_name: str = Field(..., description="Full name")
+    role: str = Field(..., description="User role")
+    status: str = Field(..., description="Account status")
+    client_id: Optional[str] = Field(None, description="Associated client ID")
+    last_login_at: Optional[datetime] = Field(None, description="Last login timestamp")
+    login_attempts: int = Field(default=0, description="Failed login attempts")
+    locked_until: Optional[datetime] = Field(None, description="Account lock expiry")
+    jwt_refresh_token_hash: Optional[str] = Field(None, description="Refresh token hash")
+    jwt_token_version: int = Field(default=1, description="Token version")
+    created_at: datetime = Field(..., description="Account creation timestamp")
+    updated_at: datetime = Field(..., description="Last update timestamp")
+    created_by: Optional[int] = Field(None, description="Creator user ID")
+    api_access_enabled: bool = Field(default=True, description="API access enabled")
+    rate_limit_tier: str = Field(default="standard", description="Rate limit tier")
+    permissions: List[UserPermission] = Field(default=[], description="User permissions")
+
+
+class CreateUserRequest(BaseModel):
+    """Request model for creating a new user."""
+
+    username: str = Field(..., description="Username", min_length=3, max_length=50)
+    email: EmailStr = Field(..., description="Email address")
+    password: str = Field(..., description="Password", min_length=8)
+    full_name: str = Field(..., description="Full name", min_length=1, max_length=200)
+    role: str = Field(..., description="User role")
+    client_id: Optional[str] = Field(None, description="Associated client ID")
+    status: str = Field(default="pending", description="Account status")
+    api_access_enabled: bool = Field(default=True, description="API access enabled")
+    rate_limit_tier: str = Field(default="standard", description="Rate limit tier")
+
+
+class UpdateUserRequest(BaseModel):
+    """Request model for updating an existing user."""
+
+    email: Optional[EmailStr] = Field(None, description="Email address")
+    full_name: Optional[str] = Field(None, description="Full name", min_length=1, max_length=200)
+    role: Optional[str] = Field(None, description="User role")
+    client_id: Optional[str] = Field(None, description="Associated client ID")
+    status: Optional[str] = Field(None, description="Account status")
+    api_access_enabled: Optional[bool] = Field(None, description="API access enabled")
+    rate_limit_tier: Optional[str] = Field(None, description="Rate limit tier")
+
+
+class ChangePasswordRequest(BaseModel):
+    """Request model for changing user password."""
+
+    current_password: str = Field(..., description="Current password")
+    new_password: str = Field(..., description="New password", min_length=8)
+
+
+class LoginRequest(BaseModel):
+    """Request model for user login."""
+
+    username: str = Field(..., description="Username")
+    password: str = Field(..., description="Password")
+    client_id: Optional[str] = Field(None, description="Client context")
+
+
+class TokenResponse(BaseModel):
+    """JWT token response model."""
+
+    access_token: str = Field(..., description="Access token")
+    refresh_token: str = Field(..., description="Refresh token")
+    token_type: str = Field(default="bearer", description="Token type")
+    expires_in: int = Field(..., description="Token expiry in seconds")
+    client_id: Optional[str] = Field(None, description="Associated client ID")
+    role: str = Field(..., description="User role")
+    permissions: List[str] = Field(default=[], description="User permissions")
+
+
+class UserTokenClaims(BaseModel):
+    """JWT token claims for validation."""
+
+    sub: str = Field(..., description="User ID")
+    username: str = Field(..., description="Username")
+    email: str = Field(..., description="Email address")
+    role: str = Field(..., description="User role")
+    client_id: Optional[str] = Field(None, description="Associated client ID")
+    permissions: List[str] = Field(default=[], description="User permissions")
+    jti: str = Field(..., description="JWT ID")
+    iat: int = Field(..., description="Issued at timestamp")
+    exp: int = Field(..., description="Expiry timestamp")
+    token_type: str = Field(..., description="Token type")
+
+
+class UserListResponse(BaseModel):
+    """Response model for user listing."""
+
+    total: int = Field(..., description="Total number of users")
+    users: List[AuthenticatedUser] = Field(..., description="User list")
+    pagination: Optional[Dict[str, Any]] = Field(None, description="Pagination info")
