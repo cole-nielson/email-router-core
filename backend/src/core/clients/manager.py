@@ -138,7 +138,10 @@ class EnhancedClientManager:
             mailgun_domain_raw = client_config.domains.mailgun
             if mailgun_domain_raw:
                 mailgun_domain = normalize_domain(mailgun_domain_raw)
-                if mailgun_domain and mailgun_domain not in [primary_domain, support_domain]:
+                if mailgun_domain and mailgun_domain not in [
+                    primary_domain,
+                    support_domain,
+                ]:
                     self._domain_to_client_cache[mailgun_domain] = client_id
                     client_domains.add(mailgun_domain)
 
@@ -261,7 +264,10 @@ class EnhancedClientManager:
         if client_id:
             logger.debug(f"Exact match: {domain} -> {client_id}")
             return ClientIdentificationResult(
-                client_id=client_id, confidence=1.0, method="exact_match", domain_used=domain
+                client_id=client_id,
+                confidence=1.0,
+                method="exact_match",
+                domain_used=domain,
             )
 
         # Strategy 2: Domain hierarchy matching
@@ -604,7 +610,7 @@ class EnhancedClientManager:
                 "status": "active" if client_config.active else "inactive",
                 "domains": list(domains),
                 "primary_domain": client_config.domains.primary,
-                "routing_categories": list(routing_rules.routing.keys()) if routing_rules else [],
+                "routing_categories": (list(routing_rules.routing.keys()) if routing_rules else []),
                 "total_domains": len(domains),
                 "settings": {
                     "ai_classification_enabled": client_config.settings.ai_classification_enabled,

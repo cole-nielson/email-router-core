@@ -130,7 +130,8 @@ async def refresh_token(request: RefreshTokenRequest, db: Session = Depends(get_
         token_response = auth_service.refresh_access_token(request.refresh_token)
         if not token_response:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired refresh token",
             )
 
         return token_response
@@ -194,7 +195,8 @@ async def register_user(
         # Check permissions - only super admin can create users
         if not security_context.has_permission("users:write"):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied: users:write"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permission denied: users:write",
             )
 
         auth_service = get_auth_service(db)
@@ -224,7 +226,8 @@ async def register_user(
             role_enum = UserRole(request.role)
         except ValueError:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid role: {request.role}"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid role: {request.role}",
             )
 
         # Create user
@@ -255,7 +258,7 @@ async def register_user(
             client_id=user.client_id,
             status=user.status.value,
             created_at=user.created_at.isoformat(),
-            last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
+            last_login_at=(user.last_login_at.isoformat() if user.last_login_at else None),
         )
 
     except HTTPException:
@@ -292,7 +295,7 @@ async def get_current_user_info(
             client_id=user.client_id,
             status=user.status.value,
             created_at=user.created_at.isoformat(),
-            last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
+            last_login_at=(user.last_login_at.isoformat() if user.last_login_at else None),
         )
 
     except HTTPException:
@@ -300,7 +303,8 @@ async def get_current_user_info(
     except Exception as e:
         logger.error(f"Get user info error: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -328,7 +332,8 @@ async def change_password(
         # Verify current password
         if not auth_service.verify_password(request.current_password, user.password_hash):
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect",
             )
 
         # Update password
@@ -371,7 +376,8 @@ async def list_users(
         # Check permissions
         if not security_context.has_permission("users:read"):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied: users:read"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permission denied: users:read",
             )
 
         # Import User model dynamically
@@ -397,7 +403,7 @@ async def list_users(
                 client_id=user.client_id,
                 status=user.status.value,
                 created_at=user.created_at.isoformat(),
-                last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
+                last_login_at=(user.last_login_at.isoformat() if user.last_login_at else None),
             )
             for user in users
         ]
@@ -407,7 +413,8 @@ async def list_users(
     except Exception as e:
         logger.error(f"List users error: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -422,18 +429,21 @@ async def delete_user(
         # Check permissions - only super admin can delete users
         if not security_context.has_permission("users:delete"):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied: users:delete"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permission denied: users:delete",
             )
 
         if not security_context.is_super_admin:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Only super admin can delete users"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only super admin can delete users",
             )
 
         # Prevent self-deletion
         if user_id == int(security_context.user_id):
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete your own account"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot delete your own account",
             )
 
         auth_service = get_auth_service(db)
@@ -488,7 +498,10 @@ async def list_active_sessions(
 
         sessions = (
             db.query(UserSession)
-            .filter(UserSession.user_id == int(security_context.user_id), UserSession.is_active)
+            .filter(
+                UserSession.user_id == int(security_context.user_id),
+                UserSession.is_active,
+            )
             .order_by(UserSession.created_at.desc())
             .all()
         )
@@ -513,7 +526,8 @@ async def list_active_sessions(
     except Exception as e:
         logger.error(f"List sessions error: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )
 
 
@@ -553,7 +567,8 @@ async def revoke_session(
             return {"message": "Session revoked successfully"}
         else:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to revoke session"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to revoke session",
             )
 
     except HTTPException:
@@ -561,5 +576,6 @@ async def revoke_session(
     except Exception as e:
         logger.error(f"Revoke session error: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
         )

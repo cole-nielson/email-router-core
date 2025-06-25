@@ -304,7 +304,12 @@ class MetricsCollector:
             buckets_needed = min(hours * 12, len(self.time_series["timestamps"]))
 
             if buckets_needed == 0:
-                return {"timestamps": [], "requests": [], "errors": [], "response_times": []}
+                return {
+                    "timestamps": [],
+                    "requests": [],
+                    "errors": [],
+                    "response_times": [],
+                }
 
             # Get the last N buckets
             return {

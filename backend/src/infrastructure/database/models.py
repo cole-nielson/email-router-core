@@ -7,7 +7,17 @@ import enum
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 
@@ -174,7 +184,10 @@ class Client(Base):
     users = relationship("User", back_populates="client", cascade="all, delete-orphan")
     domains = relationship("ClientDomain", back_populates="client", cascade="all, delete-orphan")
     branding = relationship(
-        "ClientBranding", back_populates="client", uselist=False, cascade="all, delete-orphan"
+        "ClientBranding",
+        back_populates="client",
+        uselist=False,
+        cascade="all, delete-orphan",
     )
     routing_rules = relationship(
         "RoutingRule", back_populates="client", cascade="all, delete-orphan"

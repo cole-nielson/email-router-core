@@ -255,7 +255,7 @@ class DashboardService:
             ),
             "delivery_complete": (
                 ActivityType.EMAIL_PROCESSED,
-                "✅ Email processing complete" if success else "❌ Email processing failed",
+                ("✅ Email processing complete" if success else "❌ Email processing failed"),
                 f"Completed processing '{subject}' in {email_data.get('processing_time_ms', 0)}ms",
             ),
             "processing_error": (
@@ -266,7 +266,12 @@ class DashboardService:
         }
 
         return stage_mapping.get(
-            stage, (ActivityType.EMAIL_PROCESSED, f"Email from {sender}", f"Processed: {subject}")
+            stage,
+            (
+                ActivityType.EMAIL_PROCESSED,
+                f"Email from {sender}",
+                f"Processed: {subject}",
+            ),
         )
 
     def _calculate_real_metrics(self, client_id: str):
@@ -372,9 +377,19 @@ class DashboardService:
             (ActivityType.AUTOMATION_STARTED, "Started automation"),
         ]
 
-        senders = ["john@company.com", "support@vendor.com", "info@partner.org", "hello@startup.io"]
+        senders = [
+            "john@company.com",
+            "support@vendor.com",
+            "info@partner.org",
+            "hello@startup.io",
+        ]
         categories = ["Support", "Sales", "General", "Marketing", "Technical"]
-        destinations = ["support-team", "sales-team", "general-inbox", "technical-support"]
+        destinations = [
+            "support-team",
+            "sales-team",
+            "general-inbox",
+            "technical-support",
+        ]
 
         for i in range(20):
             activity_type, prefix = random.choice(activity_types)
@@ -420,7 +435,11 @@ class DashboardService:
         now = datetime.utcnow()
 
         alert_templates = [
-            (AlertSeverity.LOW, "Processing Delay", "Email processing is taking longer than usual"),
+            (
+                AlertSeverity.LOW,
+                "Processing Delay",
+                "Email processing is taking longer than usual",
+            ),
             (
                 AlertSeverity.MEDIUM,
                 "Classification Confidence Low",
@@ -431,7 +450,11 @@ class DashboardService:
                 "Integration Timeout",
                 "External system integration experiencing timeouts",
             ),
-            (AlertSeverity.CRITICAL, "System Overload", "Processing queue is backing up"),
+            (
+                AlertSeverity.CRITICAL,
+                "System Overload",
+                "Processing queue is backing up",
+            ),
         ]
 
         # Generate 0-3 alerts per client
@@ -468,7 +491,10 @@ class DashboardService:
                 last_run=datetime.utcnow() - timedelta(minutes=random.randint(1, 30)),
                 success_rate=random.uniform(0.92, 0.99),
                 total_executions=random.randint(100, 500),
-                configuration={"model": "claude-3-5-sonnet", "confidence_threshold": 0.8},
+                configuration={
+                    "model": "claude-3-5-sonnet",
+                    "confidence_threshold": 0.8,
+                },
             ),
             AutomationStatus(
                 id="lead-qualifier",
@@ -488,7 +514,10 @@ class DashboardService:
                 last_run=datetime.utcnow() - timedelta(minutes=random.randint(5, 60)),
                 success_rate=random.uniform(0.85, 0.94),
                 total_executions=random.randint(20, 100),
-                configuration={"escalation_rules": "priority_based", "after_hours": True},
+                configuration={
+                    "escalation_rules": "priority_based",
+                    "after_hours": True,
+                },
             ),
         ]
 

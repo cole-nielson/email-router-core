@@ -80,7 +80,10 @@ class WebSocketManager:
                     "type": "connection_established",
                     "client_id": client_id,
                     "timestamp": datetime.utcnow().isoformat(),
-                    "data": {"status": "connected", "server_time": datetime.utcnow().isoformat()},
+                    "data": {
+                        "status": "connected",
+                        "server_time": datetime.utcnow().isoformat(),
+                    },
                 },
             )
 
@@ -346,7 +349,11 @@ class WebSocketManager:
 
         except Exception as e:
             logger.error(f"❌ WebSocket health check failed: {e}")
-            return {"status": "error", "error": str(e), "timestamp": datetime.utcnow().isoformat()}
+            return {
+                "status": "error",
+                "error": str(e),
+                "timestamp": datetime.utcnow().isoformat(),
+            }
 
 
 # Global WebSocket manager instance

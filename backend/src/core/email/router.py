@@ -342,7 +342,10 @@ class RoutingEngine:
             return "very_low"
 
     def _get_special_handling(
-        self, client_id: str, email_data: Optional[Dict[str, Any]], client_config: ClientConfig
+        self,
+        client_id: str,
+        email_data: Optional[Dict[str, Any]],
+        client_config: ClientConfig,
     ) -> List[str]:
         """
         Get special handling flags for email.

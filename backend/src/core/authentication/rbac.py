@@ -108,7 +108,8 @@ class RBACManager:
         if not security_context.is_authenticated:
             if raise_on_deny:
                 raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required"
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Authentication required",
                 )
             return False
 
@@ -160,7 +161,8 @@ class RBACManager:
                 f"(role: {security_context.role})"
             )
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail=f"Permission denied: {permission}"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permission denied: {permission}",
             )
 
         return False
@@ -188,7 +190,8 @@ class RBACManager:
         if not security_context.is_authenticated:
             if raise_on_deny:
                 raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required"
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Authentication required",
                 )
             return False
 
@@ -210,7 +213,10 @@ class RBACManager:
         return False
 
     def check_client_access(
-        self, security_context: SecurityContext, client_id: str, raise_on_deny: bool = True
+        self,
+        security_context: SecurityContext,
+        client_id: str,
+        raise_on_deny: bool = True,
     ) -> bool:
         """
         Check if security context has access to specific client.
@@ -229,7 +235,8 @@ class RBACManager:
         if not security_context.is_authenticated:
             if raise_on_deny:
                 raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required"
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Authentication required",
                 )
             return False
 
@@ -244,7 +251,8 @@ class RBACManager:
         # Access denied
         if raise_on_deny:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail=f"Access denied to client {client_id}"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied to client {client_id}",
             )
 
         return False

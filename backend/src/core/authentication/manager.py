@@ -74,7 +74,9 @@ class SecurityManager:
         client_ip = security_context.ip_address
         if client_ip and self.is_ip_blocked(client_ip):
             self.log_security_event(
-                "blocked_ip_attempt", {"ip": client_ip, "path": str(request.url.path)}, client_ip
+                "blocked_ip_attempt",
+                {"ip": client_ip, "path": str(request.url.path)},
+                client_ip,
             )
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -262,7 +264,8 @@ class SecurityManager:
         """
         if not self.check_permission(security_context, permission, target_client_id):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail=f"Permission denied: {permission}"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permission denied: {permission}",
             )
 
     def require_role(self, security_context: SecurityContext, required_roles: List[str]) -> None:
@@ -295,7 +298,8 @@ class SecurityManager:
         """
         if not security_context.has_client_access(client_id):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail=f"Access denied to client {client_id}"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied to client {client_id}",
             )
 
     # =========================================================================

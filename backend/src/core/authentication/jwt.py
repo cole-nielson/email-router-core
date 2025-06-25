@@ -125,7 +125,12 @@ class AuthService:
 
         # Import models dynamically to avoid circular imports
         try:
-            from infrastructure.database.models import User, UserRole, UserSession, UserStatus
+            from infrastructure.database.models import (
+                User,
+                UserRole,
+                UserSession,
+                UserStatus,
+            )
 
             self.User = User
             self.UserRole = UserRole
@@ -196,7 +201,7 @@ class AuthService:
                 "created_at": result[13],
                 "updated_at": result[14],
                 "created_by": result[15],
-                "api_access_enabled": bool(result[16]) if result[16] is not None else True,
+                "api_access_enabled": (bool(result[16]) if result[16] is not None else True),
                 "rate_limit_tier": result[17] or "standard",
             }
 
@@ -253,7 +258,8 @@ class AuthService:
                     f"Authentication failed: account '{username}' is {user.status.value}"
                 )
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN, detail=f"Account is {user.status.value}"
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Account is {user.status.value}",
                 )
 
             # Verify password
@@ -268,7 +274,11 @@ class AuthService:
                         text(
                             "UPDATE users SET login_attempts = :attempts, locked_until = :locked WHERE username = :username"
                         ),
-                        {"attempts": new_attempts, "locked": lock_until, "username": username},
+                        {
+                            "attempts": new_attempts,
+                            "locked": lock_until,
+                            "username": username,
+                        },
                     )
                     logger.warning(
                         f"Account '{username}' locked due to {MAX_LOGIN_ATTEMPTS} failed attempts"
@@ -420,7 +430,10 @@ class AuthService:
             # Check if session is still active
             session = (
                 self.db.query(self.UserSession)
-                .filter(self.UserSession.session_id == claims.jti, self.UserSession.is_active)
+                .filter(
+                    self.UserSession.session_id == claims.jti,
+                    self.UserSession.is_active,
+                )
                 .first()
             )
 
@@ -486,7 +499,13 @@ class AuthService:
         count = (
             self.db.query(self.UserSession)
             .filter(self.UserSession.user_id == user_id, self.UserSession.is_active)
-            .update({"is_active": False, "revoked_at": datetime.utcnow(), "revoked_reason": reason})
+            .update(
+                {
+                    "is_active": False,
+                    "revoked_at": datetime.utcnow(),
+                    "revoked_reason": reason,
+                }
+            )
         )
 
         # Increment token version to invalidate any cached tokens
@@ -553,7 +572,11 @@ class AuthService:
         return permissions
 
     def check_permission(
-        self, user_claims: UserTokenClaims, resource: str, action: str, client_id: str = None
+        self,
+        user_claims: UserTokenClaims,
+        resource: str,
+        action: str,
+        client_id: str = None,
     ) -> bool:
         """Check if user has permission for resource:action."""
         permission = f"{resource}:{action}"

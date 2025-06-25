@@ -10,7 +10,10 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 from infrastructure.config.manager import get_config_manager
-from infrastructure.templates.email import _get_default_branding, create_branded_template
+from infrastructure.templates.email import (
+    _get_default_branding,
+    create_branded_template,
+)
 
 from ..clients.manager import ClientManager
 from .ai.client import get_ai_client
@@ -313,7 +316,9 @@ def get_email_service() -> EmailService:
 
 
 async def generate_plain_text_emails(
-    email_data: Dict[str, Any], classification: Dict[str, Any], client_id: Optional[str] = None
+    email_data: Dict[str, Any],
+    classification: Dict[str, Any],
+    client_id: Optional[str] = None,
 ) -> Tuple[str, str]:
     """Generate human-like plain text customer response and HTML team analysis."""
     email_service = get_email_service()

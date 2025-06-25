@@ -342,7 +342,10 @@ class AIClassifier:
         """
         # Add additional context to email data if provided
         if additional_context:
-            enhanced_email_data = {**email_data, "additional_context": additional_context}
+            enhanced_email_data = {
+                **email_data,
+                "additional_context": additional_context,
+            }
         else:
             enhanced_email_data = email_data
 

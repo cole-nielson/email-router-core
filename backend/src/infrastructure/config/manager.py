@@ -98,7 +98,13 @@ class ConfigManager:
             },
             "EMAIL_ROUTER_ENVIRONMENT": {
                 "required": False,
-                "allowed_values": ["development", "staging", "production", "test", "testing"],
+                "allowed_values": [
+                    "development",
+                    "staging",
+                    "production",
+                    "test",
+                    "testing",
+                ],
                 "description": "Application environment",
             },
         }

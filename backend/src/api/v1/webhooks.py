@@ -114,7 +114,8 @@ async def mailgun_inbound_webhook(
                     f"🔐 Signature details - timestamp: {timestamp}, token: {str(token)[:8]}..., signature: {str(signature)[:8]}..."
                 )
                 raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature"
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid webhook signature",
                 )
             logger.info("✅ Mailgun signature verified successfully")
         else:
@@ -161,7 +162,11 @@ async def mailgun_inbound_webhook(
             email_service,
         )
 
-        return {"status": "received", "message": "Email processing started", "client_id": client_id}
+        return {
+            "status": "received",
+            "message": "Email processing started",
+            "client_id": client_id,
+        }
 
     except HTTPException:
         # Re-raise HTTP exceptions (like signature verification failures)

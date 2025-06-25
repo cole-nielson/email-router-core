@@ -10,7 +10,14 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, status
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
@@ -135,7 +142,10 @@ app = FastAPI(
     servers=[
         {"url": "https://api.emailrouter.ai", "description": "Production server"},
         {"url": "https://staging-api.emailrouter.ai", "description": "Staging server"},
-        {"url": f"http://localhost:{config.server.port}", "description": "Development server"},
+        {
+            "url": f"http://localhost:{config.server.port}",
+            "description": "Development server",
+        },
     ],
     docs_url=None,  # We'll create custom docs
     redoc_url=None,  # We'll create custom redoc
@@ -413,7 +423,8 @@ async def health_check():
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service health check failed"
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service health check failed",
         )
 
 
@@ -445,7 +456,9 @@ async def detailed_health_check():
         config_manager = get_config_manager()
         ai_response_time = time.time()
         components["ai_classifier"] = {
-            "status": "healthy" if config_manager.is_service_available("anthropic") else "degraded",
+            "status": (
+                "healthy" if config_manager.is_service_available("anthropic") else "degraded"
+            ),
             "response_time_ms": int((time.time() - ai_response_time) * 1000),
             "details": (
                 "Claude 3.5 Sonnet API"
@@ -457,7 +470,7 @@ async def detailed_health_check():
         # Email Service Health
         email_response_time = time.time()
         components["email_service"] = {
-            "status": "healthy" if config_manager.is_service_available("mailgun") else "degraded",
+            "status": ("healthy" if config_manager.is_service_available("mailgun") else "degraded"),
             "response_time_ms": int((time.time() - email_response_time) * 1000),
             "details": (
                 f"Mailgun service for {config.services.mailgun_domain}"
@@ -541,7 +554,8 @@ async def prometheus_metrics():
     except Exception as e:
         logger.error(f"Metrics endpoint failed: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Metrics collection failed"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Metrics collection failed",
         )
 
 

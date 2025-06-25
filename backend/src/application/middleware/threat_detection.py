@@ -140,7 +140,8 @@ class ThreatDetectionMiddleware(BaseHTTPMiddleware):
                 # Block certain high-risk patterns immediately
                 if pattern in ["../", "union select", "drop table"]:
                     raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST, detail="Malicious request detected"
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Malicious request detected",
                     )
 
     def _check_header_threats(self, request: Request, client_ip: str) -> None:
@@ -169,7 +170,8 @@ class ThreatDetectionMiddleware(BaseHTTPMiddleware):
                 logger.warning(f"Header injection attempt from {client_ip}: {header}")
                 self._record_suspicious_activity(client_ip, "header_injection")
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid request headers"
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid request headers",
                 )
 
     def _check_request_size(self, request: Request, client_ip: str) -> None:
