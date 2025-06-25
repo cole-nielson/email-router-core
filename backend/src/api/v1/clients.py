@@ -10,8 +10,9 @@ from typing import Annotated, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
+from application.dependencies.repositories import get_client_manager
 from application.middleware.auth import DualAuthUser, require_dual_auth
-from core.clients.manager import ClientManager, get_client_manager
+from core.clients.manager import ClientManager
 from core.clients.resolver import normalize_domain
 from core.models.schemas import (
     APIStatusResponse,
@@ -48,7 +49,7 @@ async def get_api_status(client_manager: Annotated[ClientManager, Depends(get_cl
         system_metrics = metrics.get_system_metrics()
 
         # Get client information
-        available_clients = client_manager.get_available_clients()
+        available_clients = await client_manager.get_available_clients()
 
         # Calculate total domains
         total_domains = 0
@@ -56,10 +57,10 @@ async def get_api_status(client_manager: Annotated[ClientManager, Depends(get_cl
 
         for client_id in available_clients:
             try:
-                domains = client_manager.get_client_domains(client_id)
+                domains = await client_manager.get_client_domains(client_id)
                 total_domains += len(domains)
 
-                if client_manager.validate_client_setup(client_id):
+                if await client_manager.validate_client_setup(client_id):
                     valid_clients += 1
             except Exception as e:
                 logger.warning(f"Failed to get info for client {client_id}: {e}")
@@ -143,24 +144,23 @@ async def list_clients(
     Supports filtering by status and industry for easier management.
     """
     try:
-        available_clients = client_manager.get_available_clients()
+        available_clients = await client_manager.get_available_clients()
 
         # Apply filters if specified
         filtered_clients = available_clients
 
         if status_filter:
-            filtered_clients = [
-                client_id
-                for client_id in filtered_clients
-                if _get_client_status(client_manager, client_id) == status_filter
-            ]
+            filtered_clients = []
+            for client_id in available_clients:
+                if await _get_client_status(client_manager, client_id) == status_filter:
+                    filtered_clients.append(client_id)
 
         if industry_filter:
-            filtered_clients = [
-                client_id
-                for client_id in filtered_clients
-                if _get_client_industry(client_manager, client_id) == industry_filter
-            ]
+            final_filtered = []
+            for client_id in filtered_clients:
+                if await _get_client_industry(client_manager, client_id) == industry_filter:
+                    final_filtered.append(client_id)
+            filtered_clients = final_filtered
 
         # Apply pagination
         total_clients = len(filtered_clients)
@@ -170,7 +170,7 @@ async def list_clients(
         client_summaries = []
         for client_id in paginated_clients:
             try:
-                summary = client_manager.get_client_summary(client_id)
+                summary = await client_manager.get_client_summary(client_id)
 
                 client_summary = ClientSummary(
                     client_id=summary["client_id"],
@@ -242,7 +242,7 @@ async def get_client(
     """
     try:
         # Check if client exists
-        available_clients = client_manager.get_available_clients()
+        available_clients = await client_manager.get_available_clients()
         if client_id not in available_clients:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail=f"Client '{client_id}' not found"
@@ -260,7 +260,7 @@ async def get_client(
             )
 
         # Get client summary
-        summary = client_manager.get_client_summary(client_id)
+        summary = await client_manager.get_client_summary(client_id)
 
         return ClientSummary(
             client_id=summary["client_id"],
@@ -305,14 +305,14 @@ async def validate_client(
     """
     try:
         # Check if client exists
-        available_clients = client_manager.get_available_clients()
+        available_clients = await client_manager.get_available_clients()
         if client_id not in available_clients:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail=f"Client '{client_id}' not found"
             )
 
         # Perform validation
-        is_valid = client_manager.validate_client_setup(client_id)
+        is_valid = await client_manager.validate_client_setup(client_id)
 
         # Get validation details
         validation_results = {
@@ -326,15 +326,15 @@ async def validate_client(
 
         try:
             # Test client config loading
-            client_manager.get_client_config(client_id)
+            await client_manager.get_client_config(client_id)
             validation_results["checks_performed"].append("client_config_load")
 
             # Test routing rules loading
-            routing_rules = client_manager.get_routing_rules(client_id)
+            routing_rules = await client_manager.get_routing_rules(client_id)
             validation_results["checks_performed"].append("routing_rules_load")
 
             # Check domain configuration
-            domains = client_manager.get_client_domains(client_id)
+            domains = await client_manager.get_client_domains(client_id)
             if domains:
                 validation_results["checks_performed"].append("domain_mapping")
             else:
@@ -489,7 +489,7 @@ async def refresh_client_config(
             )
 
         # Check if client exists
-        available_clients = client_manager.get_available_clients()
+        available_clients = await client_manager.get_available_clients()
         if client_id not in available_clients:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail=f"Client '{client_id}' not found"
@@ -517,19 +517,19 @@ async def refresh_client_config(
 # Helper functions
 
 
-def _get_client_status(client_manager: ClientManager, client_id: str) -> str:
+async def _get_client_status(client_manager: ClientManager, client_id: str) -> str:
     """Get client status."""
     try:
-        config = client_manager.get_client_config(client_id)
+        config = await client_manager.get_client_config(client_id)
         return config.client.status
     except Exception:
         return "error"
 
 
-def _get_client_industry(client_manager: ClientManager, client_id: str) -> str:
+async def _get_client_industry(client_manager: ClientManager, client_id: str) -> str:
     """Get client industry."""
     try:
-        config = client_manager.get_client_config(client_id)
+        config = await client_manager.get_client_config(client_id)
         return config.client.industry
     except Exception:
         return "unknown"

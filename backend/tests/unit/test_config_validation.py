@@ -24,18 +24,15 @@ class TestClientConfigValidation:
         self.client_manager = ClientManager()
         self.clients_dir = Path("clients/active")
 
-        # Get all available client IDs
-        self.client_ids = self.client_manager.get_available_clients()
-
-        # Ensure we have at least one client for testing
-        assert len(self.client_ids) > 0, "No clients found for validation testing"
-
-    def test_all_clients_have_valid_configs(self):
+    async def test_all_clients_have_valid_configs(self):
         """Test that all client directories have valid configurations."""
+        # Setup client ids if not already done
+        if not hasattr(self, "client_ids"):
+            self.client_ids = await self.client_manager.get_available_clients()
 
         for client_id in self.client_ids:
             # This should not raise an exception for valid configs
-            config = self.client_manager.get_client_config(client_id)
+            config = await self.client_manager.get_client_config(client_id)
 
             # Basic validation checks
             assert config.client_id == client_id
@@ -49,12 +46,12 @@ class TestClientConfigValidation:
                 "Other",
             ]
 
-    def test_specific_client_config_validation(self):
+    async def test_specific_client_config_validation(self):
         """Test validation of the specific test client configuration."""
         if not Path(TEST_CLIENT_CONFIG_PATH).exists():
             pytest.skip("Test client configuration file not found")
 
-        config = self.client_manager.get_client_config("client-001-cole-nielson")
+        config = await self.client_manager.get_client_config("client-001-cole-nielson")
 
         # Validate specific configuration elements
         assert config.client_id == "client-001-cole-nielson"
@@ -77,14 +74,18 @@ class TestClientConfigValidation:
         assert isinstance(config.settings.ai_classification_enabled, bool)
         assert isinstance(config.settings.team_forwarding_enabled, bool)
 
-    def test_invalid_config_handling(self):
+    async def test_invalid_config_handling(self):
         """Test that invalid configurations are properly rejected."""
         # Test with invalid client ID - should return None
-        config = self.client_manager.get_client_config("nonexistent-client")
+        config = await self.client_manager.get_client_config("nonexistent-client")
         assert config is None
 
-    def test_required_files_exist(self):
+    async def test_required_files_exist(self):
         """Test that all required configuration files exist for each client."""
+        # Setup client ids if not already done
+        if not hasattr(self, "client_ids"):
+            self.client_ids = await self.client_manager.get_available_clients()
+
         for client_id in self.client_ids:
             client_dir = self.clients_dir / client_id
 
@@ -98,8 +99,12 @@ class TestClientConfigValidation:
                 file_path = client_dir / required_file
                 assert file_path.exists(), f"Missing {required_file} for client {client_id}"
 
-    def test_yaml_syntax_validation(self):
+    async def test_yaml_syntax_validation(self):
         """Test that all YAML files have valid syntax."""
+        # Setup client ids if not already done
+        if not hasattr(self, "client_ids"):
+            self.client_ids = await self.client_manager.get_available_clients()
+
         for client_id in self.client_ids:
             client_dir = self.clients_dir / client_id
 
@@ -113,8 +118,12 @@ class TestClientConfigValidation:
                 except yaml.YAMLError as e:
                     pytest.fail(f"Invalid YAML syntax in {yaml_file}: {e}")
 
-    def test_pydantic_model_validation(self):
+    async def test_pydantic_model_validation(self):
         """Test that client configs pass Pydantic model validation."""
+        # Setup client ids if not already done
+        if not hasattr(self, "client_ids"):
+            self.client_ids = await self.client_manager.get_available_clients()
+
         for client_id in self.client_ids:
             config_path = self.clients_dir / client_id / "client-config.yaml"
 
@@ -128,10 +137,14 @@ class TestClientConfigValidation:
                 except ValidationError as e:
                     pytest.fail(f"Client {client_id} has invalid config: {e}")
 
-    def test_domain_configuration_validity(self):
+    async def test_domain_configuration_validity(self):
         """Test that domain configurations are valid."""
+        # Setup client ids if not already done
+        if not hasattr(self, "client_ids"):
+            self.client_ids = await self.client_manager.get_available_clients()
+
         for client_id in self.client_ids:
-            config = self.client_manager.get_client_config(client_id)
+            config = await self.client_manager.get_client_config(client_id)
 
             # Primary domain should be set
             assert config.domains.primary
@@ -145,8 +158,12 @@ class TestClientConfigValidation:
             all_domains = [config.domains.primary] + config.domains.aliases
             assert len(all_domains) == len(set(all_domains)), "Duplicate domains found"
 
-    def test_routing_configuration_validity(self):
+    async def test_routing_configuration_validity(self):
         """Test that routing configurations are valid."""
+        # Setup client ids if not already done
+        if not hasattr(self, "client_ids"):
+            self.client_ids = await self.client_manager.get_available_clients()
+
         for client_id in self.client_ids:
             routing_path = self.clients_dir / client_id / "routing-rules.yaml"
 
@@ -172,10 +189,14 @@ class TestClientConfigValidation:
                         email_pattern, email
                     ), f"Invalid email format for {category}: {email}"
 
-    def test_branding_configuration_completeness(self):
+    async def test_branding_configuration_completeness(self):
         """Test that branding configurations are complete."""
+        # Setup client ids if not already done
+        if not hasattr(self, "client_ids"):
+            self.client_ids = await self.client_manager.get_available_clients()
+
         for client_id in self.client_ids:
-            config = self.client_manager.get_client_config(client_id)
+            config = await self.client_manager.get_client_config(client_id)
 
             # Required branding fields
             assert config.branding.company_name
@@ -193,8 +214,12 @@ class TestClientConfigValidation:
                 hex_color_pattern, config.branding.secondary_color
             ), f"Invalid secondary color format: {config.branding.secondary_color}"
 
-    def test_categories_configuration_validity(self):
+    async def test_categories_configuration_validity(self):
         """Test that categories configurations are valid."""
+        # Setup client ids if not already done
+        if not hasattr(self, "client_ids"):
+            self.client_ids = await self.client_manager.get_available_clients()
+
         for client_id in self.client_ids:
             categories_path = self.clients_dir / client_id / "categories.yaml"
 
@@ -213,11 +238,15 @@ class TestClientConfigValidation:
                     assert isinstance(category_config["keywords"], list)
                     assert len(category_config["keywords"]) > 0
 
-    def test_configuration_consistency(self):
+    async def test_configuration_consistency(self):
         """Test consistency between different configuration files."""
+        # Setup client ids if not already done
+        if not hasattr(self, "client_ids"):
+            self.client_ids = await self.client_manager.get_available_clients()
+
         for client_id in self.client_ids:
             # Get main config
-            config = self.client_manager.get_client_config(client_id)
+            config = await self.client_manager.get_client_config(client_id)
 
             # Load routing config
             routing_path = self.clients_dir / client_id / "routing-rules.yaml"

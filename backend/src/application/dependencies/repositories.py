@@ -101,16 +101,21 @@ def get_legacy_auth_service(
     return LegacyAuthService(db)
 
 
-def get_client_manager() -> "EnhancedClientManager":
+def get_client_manager(
+    client_repository: Annotated[ClientRepository, Depends(get_client_repository)],
+) -> "EnhancedClientManager":
     """
-    Legacy dependency for backward compatibility with existing client manager.
+    Dependency that provides ClientManager with repository injection.
 
-    This provides the old ClientManager that directly uses file-based configuration.
-    This should be phased out in favor of repository-based client management.
+    This provides the updated ClientManager that uses both file-based configuration
+    and database operations through the ClientRepository interface.
+
+    Args:
+        client_repository: ClientRepository implementation
 
     Returns:
-        EnhancedClientManager instance
+        EnhancedClientManager instance with repository injection
     """
     from core.clients.manager import get_client_manager
 
-    return get_client_manager()
+    return get_client_manager(client_repository)

@@ -8,7 +8,7 @@ the clean architecture repository pattern.
 
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session

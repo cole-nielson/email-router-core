@@ -10,8 +10,9 @@ from typing import Annotated, Any, Dict, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 
+from application.dependencies.repositories import get_client_manager
 from application.middleware.auth import DualAuthUser, get_dual_auth_user  # type: ignore
-from core.clients.manager import ClientManager, get_client_manager  # type: ignore
+from core.clients.manager import ClientManager  # type: ignore
 from core.dashboard.service import DashboardService, get_dashboard_service  # type: ignore
 from core.email.classifier import AIClassifier, get_ai_classifier  # type: ignore
 from core.email.router import RoutingEngine, get_routing_engine  # type: ignore
@@ -297,7 +298,7 @@ async def process_email_pipeline(
 
         # Log successful completion
         if client_id:
-            client_config = client_manager.get_client_config(client_id)
+            client_config = await client_manager.get_client_config(client_id)
             company_name = client_config.branding.company_name
             logger.info(
                 f"✅ Email processed for {company_name}: "
@@ -337,7 +338,7 @@ async def process_email_pipeline(
         # Try to send a basic notification about the failure
         try:
             if client_id:
-                client_config = client_manager.get_client_config(client_id)
+                client_config = await client_manager.get_client_config(client_id)
                 admin_email = client_config.contacts.primary_contact
             else:
                 admin_email = "admin@example.com"  # TODO: Make this configurable
@@ -398,13 +399,13 @@ async def webhook_status(
         Status information including available clients
     """
     try:
-        available_clients = client_manager.get_available_clients()
+        available_clients = await client_manager.get_available_clients()
 
         # Get client details
         client_details = []
         for client_id in available_clients:
             try:
-                client_config = client_manager.get_client_config(client_id)
+                client_config = await client_manager.get_client_config(client_id)
                 client_details.append(
                     {
                         "id": client_id,
