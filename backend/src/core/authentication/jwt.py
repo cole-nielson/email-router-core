@@ -14,8 +14,9 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
+import jwt
 from fastapi import HTTPException, status
-from jose import JWTError, jwt
+from jwt import InvalidTokenError
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -433,7 +434,7 @@ class AuthService:
 
             return claims
 
-        except JWTError as e:
+        except InvalidTokenError as e:
             logger.warning(f"JWT validation error: {e}")
             return None
         except Exception as e:

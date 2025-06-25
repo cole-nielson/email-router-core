@@ -3,13 +3,13 @@
 # =============================================================================
 
 # Core FastAPI Framework
-fastapi==0.104.1
+fastapi==0.115.6
 uvicorn[standard]==0.24.0
-python-multipart==0.0.6
+python-multipart==0.0.18
 
 # Data Validation & Serialization
-pydantic==2.5.0
-pydantic-settings==2.0.3
+pydantic==2.9.2
+pydantic-settings==2.6.1
 email-validator==2.2.0
 
 # Database
@@ -17,7 +17,7 @@ sqlalchemy==2.0.23
 alembic==1.16.2
 
 # Authentication & Security
-python-jose[cryptography]==3.3.0
+PyJWT[crypto]==2.8.0
 passlib[bcrypt]==1.7.4
 
 # Configuration Management
@@ -32,7 +32,7 @@ aiofiles==23.2.1
 anthropic==0.34.2
 
 # Template Engine
-jinja2==3.1.2
+jinja2==3.1.6
 
 # Monitoring & Metrics
 prometheus-client==0.19.0
