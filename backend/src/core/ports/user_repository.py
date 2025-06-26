@@ -8,7 +8,7 @@ depending on any specific database technology or ORM.
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from core.models.schemas import (
     AuthenticatedUser,
@@ -143,22 +143,50 @@ class UserRepository(ABC):
         self,
         limit: int = 50,
         offset: int = 0,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        search: Optional[str] = None,
         client_id: Optional[str] = None,
         role: Optional[str] = None,
         status: Optional[str] = None,
-    ) -> List[UserWithPermissions]:
+    ) -> Tuple[List[UserWithPermissions], int]:
         """
-        List users with optional filtering.
+        List users with pagination, sorting, and filtering.
 
         Args:
             limit: Maximum number of users to return
             offset: Number of users to skip
+            sort_by: Field to sort by (e.g., 'created_at', 'username', 'email')
+            sort_order: Sort order - 'asc' or 'desc'
+            search: Search term for username, email, or full name
             client_id: Filter by client ID
             role: Filter by role
             status: Filter by account status
 
         Returns:
-            List of users with permissions
+            Tuple of (users list, total count)
+        """
+        pass
+
+    @abstractmethod
+    async def count_users(
+        self,
+        search: Optional[str] = None,
+        client_id: Optional[str] = None,
+        role: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> int:
+        """
+        Count users matching the filter criteria.
+
+        Args:
+            search: Search term for username, email, or full name
+            client_id: Filter by client ID
+            role: Filter by role
+            status: Filter by account status
+
+        Returns:
+            Total count of users matching criteria
         """
         pass
 

@@ -364,8 +364,8 @@ class TestUserManagement:
 
         assert response.status_code == 403
 
-    def test_list_users(self, client, test_user):
-        """Test listing users (admin only)."""
+    def test_list_users_pagination(self, client, test_user):
+        """Test listing users with pagination (admin only)."""
         # Login as admin
         login_response = client.post(
             "/auth/login",
@@ -376,13 +376,177 @@ class TestUserManagement:
         )
         admin_token = login_response.json()["access_token"]
 
-        # List users
+        # Test basic pagination
         response = client.get("/auth/users", headers={"Authorization": f"Bearer {admin_token}"})
 
         assert response.status_code == 200
         data = response.json()
+
+        # Check response structure
         assert "users" in data
+        assert "pagination" in data
         assert isinstance(data["users"], list)
+
+        # Check pagination metadata
+        pagination = data["pagination"]
+        assert "total" in pagination
+        assert "limit" in pagination
+        assert "offset" in pagination
+        assert "has_more" in pagination
+        assert pagination["limit"] == 100  # Default limit
+        assert pagination["offset"] == 0  # Default offset
+
+    def test_list_users_pagination_parameters(self, client, test_user):
+        """Test listing users with custom pagination parameters."""
+        # Login as admin
+        login_response = client.post(
+            "/auth/login",
+            json={
+                "username": test_user["super_admin"].username,
+                "password": test_user["super_admin"].password,
+            },
+        )
+        admin_token = login_response.json()["access_token"]
+
+        # Test custom pagination
+        response = client.get(
+            "/auth/users",
+            params={"limit": 5, "offset": 0},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        pagination = data["pagination"]
+        assert pagination["limit"] == 5
+        assert pagination["offset"] == 0
+        assert len(data["users"]) <= 5
+
+    def test_list_users_sorting(self, client, test_user):
+        """Test listing users with sorting."""
+        # Login as admin
+        login_response = client.post(
+            "/auth/login",
+            json={
+                "username": test_user["super_admin"].username,
+                "password": test_user["super_admin"].password,
+            },
+        )
+        admin_token = login_response.json()["access_token"]
+
+        # Test sorting by username ascending
+        response = client.get(
+            "/auth/users",
+            params={"sort_by": "username", "sort_order": "asc"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Check that users are sorted by username
+        usernames = [user["username"] for user in data["users"]]
+        assert usernames == sorted(usernames)
+
+        # Test sorting by created_at descending (default)
+        response = client.get(
+            "/auth/users",
+            params={"sort_by": "created_at", "sort_order": "desc"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+
+        assert response.status_code == 200
+
+    def test_list_users_filtering(self, client, test_user):
+        """Test listing users with filtering."""
+        # Login as admin
+        login_response = client.post(
+            "/auth/login",
+            json={
+                "username": test_user["super_admin"].username,
+                "password": test_user["super_admin"].password,
+            },
+        )
+        admin_token = login_response.json()["access_token"]
+
+        # Test filtering by role
+        response = client.get(
+            "/auth/users",
+            params={"role": "super_admin"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # All returned users should be super_admin
+        for user in data["users"]:
+            assert user["role"] == "super_admin"
+
+        # Test search functionality
+        response = client.get(
+            "/auth/users",
+            params={"search": "admin"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # All returned users should contain "admin" in username, email, or full_name
+        for user in data["users"]:
+            assert (
+                "admin" in user["username"].lower()
+                or "admin" in user["email"].lower()
+                or "admin" in user["full_name"].lower()
+            )
+
+    def test_list_users_invalid_parameters(self, client, test_user):
+        """Test listing users with invalid parameters."""
+        # Login as admin
+        login_response = client.post(
+            "/auth/login",
+            json={
+                "username": test_user["super_admin"].username,
+                "password": test_user["super_admin"].password,
+            },
+        )
+        admin_token = login_response.json()["access_token"]
+
+        # Test invalid sort field
+        response = client.get(
+            "/auth/users",
+            params={"sort_by": "invalid_field"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+
+        assert response.status_code == 422  # Validation error
+
+        # Test invalid sort order
+        response = client.get(
+            "/auth/users",
+            params={"sort_order": "invalid_order"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+
+        assert response.status_code == 422  # Validation error
+
+        # Test negative offset
+        response = client.get(
+            "/auth/users", params={"offset": -1}, headers={"Authorization": f"Bearer {admin_token}"}
+        )
+
+        assert response.status_code == 422  # Validation error
+
+        # Test limit too high
+        response = client.get(
+            "/auth/users",
+            params={"limit": 1001},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+
+        assert response.status_code == 422  # Validation error
 
     def test_change_password(self, client, test_user):
         """Test password change functionality."""
