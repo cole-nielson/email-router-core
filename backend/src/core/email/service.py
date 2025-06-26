@@ -9,7 +9,7 @@ import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-from infrastructure.config.manager import get_config_manager
+from core.ports.config_provider import ConfigurationProvider
 from infrastructure.templates.email import _get_default_branding, create_branded_template
 
 from ..clients.manager import ClientManager
@@ -41,18 +41,20 @@ class EmailService:
     - Maintains backward compatibility with existing APIs
     """
 
-    def __init__(self, client_manager: ClientManager):
+    def __init__(self, config_provider: ConfigurationProvider, client_manager: ClientManager):
         """
         Initialize the email service orchestrator.
 
         Args:
+            config_provider: Configuration provider interface
             client_manager: ClientManager instance for accessing client data
         """
+        self.config_provider = config_provider
         self.client_manager = client_manager
         self._branding_manager = get_branding_manager()
         self._template_validator = get_template_validator()
         self._context_builder = TemplateContextBuilder(client_manager)
-        self._template_loader = get_template_loader(self._template_validator)
+        self._template_loader = get_template_loader(self.config_provider, self._template_validator)
         self._template_engine = get_template_engine()
         self._ai_client = get_ai_client()
         self._fallback_provider = get_fallback_response_provider()
@@ -247,7 +249,7 @@ class EmailService:
             Fallback response text
         """
         try:
-            fallback_responses = get_config_manager().load_fallback_responses(client_id)
+            fallback_responses = self.config_provider.load_fallback_responses(client_id)
 
             if response_type in fallback_responses:
                 responses = fallback_responses[response_type]
@@ -300,10 +302,11 @@ Respond with JSON: {{"category": "support|billing|sales|general", "confidence": 
 def get_email_service() -> EmailService:
     """Dependency injection function for EmailService."""
     if not hasattr(get_email_service, "_instance"):
-        from ..clients.manager import get_client_manager
+        from application.dependencies.config import get_client_manager, get_config_provider
 
+        config_provider = get_config_provider()
         client_manager = get_client_manager()
-        get_email_service._instance = EmailService(client_manager)
+        get_email_service._instance = EmailService(config_provider, client_manager)
     return get_email_service._instance
 
 

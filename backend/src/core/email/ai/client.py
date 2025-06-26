@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional
 
 import httpx
 
-from infrastructure.config.manager import get_app_config  # type: ignore
+from core.ports.config_provider import ConfigurationProvider
 
 logger = logging.getLogger(__name__)
 
@@ -18,14 +18,14 @@ logger = logging.getLogger(__name__)
 class AIClient:
     """Client for communicating with Anthropic Claude API."""
 
-    def __init__(self, config: Optional[Any] = None) -> None:
+    def __init__(self, config_provider: ConfigurationProvider) -> None:
         """
         Initialize the AI client.
 
         Args:
-            config: Optional config instance (will fetch from get_app_config if not provided)
+            config_provider: Configuration provider interface
         """
-        self.config = config or get_app_config()
+        self.config_provider = config_provider
         self.default_timeout = 30.0
         self.default_max_tokens = 1000
         self.default_temperature = 0.3
@@ -183,7 +183,7 @@ class AIClient:
         """
         return {
             "Content-Type": "application/json",
-            "x-api-key": self.config.services.anthropic_api_key,
+            "x-api-key": self.config_provider.get_required("services.anthropic_api_key"),
             "anthropic-version": self.api_version,
         }
 
@@ -199,7 +199,10 @@ class AIClient:
             Dictionary of request parameters
         """
         return {
-            "model": kwargs.get("model", self.config.services.anthropic_model),
+            "model": kwargs.get(
+                "model",
+                self.config_provider.get("services.anthropic_model", "claude-3-5-sonnet-20241022"),
+            ),
             "max_tokens": kwargs.get("max_tokens", self.default_max_tokens),
             "temperature": kwargs.get("temperature", self.default_temperature),
             "messages": [{"role": "user", "content": prompt}],
@@ -234,7 +237,9 @@ class AIClient:
         return {
             "api_url": self.api_url,
             "api_version": self.api_version,
-            "model": self.config.services.anthropic_model,
+            "model": self.config_provider.get(
+                "services.anthropic_model", "claude-3-5-sonnet-20241022"
+            ),
             "default_max_tokens": self.default_max_tokens,
             "default_temperature": self.default_temperature,
             "default_timeout": self.default_timeout,
@@ -259,17 +264,17 @@ class AIClient:
 _ai_client_instance: Optional[AIClient] = None
 
 
-def get_ai_client(config: Optional[Any] = None) -> AIClient:
+def get_ai_client() -> AIClient:
     """
     Get or create the singleton AIClient instance.
-
-    Args:
-        config: Optional config instance
 
     Returns:
         AIClient instance
     """
     global _ai_client_instance
     if _ai_client_instance is None:
-        _ai_client_instance = AIClient(config)
+        from application.dependencies.config import get_config_provider
+
+        config_provider = get_config_provider()
+        _ai_client_instance = AIClient(config_provider)
     return _ai_client_instance
