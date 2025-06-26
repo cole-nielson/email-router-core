@@ -377,17 +377,25 @@ class AIClassifier:
             Dictionary of available categories and their properties
         """
         try:
-            # TODO: Load from categories.yaml when implemented
-            # For now, return standard categories
+            # Load categories from client-specific categories.yaml file
+            categories_data = get_config_manager().load_categories(client_id)
+
+            # Extract just the categories section for backward compatibility
+            if "categories" in categories_data:
+                return categories_data["categories"]
+            else:
+                # Fallback to the full data if no categories section
+                return categories_data
+
+        except Exception as e:
+            logger.error(f"Failed to get categories for {client_id}: {e}")
+            # Return basic fallback categories on error
             return {
                 "support": {"name": "Technical Support", "priority": "high"},
                 "billing": {"name": "Billing & Payments", "priority": "high"},
                 "sales": {"name": "Sales Inquiries", "priority": "medium"},
                 "general": {"name": "General Inquiries", "priority": "low"},
             }
-        except Exception as e:
-            logger.error(f"Failed to get categories for {client_id}: {e}")
-            return {}
 
 
 _ai_classifier_instance: Optional[AIClassifier] = None
