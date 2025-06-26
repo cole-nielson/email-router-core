@@ -8,7 +8,7 @@ client-specific and generic scenarios.
 import logging
 from typing import Any, Dict, Optional
 
-from infrastructure.config.manager import get_config_manager
+from core.ports.config_provider import ConfigurationProvider
 
 from .base import BaseEmailGenerator
 
@@ -26,6 +26,7 @@ class TeamAnalysisGenerator(BaseEmailGenerator):
 
     def __init__(
         self,
+        config_provider: ConfigurationProvider,
         client_manager,
         ai_client,
         fallback_provider,
@@ -45,6 +46,7 @@ class TeamAnalysisGenerator(BaseEmailGenerator):
             context_builder: Context builder for template variables
         """
         super().__init__(client_manager, ai_client, fallback_provider)
+        self._config_provider = config_provider
         self._template_loader = template_loader
         self._template_engine = template_engine
         self._context_builder = context_builder
@@ -156,7 +158,7 @@ class TeamAnalysisGenerator(BaseEmailGenerator):
             Client-specific fallback team analysis text
         """
         try:
-            fallback_responses = get_config_manager().load_fallback_responses(client_id)
+            fallback_responses = self._config_provider.load_fallback_responses(client_id)
 
             if "team_analysis" in fallback_responses:
                 responses = fallback_responses["team_analysis"]

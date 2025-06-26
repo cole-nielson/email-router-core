@@ -8,7 +8,7 @@ allowing the core layer to depend on abstractions rather than concrete implement
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
-from infrastructure.config.schema import ClientConfig
+from core.models.client import ClientInfo
 
 
 class ConfigurationProvider(ABC):
@@ -21,23 +21,23 @@ class ConfigurationProvider(ABC):
     """
 
     @abstractmethod
-    def get_all_clients(self) -> Dict[str, ClientConfig]:
+    def get_all_clients(self) -> Dict[str, ClientInfo]:
         """Get all available client configurations.
 
         Returns:
-            Dictionary mapping client_id to ClientConfig objects
+            Dictionary mapping client_id to ClientInfo objects
         """
         pass
 
     @abstractmethod
-    def get_client_config(self, client_id: str) -> Optional[ClientConfig]:
+    def get_client_config(self, client_id: str) -> Optional[ClientInfo]:
         """Get configuration for a specific client.
 
         Args:
             client_id: Unique identifier for the client
 
         Returns:
-            ClientConfig object if found, None otherwise
+            ClientInfo object if found, None otherwise
         """
         pass
 
@@ -94,5 +94,33 @@ class ConfigurationProvider(ABC):
 
         Raises:
             ConfigurationError: If fallback responses cannot be loaded
+        """
+        pass
+
+    @abstractmethod
+    def get(self, key: str, default: Any = None) -> Any:
+        """Get a configuration value by key.
+
+        Args:
+            key: The configuration key (e.g., 'services.anthropic_api_key')
+            default: Default value if key is not found
+
+        Returns:
+            The configuration value or default if not found
+        """
+        pass
+
+    @abstractmethod
+    def get_required(self, key: str) -> Any:
+        """Get a required configuration value by key.
+
+        Args:
+            key: The configuration key
+
+        Returns:
+            The configuration value
+
+        Raises:
+            ValueError: If the key is not found
         """
         pass

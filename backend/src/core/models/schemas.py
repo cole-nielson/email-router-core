@@ -322,6 +322,17 @@ class UserTokenClaims(BaseModel):
     token_type: str = Field(..., description="Token type")
 
 
+class RefreshTokenClaims(BaseModel):
+    """Minimal JWT token claims for refresh tokens."""
+
+    sub: str = Field(..., description="User ID")
+    username: str = Field(..., description="Username")
+    jti: str = Field(..., description="JWT ID")
+    iat: int = Field(..., description="Issued at timestamp")
+    exp: int = Field(..., description="Expiry timestamp")
+    token_type: str = Field(..., description="Token type")
+
+
 class UserListResponse(BaseModel):
     """Response model for user listing."""
 

@@ -7,7 +7,7 @@ Loads templates from the filesystem and manages the template cache lifecycle.
 import logging
 from typing import Any, Dict, List, Optional
 
-from infrastructure.config.manager import get_config_manager  # type: ignore
+from core.ports.config_provider import ConfigurationProvider
 
 logger = logging.getLogger(__name__)
 
@@ -15,13 +15,17 @@ logger = logging.getLogger(__name__)
 class TemplateLoader:
     """Loads and caches email templates from client configurations."""
 
-    def __init__(self, template_validator: Optional[Any] = None) -> None:
+    def __init__(
+        self, config_provider: ConfigurationProvider, template_validator: Optional[Any] = None
+    ) -> None:
         """
         Initialize the template loader.
 
         Args:
+            config_provider: Configuration provider interface
             template_validator: Optional template validator instance
         """
+        self._config_provider = config_provider
         self._template_cache: Dict[str, str] = {}
         self._template_validator = template_validator
 
@@ -47,7 +51,7 @@ class TemplateLoader:
 
         try:
             logger.debug(f"Loading template from config manager: {cache_key}")
-            template: str = get_config_manager().load_ai_prompt(client_id, template_type)
+            template: str = self._config_provider.load_ai_prompt(client_id, template_type)
 
             # Validate template if validator is available
             if self._template_validator:
@@ -162,11 +166,14 @@ class TemplateLoader:
 _template_loader_instance: Optional[TemplateLoader] = None
 
 
-def get_template_loader(template_validator: Optional[Any] = None) -> TemplateLoader:
+def get_template_loader(
+    config_provider: ConfigurationProvider, template_validator: Optional[Any] = None
+) -> TemplateLoader:
     """
     Get or create the singleton TemplateLoader instance.
 
     Args:
+        config_provider: Configuration provider interface
         template_validator: Optional template validator (used only on first initialization)
 
     Returns:
@@ -174,7 +181,7 @@ def get_template_loader(template_validator: Optional[Any] = None) -> TemplateLoa
     """
     global _template_loader_instance
     if _template_loader_instance is None:
-        _template_loader_instance = TemplateLoader(template_validator)
+        _template_loader_instance = TemplateLoader(config_provider, template_validator)
     elif template_validator and _template_loader_instance._template_validator is None:
         # Set validator if it wasn't provided during initialization
         _template_loader_instance.set_validator(template_validator)

@@ -76,9 +76,6 @@ class TestAuthenticationEndpoints:
 
         assert response.status_code == 401
 
-    @pytest.mark.skip(
-        reason="Authentication middleware issues in test environment, needs dedicated fix - see issue #18"
-    )
     def test_get_current_user_endpoint(self, client, test_user):
         """Test getting current user information."""
         # First login to get token
@@ -112,9 +109,6 @@ class TestAuthenticationEndpoints:
         response = client.get("/auth/me", headers={"Authorization": "Bearer invalid_token"})
         assert response.status_code == 401
 
-    @pytest.mark.skip(
-        reason="Authentication middleware issues in test environment, needs dedicated fix - see issue #18"
-    )
     def test_logout_endpoint(self, client, test_user):
         """Test logout endpoint."""
         # First login
@@ -131,15 +125,12 @@ class TestAuthenticationEndpoints:
         response = client.post("/auth/logout", headers={"Authorization": f"Bearer {token}"})
 
         assert response.status_code == 200
-        assert response.json()["message"] == "Successfully logged out"
+        assert response.json()["message"] == "Logged out successfully"
 
         # Verify token is invalidated
         user_response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
         assert user_response.status_code == 401
 
-    @pytest.mark.skip(
-        reason="Authentication middleware issues in test environment, needs dedicated fix - see issue #18"
-    )
     def test_refresh_token_endpoint(self, client, test_user):
         """Test token refresh endpoint."""
         # First login
@@ -235,9 +226,6 @@ class TestJWTAuthentication:
 class TestRBAC:
     """Test Role-Based Access Control functionality."""
 
-    @pytest.mark.skip(
-        reason="Authentication middleware issues in test environment, needs dedicated fix - see issue #18"
-    )
     def test_super_admin_permissions(self, auth_service, test_user):
         """Test super admin has all permissions."""
         result = auth_service.create_access_token(test_user["super_admin"])
@@ -285,9 +273,6 @@ class TestRBAC:
         for permission in forbidden_permissions:
             assert permission not in claims["permissions"]
 
-    @pytest.mark.skip(
-        reason="Authentication middleware issues in test environment, needs dedicated fix - see issue #18"
-    )
     def test_permission_checking(self, auth_service, test_user):
         """Test permission checking functionality."""
         # Create claims for both users
@@ -320,9 +305,6 @@ class TestRBAC:
 class TestUserManagement:
     """Test user management functionality."""
 
-    @pytest.mark.skip(
-        reason="Authentication middleware issues in test environment, needs dedicated fix - see issue #18"
-    )
     def test_user_registration(self, client, test_user):
         """Test user registration (admin only)."""
         # Login as admin
@@ -355,9 +337,6 @@ class TestUserManagement:
         assert data["email"] == "newuser@example.com"
         assert data["role"] == "client_user"
 
-    @pytest.mark.skip(
-        reason="Authentication middleware issues in test environment, needs dedicated fix - see issue #18"
-    )
     def test_user_registration_unauthorized(self, client, test_user):
         """Test user registration without admin privileges."""
         # Login as regular user
@@ -385,9 +364,6 @@ class TestUserManagement:
 
         assert response.status_code == 403
 
-    @pytest.mark.skip(
-        reason="Authentication middleware issues in test environment, needs dedicated fix - see issue #18"
-    )
     def test_list_users_pagination(self, client, test_user):
         """Test listing users with pagination (admin only)."""
         # Login as admin
@@ -420,9 +396,6 @@ class TestUserManagement:
         assert pagination["limit"] == 100  # Default limit
         assert pagination["offset"] == 0  # Default offset
 
-    @pytest.mark.skip(
-        reason="Authentication middleware issues in test environment, needs dedicated fix - see issue #18"
-    )
     def test_list_users_pagination_parameters(self, client, test_user):
         """Test listing users with custom pagination parameters."""
         # Login as admin
@@ -450,9 +423,6 @@ class TestUserManagement:
         assert pagination["offset"] == 0
         assert len(data["users"]) <= 5
 
-    @pytest.mark.skip(
-        reason="Authentication middleware issues in test environment, needs dedicated fix - see issue #18"
-    )
     def test_list_users_sorting(self, client, test_user):
         """Test listing users with sorting."""
         # Login as admin
@@ -488,9 +458,6 @@ class TestUserManagement:
 
         assert response.status_code == 200
 
-    @pytest.mark.skip(
-        reason="Authentication middleware issues in test environment, needs dedicated fix - see issue #18"
-    )
     def test_list_users_filtering(self, client, test_user):
         """Test listing users with filtering."""
         # Login as admin
@@ -535,9 +502,6 @@ class TestUserManagement:
                 or "admin" in user["full_name"].lower()
             )
 
-    @pytest.mark.skip(
-        reason="Authentication middleware issues in test environment, needs dedicated fix - see issue #18"
-    )
     def test_list_users_invalid_parameters(self, client, test_user):
         """Test listing users with invalid parameters."""
         # Login as admin
@@ -584,9 +548,6 @@ class TestUserManagement:
 
         assert response.status_code == 422  # Validation error
 
-    @pytest.mark.skip(
-        reason="Authentication middleware issues in test environment, needs dedicated fix - see issue #18"
-    )
     def test_change_password(self, client, test_user):
         """Test password change functionality."""
         # Login
@@ -637,9 +598,6 @@ class TestUserManagement:
 class TestSessionManagement:
     """Test session management functionality."""
 
-    @pytest.mark.skip(
-        reason="Authentication middleware issues in test environment, needs dedicated fix - see issue #18"
-    )
     def test_list_sessions(self, client, test_user):
         """Test listing user sessions."""
         # Login to create session
@@ -660,9 +618,6 @@ class TestSessionManagement:
         assert "sessions" in data
         assert len(data["sessions"]) >= 1  # At least current session
 
-    @pytest.mark.skip(
-        reason="Authentication middleware issues in test environment, needs dedicated fix - see issue #18"
-    )
     def test_revoke_session(self, client, test_user):
         """Test revoking specific session."""
         # Login to create sessions

@@ -28,7 +28,8 @@ TEST_ENV_VARS = {
 for key, value in TEST_ENV_VARS.items():
     os.environ.setdefault(key, value)
 
-from core.authentication.jwt import AuthService
+from core.authentication.auth_service import AuthService
+from infrastructure.adapters.user_repository_impl import SQLAlchemyUserRepository
 from infrastructure.database.connection import get_db
 from infrastructure.database.models import Base, User, UserRole, UserStatus
 from main import app
@@ -66,19 +67,39 @@ def db_session():
 @pytest.fixture(scope="function")
 def client(db_session):
     """Yield a TestClient with a database override for each test function."""
+    from application.dependencies.repositories import get_auth_service, get_user_repository
+    from core.authentication.auth_service import AuthService
 
     def override_get_db():
         yield db_session
 
+    def override_get_user_repository():
+        return SQLAlchemyUserRepository(db_session)
+
+    def override_get_auth_service():
+        user_repository = SQLAlchemyUserRepository(db_session)
+        return AuthService(user_repository)
+
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_user_repository] = override_get_user_repository
+    app.dependency_overrides[get_auth_service] = override_get_auth_service
+
     yield TestClient(app)
-    del app.dependency_overrides[get_db]
+
+    # Clean up dependency overrides
+    if get_db in app.dependency_overrides:
+        del app.dependency_overrides[get_db]
+    if get_user_repository in app.dependency_overrides:
+        del app.dependency_overrides[get_user_repository]
+    if get_auth_service in app.dependency_overrides:
+        del app.dependency_overrides[get_auth_service]
 
 
 @pytest.fixture(scope="function")
 def test_user(db_session):
     """Create a standard test user and a super_admin and add them to the session."""
-    auth_service = AuthService(db_session)
+    user_repository = SQLAlchemyUserRepository(db_session)
+    auth_service = AuthService(user_repository)
 
     # Create super_admin
     super_admin_password = "supersecretpassword"
@@ -262,7 +283,8 @@ def user_factory(isolated_db_session):
         client_id="test-client",
         password="testpass123",
     ):
-        auth_service = AuthService(isolated_db_session)
+        user_repository = SQLAlchemyUserRepository(isolated_db_session)
+        auth_service = AuthService(user_repository)
         user = User(
             username=username,
             email=email,

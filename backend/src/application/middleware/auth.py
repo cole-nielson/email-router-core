@@ -284,6 +284,38 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
         start_time = time.time()
 
         try:
+            # Inject auth service into request state for dependency injection compatibility
+            try:
+                from application.dependencies.repositories import (
+                    get_auth_service,
+                    get_user_repository,
+                )
+                from main import app
+
+                # Use FastAPI's dependency system (respects test overrides)
+                if get_auth_service in app.dependency_overrides:
+                    # Use the overridden dependency (for tests)
+                    auth_service = app.dependency_overrides[get_auth_service]()
+                    request.state.auth_service = auth_service
+                    request.state.db_session = None  # No session to close in override case
+                else:
+                    # Use regular dependency resolution
+                    from core.authentication.auth_service import AuthService
+                    from infrastructure.adapters.user_repository_impl import (
+                        SQLAlchemyUserRepository,
+                    )
+                    from infrastructure.database.connection import get_database_session
+
+                    db = get_database_session()
+                    user_repository = SQLAlchemyUserRepository(db)
+                    auth_service = AuthService(user_repository)
+                    request.state.auth_service = auth_service
+                    request.state.db_session = db
+            except Exception as e:
+                logger.warning(f"Failed to inject auth service: {e}")
+                request.state.auth_service = None
+                request.state.db_session = None
+
             # Create initial security context
             security_context = self.security_manager.create_security_context(request)
 
@@ -302,7 +334,7 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
                 return response
 
             # Authenticate the request
-            authenticated_context = self.security_manager.authenticate_request(
+            authenticated_context = await self.security_manager.authenticate_request(
                 request, security_context
             )
 
@@ -336,6 +368,13 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
             )
             logger.error(f"Unified auth middleware error: {e}")
             raise
+        finally:
+            # Clean up database session if it was created in middleware (not in test overrides)
+            if hasattr(request.state, "db_session") and request.state.db_session is not None:
+                try:
+                    request.state.db_session.close()
+                except Exception as e:
+                    logger.warning(f"Failed to close database session in middleware: {e}")
 
     def _is_public_endpoint(self, path: str) -> bool:
         """
