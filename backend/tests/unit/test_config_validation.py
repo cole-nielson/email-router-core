@@ -48,8 +48,6 @@ class TestClientConfigValidation:
 
     async def test_specific_client_config_validation(self):
         """Test validation of the specific test client configuration."""
-        if not Path(TEST_CLIENT_CONFIG_PATH).exists():
-            pytest.skip("Test client configuration file not found")
 
         config = await self.client_manager.get_client_config("client-001-cole-nielson")
 

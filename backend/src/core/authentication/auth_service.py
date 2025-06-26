@@ -11,7 +11,7 @@ import logging
 import os
 import secrets
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from fastapi import HTTPException, status
 from jose import JWTError, jwt
@@ -20,6 +20,7 @@ from passlib.context import CryptContext
 from core.models.schemas import (
     AuthenticatedUser,
     LoginRequest,
+    RefreshTokenClaims,
     TokenResponse,
     UserTokenClaims,
     UserWithPermissions,
@@ -263,7 +264,7 @@ class AuthService:
     @staticmethod
     def validate_token_stateless(
         token: str, token_type: str = "access"
-    ) -> Optional[UserTokenClaims]:
+    ) -> Optional[Union[UserTokenClaims, RefreshTokenClaims]]:
         """
         Validate JWT token signature and expiration without database access.
 
@@ -277,7 +278,12 @@ class AuthService:
         try:
             # Decode token with signature and expiration validation
             payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
-            claims = UserTokenClaims(**payload)
+
+            # Use appropriate claims model based on token type
+            if token_type == "refresh":
+                claims = RefreshTokenClaims(**payload)
+            else:
+                claims = UserTokenClaims(**payload)
 
             # Check token type
             if claims.token_type != token_type:
@@ -291,7 +297,7 @@ class AuthService:
         except jwt.ExpiredSignatureError:
             logger.warning("Token has expired")
             return None
-        except jwt.InvalidTokenError as e:
+        except JWTError as e:
             logger.warning(f"Invalid token: {e}")
             return None
         except Exception as e:
@@ -300,7 +306,7 @@ class AuthService:
 
     async def validate_token(
         self, token: str, token_type: str = "access"
-    ) -> Optional[UserTokenClaims]:
+    ) -> Optional[Union[UserTokenClaims, RefreshTokenClaims]]:
         """
         Validate JWT token and return claims with database session check.
 

@@ -57,7 +57,7 @@ class SecurityManager:
             user_agent=request.headers.get("User-Agent"),
         )
 
-    def authenticate_request(
+    async def authenticate_request(
         self, request: Request, security_context: SecurityContext
     ) -> SecurityContext:
         """
@@ -81,16 +81,33 @@ class SecurityManager:
                 detail="IP temporarily blocked due to security violations",
             )
 
-        # Skip authentication for public endpoints
-        if security_context.can_access_endpoint(str(request.url.path), request.method):
+        path = str(request.url.path)
+
+        # Check if this is a public endpoint that doesn't require authentication
+        public_endpoints = [
+            "/health",
+            "/health/detailed",
+            "/metrics",
+            "/docs",
+            "/redoc",
+            "/openapi.json",
+            "/auth/login",
+            "/auth/refresh",
+        ]
+
+        # Special case for root path
+        if path == "/":
+            return security_context
+
+        if any(path.startswith(public) for public in public_endpoints):
             return security_context
 
         # Try authentication methods based on endpoint preferences
-        auth_strategy = self._get_auth_strategy(str(request.url.path))
+        auth_strategy = self._get_auth_strategy(path)
 
         if auth_strategy == "jwt_preferred":
             # Try JWT first, then API key
-            jwt_context = self._try_jwt_authentication(request, security_context)
+            jwt_context = await self._try_jwt_authentication(request, security_context)
             if jwt_context.is_authenticated:
                 return jwt_context
             return self._try_api_key_authentication(request, security_context)
@@ -100,15 +117,15 @@ class SecurityManager:
             api_context = self._try_api_key_authentication(request, security_context)
             if api_context.is_authenticated:
                 return api_context
-            return self._try_jwt_authentication(request, security_context)
+            return await self._try_jwt_authentication(request, security_context)
 
         elif auth_strategy == "jwt_only":
             # JWT only for sensitive endpoints
-            return self._try_jwt_authentication(request, security_context)
+            return await self._try_jwt_authentication(request, security_context)
 
         else:
             # Default: try both with JWT preferred
-            jwt_context = self._try_jwt_authentication(request, security_context)
+            jwt_context = await self._try_jwt_authentication(request, security_context)
             if jwt_context.is_authenticated:
                 return jwt_context
             return self._try_api_key_authentication(request, security_context)
@@ -148,7 +165,7 @@ class SecurityManager:
     # AUTHENTICATION METHODS
     # =========================================================================
 
-    def _try_jwt_authentication(
+    async def _try_jwt_authentication(
         self, request: Request, security_context: SecurityContext
     ) -> SecurityContext:
         """Try JWT authentication."""
@@ -159,16 +176,25 @@ class SecurityManager:
 
             token = auth_header[7:]  # Remove "Bearer " prefix
 
-            # Import here to avoid circular imports
-            from infrastructure.database.connection import get_database_session
+            # Use dependency injection to get auth service from request state
+            if hasattr(request.state, "auth_service") and request.state.auth_service:
+                auth_service = request.state.auth_service
+            else:
+                # Fallback to creating auth service directly (for non-DI scenarios)
+                from core.authentication.auth_service import AuthService
+                from infrastructure.adapters.user_repository_impl import SQLAlchemyUserRepository
+                from infrastructure.database.connection import get_database_session
 
-            from ..authentication.jwt import get_auth_service
+                db = get_database_session()
+                try:
+                    user_repository = SQLAlchemyUserRepository(db)
+                    auth_service = AuthService(user_repository)
+                except Exception:
+                    db.close()
+                    raise
 
-            # Validate JWT token
-            db = get_database_session()
             try:
-                auth_service = get_auth_service(db)
-                user = auth_service.get_current_user(token)
+                user = await auth_service.get_current_user(token)
 
                 if user:
                     return SecurityContext.create_from_jwt_user(
@@ -179,7 +205,9 @@ class SecurityManager:
                         user_agent=security_context.user_agent,
                     )
             finally:
-                db.close()
+                # Only close db if we created it ourselves
+                if not hasattr(request.state, "auth_service") and "db" in locals():
+                    db.close()
 
         except Exception as e:
             logger.debug(f"JWT authentication failed: {e}")
