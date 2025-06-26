@@ -8,9 +8,9 @@ the clean architecture repository pattern.
 
 import logging
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
-from sqlalchemy import text
+from sqlalchemy import and_, func, or_, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -323,46 +323,132 @@ class SQLAlchemyUserRepository(UserRepository):
             logger.error(f"Error deleting user {user_id}: {e}")
             return False
 
+    def _build_user_filter_query(
+        self,
+        query,
+        search: Optional[str] = None,
+        client_id: Optional[str] = None,
+        role: Optional[str] = None,
+        status: Optional[str] = None,
+    ):
+        """Build query with filtering conditions."""
+        if client_id:
+            query = query.filter(User.client_id == client_id)
+
+        if role:
+            role_mapping = {
+                "super_admin": UserRole.SUPER_ADMIN,
+                "client_admin": UserRole.CLIENT_ADMIN,
+                "client_user": UserRole.CLIENT_USER,
+            }
+            if role in role_mapping:
+                query = query.filter(User.role == role_mapping[role])
+
+        if status:
+            status_mapping = {
+                "active": UserStatus.ACTIVE,
+                "pending": UserStatus.PENDING,
+                "suspended": UserStatus.SUSPENDED,
+                "inactive": UserStatus.INACTIVE,
+            }
+            if status in status_mapping:
+                query = query.filter(User.status == status_mapping[status])
+
+        if search:
+            # Search across username, email, and full_name
+            search_pattern = f"%{search}%"
+            query = query.filter(
+                or_(
+                    User.username.ilike(search_pattern),
+                    User.email.ilike(search_pattern),
+                    User.full_name.ilike(search_pattern),
+                )
+            )
+
+        return query
+
+    def _apply_user_sorting(self, query, sort_by: str, sort_order: str):
+        """Apply sorting to the query."""
+        # Map sort fields to actual database columns
+        sort_field_mapping = {
+            "created_at": User.created_at,
+            "updated_at": User.updated_at,
+            "username": User.username,
+            "email": User.email,
+            "full_name": User.full_name,
+            "role": User.role,
+            "status": User.status,
+            "last_login_at": User.last_login_at,
+            "client_id": User.client_id,
+        }
+
+        # Get the column to sort by
+        sort_column = sort_field_mapping.get(sort_by, User.created_at)
+
+        # Apply sorting
+        if sort_order.lower() == "asc":
+            query = query.order_by(sort_column.asc())
+        else:
+            query = query.order_by(sort_column.desc())
+
+        return query
+
     async def list_users(
         self,
         limit: int = 50,
         offset: int = 0,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        search: Optional[str] = None,
         client_id: Optional[str] = None,
         role: Optional[str] = None,
         status: Optional[str] = None,
-    ) -> List[UserWithPermissions]:
-        """List users with optional filtering."""
+    ) -> Tuple[List[UserWithPermissions], int]:
+        """List users with pagination, sorting, and filtering."""
         try:
+            # Build base query
             query = self.db.query(User)
 
-            if client_id:
-                query = query.filter(User.client_id == client_id)
+            # Apply filters
+            query = self._build_user_filter_query(query, search, client_id, role, status)
 
-            if role:
-                role_mapping = {
-                    "super_admin": UserRole.SUPER_ADMIN,
-                    "client_admin": UserRole.CLIENT_ADMIN,
-                    "client_user": UserRole.CLIENT_USER,
-                }
-                if role in role_mapping:
-                    query = query.filter(User.role == role_mapping[role])
+            # Get total count before pagination
+            total_count = query.count()
 
-            if status:
-                status_mapping = {
-                    "active": UserStatus.ACTIVE,
-                    "pending": UserStatus.PENDING,
-                    "suspended": UserStatus.SUSPENDED,
-                    "inactive": UserStatus.INACTIVE,
-                }
-                if status in status_mapping:
-                    query = query.filter(User.status == status_mapping[status])
+            # Apply sorting
+            query = self._apply_user_sorting(query, sort_by, sort_order)
 
+            # Apply pagination
             users = query.offset(offset).limit(limit).all()
-            return [self._user_to_domain_model(user) for user in users]
+
+            # Convert to domain models
+            user_models = [self._user_to_domain_model(user) for user in users]
+
+            return user_models, total_count
 
         except Exception as e:
             logger.error(f"Error listing users: {e}")
-            return []
+            return [], 0
+
+    async def count_users(
+        self,
+        search: Optional[str] = None,
+        client_id: Optional[str] = None,
+        role: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> int:
+        """Count users matching the filter criteria."""
+        try:
+            query = self.db.query(func.count(User.id))
+
+            # Apply the same filters as list_users
+            query = self._build_user_filter_query(query, search, client_id, role, status)
+
+            return query.scalar() or 0
+
+        except Exception as e:
+            logger.error(f"Error counting users: {e}")
+            return 0
 
     # =========================================================================
     # AUTHENTICATION OPERATIONS

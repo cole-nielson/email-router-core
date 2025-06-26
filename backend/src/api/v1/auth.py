@@ -8,8 +8,14 @@ from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
+from api.v1.dependencies import (
+    PaginationParams,
+    UserFilterParams,
+    user_filter_parameters,
+    user_pagination_parameters,
+)
 from application.dependencies.auth import (
     require_auth,
     require_permission,
@@ -80,6 +86,22 @@ class LogoutRequest(BaseModel):
     """Request model for logout."""
 
     token: str
+
+
+class PaginationMetadata(BaseModel):
+    """Metadata for paginated responses."""
+
+    total: int = Field(..., description="Total number of items")
+    limit: int = Field(..., description="Maximum items per page")
+    offset: int = Field(..., description="Number of items skipped")
+    has_more: bool = Field(..., description="Whether there are more items")
+
+
+class UserListResponse(BaseModel):
+    """Response model for paginated user list."""
+
+    users: List[UserResponse] = Field(..., description="List of users")
+    pagination: PaginationMetadata = Field(..., description="Pagination metadata")
 
 
 # =============================================================================
@@ -310,15 +332,22 @@ async def change_password(
 # =============================================================================
 
 
-@router.get("/users", response_model=List[UserResponse])
+@router.get("/users", response_model=UserListResponse)
 async def list_users(
     security_context: Annotated[SecurityContext, Depends(require_auth)],
     user_repository: Annotated[UserRepository, Depends(get_user_repository)],
-    client_id: Optional[str] = None,
-    limit: int = 50,
-    offset: int = 0,
+    pagination: Annotated[PaginationParams, Depends(user_pagination_parameters)],
+    filters: Annotated[UserFilterParams, Depends(user_filter_parameters)],
 ):
-    """List users (admin only)."""
+    """
+    List users with pagination, sorting, and filtering (admin only).
+
+    Supports:
+    - Pagination: offset, limit
+    - Sorting: sort_by (username, email, created_at, etc.), sort_order (asc/desc)
+    - Filtering: search (username/email/name), role, status, client_id
+    - Access control: Only returns users the authenticated user has permission to see
+    """
     try:
         # Check permissions
         if not security_context.has_permission("users:read"):
@@ -326,18 +355,26 @@ async def list_users(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied: users:read"
             )
 
-        # Determine client filter
-        filter_client_id = None
+        # Determine client filter based on user permissions
+        filter_client_id = filters.client_id
         if not security_context.is_super_admin:
+            # Non-super admins can only see users from their own client
             filter_client_id = security_context.client_id
-        elif client_id:
-            filter_client_id = client_id
 
-        users = await user_repository.list_users(
-            limit=limit, offset=offset, client_id=filter_client_id
+        # Get paginated users
+        users, total_count = await user_repository.list_users(
+            limit=pagination.limit,
+            offset=pagination.offset,
+            sort_by=pagination.sort_by,
+            sort_order=pagination.sort_order,
+            search=filters.search,
+            client_id=filter_client_id,
+            role=filters.role,
+            status=filters.status,
         )
 
-        return [
+        # Convert to response models
+        user_responses = [
             UserResponse(
                 id=user.id,
                 username=user.username,
@@ -351,6 +388,19 @@ async def list_users(
             )
             for user in users
         ]
+
+        # Create pagination metadata
+        pagination_metadata = PaginationMetadata(
+            total=total_count,
+            limit=pagination.limit,
+            offset=pagination.offset,
+            has_more=(pagination.offset + len(users)) < total_count,
+        )
+
+        return UserListResponse(
+            users=user_responses,
+            pagination=pagination_metadata,
+        )
 
     except HTTPException:
         raise
