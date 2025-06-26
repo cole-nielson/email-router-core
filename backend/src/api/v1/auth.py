@@ -22,6 +22,7 @@ from core.models.schemas import (
     CreateUserRequest,
     LoginRequest,
     TokenResponse,
+    UserListResponse,
 )
 from core.ports.user_repository import UserRepository
 
@@ -310,7 +311,7 @@ async def change_password(
 # =============================================================================
 
 
-@router.get("/users", response_model=List[UserResponse])
+@router.get("/users", response_model=UserListResponse)
 async def list_users(
     security_context: Annotated[SecurityContext, Depends(require_auth)],
     user_repository: Annotated[UserRepository, Depends(get_user_repository)],
@@ -337,7 +338,7 @@ async def list_users(
             limit=limit, offset=offset, client_id=filter_client_id
         )
 
-        return [
+        user_responses = [
             UserResponse(
                 id=user.id,
                 username=user.username,
@@ -351,6 +352,16 @@ async def list_users(
             )
             for user in users
         ]
+
+        return {
+            "users": user_responses,
+            "total": len(user_responses),
+            "pagination": {
+                "limit": limit,
+                "offset": offset,
+                "has_more": len(user_responses) == limit,
+            },
+        }
 
     except HTTPException:
         raise
