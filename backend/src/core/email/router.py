@@ -453,8 +453,8 @@ class RoutingEngine:
         Returns:
             Routing analytics data
         """
-        # TODO: Implement routing analytics
-        # This would track routing decisions, escalations, response times, etc.
+        # Analytics implementation placeholder - would require database models for tracking
+        # routing decisions, escalations, response times, etc.
         return {
             "client_id": client_id,
             "time_period_hours": time_period_hours,

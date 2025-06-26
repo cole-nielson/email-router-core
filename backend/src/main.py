@@ -266,8 +266,28 @@ async def websocket_endpoint(
     websocket_manager = get_websocket_manager()
 
     try:
-        # TODO: Validate token and get user info
-        user_info = {"client_id": client_id}  # Would extract from token
+        # Validate token and get user info
+        user_info = {"client_id": client_id}
+
+        if token:
+            try:
+                from core.authentication.auth_service import AuthService
+
+                auth_service = AuthService.validate_token_stateless(token)
+                if auth_service:
+                    user_info.update(
+                        {
+                            "user_id": auth_service.sub,
+                            "username": auth_service.username,
+                            "authenticated": "true",
+                        }
+                    )
+                else:
+                    logger.warning(f"Invalid WebSocket token for client {client_id}")
+            except Exception as e:
+                logger.warning(f"WebSocket token validation failed: {e}")
+        else:
+            logger.info(f"WebSocket connection without token for client {client_id}")
 
         # Connect to WebSocket manager
         await websocket_manager.connect(websocket, client_id, user_info)

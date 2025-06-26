@@ -401,6 +401,11 @@ class AppConfig(BaseModel):
     enable_client_isolation: bool = True
     max_clients: int = Field(default=100, ge=1, le=1000)
 
+    # Fallback Configuration
+    fallback_admin_email: str = Field(
+        default="admin@example.com", description="Fallback admin email for unknown clients"
+    )
+
     # Feature Flags
     features: Dict[str, bool] = Field(
         default_factory=lambda: {

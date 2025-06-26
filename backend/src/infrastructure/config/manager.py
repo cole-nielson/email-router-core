@@ -489,6 +489,94 @@ class ConfigManager:
             logger.error(error_msg)
             raise ConfigurationError(error_msg) from e
 
+    def load_categories(self, client_id: str) -> Dict:
+        """
+        Load email classification categories configuration.
+
+        Args:
+            client_id: Client identifier
+
+        Returns:
+            Categories configuration as dictionary
+
+        Raises:
+            ConfigurationError: If categories cannot be loaded
+        """
+        if not self._config:
+            raise ConfigurationError("Configuration not loaded")
+
+        client_path = Path(self._config.client_config_path) / client_id
+        categories_file = client_path / "categories.yaml"
+
+        try:
+            with open(categories_file, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+
+            if data is None:
+                raise ConfigurationError(f"Empty or invalid YAML file: {categories_file}")
+
+            logger.debug(f"Loaded categories for {client_id}")
+            return data
+
+        except FileNotFoundError:
+            # Return default categories if file doesn't exist
+            logger.warning(f"Categories file not found for {client_id}, using defaults")
+            return self._get_default_categories()
+        except yaml.YAMLError as e:
+            raise ConfigurationError(f"YAML parsing error in {categories_file}: {e}")
+        except Exception as e:
+            error_msg = f"Failed to load categories for {client_id}: {e}"
+            logger.error(error_msg)
+            raise ConfigurationError(error_msg) from e
+
+    def _get_default_categories(self) -> Dict:
+        """Get default email classification categories."""
+        return {
+            "categories": {
+                "support": {
+                    "name": "Technical Support",
+                    "description": "Technical problems, how-to questions, product issues",
+                    "priority": "high",
+                    "keywords": [
+                        "help",
+                        "problem",
+                        "issue",
+                        "error",
+                        "bug",
+                        "broken",
+                        "not working",
+                    ],
+                    "confidence_threshold": 0.8,
+                },
+                "billing": {
+                    "name": "Billing & Payments",
+                    "description": "Payment issues, invoices, account billing, refunds",
+                    "priority": "high",
+                    "keywords": ["invoice", "payment", "billing", "charge", "refund", "receipt"],
+                    "confidence_threshold": 0.85,
+                },
+                "sales": {
+                    "name": "Sales Inquiries",
+                    "description": "Pricing inquiries, product demos, new business",
+                    "priority": "medium",
+                    "keywords": ["pricing", "demo", "quote", "purchase", "buy", "trial"],
+                    "confidence_threshold": 0.75,
+                },
+                "general": {
+                    "name": "General Inquiries",
+                    "description": "General questions, feedback, other inquiries",
+                    "priority": "low",
+                    "keywords": ["question", "inquiry", "feedback", "suggestion"],
+                    "confidence_threshold": 0.6,
+                },
+            },
+            "fallback": {
+                "default_category": "general",
+                "minimum_confidence": 0.5,
+                "unknown_threshold": 0.3,
+            },
+        }
+
     def reload_client_config(self, client_id: str) -> bool:
         """Reload configuration for a specific client.
 
