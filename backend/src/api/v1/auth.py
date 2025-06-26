@@ -9,20 +9,21 @@ from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel, EmailStr
-from sqlalchemy.orm import Session
 
 from application.dependencies.auth import (
     require_auth,
     require_permission,
 )
+from application.dependencies.repositories import get_auth_service, get_user_repository
+from core.authentication.auth_service import AuthService
 from core.authentication.context import SecurityContext
-from core.authentication.jwt import (
+from core.models.schemas import (
     AuthenticatedUser,
+    CreateUserRequest,
     LoginRequest,
     TokenResponse,
-    get_auth_service,
 )
-from infrastructure.database.connection import get_db
+from core.ports.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)
 
@@ -87,22 +88,19 @@ class LogoutRequest(BaseModel):
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(request: LoginRequest, req: Request, db: Session = Depends(get_db)):
+async def login(
+    request: LoginRequest,
+    req: Request,
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+):
     """User login with JWT token generation."""
     try:
         # Get client metadata
         ip_address = req.client.host if req.client else None
         user_agent = req.headers.get("User-Agent")
 
-        # Get auth service
-        auth_service = get_auth_service(db)
-        if not auth_service:
-            raise HTTPException(
-                status_code=500, detail="Could not initialize authentication service."
-            )
-
         # Perform login
-        token_response = auth_service.login(request, ip_address, user_agent)
+        token_response = await auth_service.login(request, ip_address, user_agent)
 
         logger.info(f"User '{request.username}' logged in successfully")
         return token_response
@@ -118,16 +116,12 @@ async def login(request: LoginRequest, req: Request, db: Session = Depends(get_d
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(request: RefreshTokenRequest, db: Session = Depends(get_db)):
+async def refresh_token(
+    request: RefreshTokenRequest, auth_service: Annotated[AuthService, Depends(get_auth_service)]
+):
     """Refresh access token using refresh token."""
     try:
-        auth_service = get_auth_service(db)
-        if not auth_service:
-            raise HTTPException(
-                status_code=500, detail="Could not initialize authentication service."
-            )
-
-        token_response = auth_service.refresh_access_token(request.refresh_token)
+        token_response = await auth_service.refresh_access_token(request.refresh_token)
         if not token_response:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token"
@@ -148,19 +142,13 @@ async def refresh_token(request: RefreshTokenRequest, db: Session = Depends(get_
 @router.post("/logout")
 async def logout(
     security_context: Annotated[SecurityContext, Depends(require_auth)],
-    db: Session = Depends(get_db),
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ):
     """Logout user by revoking current token."""
     try:
-        auth_service = get_auth_service(db)
-        if not auth_service:
-            raise HTTPException(
-                status_code=500, detail="Could not initialize authentication service."
-            )
-
         # Extract token from request (this would need to be improved)
         # For now, we'll revoke all user tokens as a secure logout
-        revoked_count = auth_service.revoke_all_user_tokens(
+        revoked_count = await auth_service.revoke_all_user_tokens(
             int(security_context.user_id), "user_logout"
         )
 
@@ -187,7 +175,8 @@ async def logout(
 async def register_user(
     request: UserRegistrationRequest,
     security_context: Annotated[SecurityContext, Depends(require_auth)],
-    db: Session = Depends(get_db),
+    user_repository: Annotated[UserRepository, Depends(get_user_repository)],
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ):
     """Register a new user (admin only)."""
     try:
@@ -197,52 +186,28 @@ async def register_user(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied: users:write"
             )
 
-        auth_service = get_auth_service(db)
-        if not auth_service:
-            raise HTTPException(
-                status_code=500, detail="Could not initialize authentication service."
-            )
-
-        # Import User model dynamically
-        from ..database.models import User, UserRole, UserStatus
-
-        # Check if user already exists
-        existing_user = (
-            db.query(User)
-            .filter((User.username == request.username) | (User.email == request.email))
-            .first()
-        )
-
-        if existing_user:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="User with this username or email already exists",
-            )
-
-        # Validate role
-        try:
-            role_enum = UserRole(request.role)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid role: {request.role}"
-            )
-
-        # Create user
+        # Create user data with hashed password
         hashed_password = auth_service.hash_password(request.password)
 
-        user = User(
+        user_data = CreateUserRequest(
             username=request.username,
             email=request.email,
-            password_hash=hashed_password,
+            password=hashed_password,  # Already hashed
             full_name=request.full_name,
-            role=role_enum,
+            role=request.role,
             client_id=request.client_id,
-            status=UserStatus.ACTIVE,
+            status="active",  # Set to active for admin-created users
+            api_access_enabled=True,
+            rate_limit_tier="standard",
         )
 
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+        # Create user through repository
+        from infrastructure.adapters.user_repository_impl import ConflictError
+
+        try:
+            user = await user_repository.create_user(user_data)
+        except ConflictError as e:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
         logger.info(f"User '{request.username}' registered by admin '{security_context.username}'")
 
@@ -251,9 +216,9 @@ async def register_user(
             username=user.username,
             email=user.email,
             full_name=user.full_name,
-            role=user.role.value,
+            role=user.role,
             client_id=user.client_id,
-            status=user.status.value,
+            status=user.status,
             created_at=user.created_at.isoformat(),
             last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
         )
@@ -271,15 +236,11 @@ async def register_user(
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
     security_context: Annotated[SecurityContext, Depends(require_auth)],
-    db: Session = Depends(get_db),
+    user_repository: Annotated[UserRepository, Depends(get_user_repository)],
 ):
     """Get current user information."""
     try:
-
-        # Import User model dynamically
-        from ..database.models import User
-
-        user = db.query(User).filter(User.id == int(security_context.user_id)).first()
+        user = await user_repository.find_by_id(int(security_context.user_id))
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
@@ -288,9 +249,9 @@ async def get_current_user_info(
             username=user.username,
             email=user.email,
             full_name=user.full_name,
-            role=user.role.value,
+            role=user.role,
             client_id=user.client_id,
-            status=user.status.value,
+            status=user.status,
             created_at=user.created_at.isoformat(),
             last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
         )
@@ -308,20 +269,12 @@ async def get_current_user_info(
 async def change_password(
     request: PasswordChangeRequest,
     security_context: Annotated[SecurityContext, Depends(require_auth)],
-    db: Session = Depends(get_db),
+    user_repository: Annotated[UserRepository, Depends(get_user_repository)],
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ):
     """Change current user password."""
     try:
-        auth_service = get_auth_service(db)
-        if not auth_service:
-            raise HTTPException(
-                status_code=500, detail="Could not initialize authentication service."
-            )
-
-        # Import User model dynamically
-        from ..database.models import User
-
-        user = db.query(User).filter(User.id == int(security_context.user_id)).first()
+        user = await user_repository.find_by_id(int(security_context.user_id))
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
@@ -332,12 +285,11 @@ async def change_password(
             )
 
         # Update password
-        user.password_hash = auth_service.hash_password(request.new_password)
+        new_password_hash = auth_service.hash_password(request.new_password)
+        await user_repository.update_password(user.id, new_password_hash)
 
         # Revoke all existing tokens for security
-        auth_service.revoke_all_user_tokens(user.id, "password_change")
-
-        db.commit()
+        await auth_service.revoke_all_user_tokens(user.id, "password_change")
 
         logger.info(f"Password changed for user '{security_context.username}'")
 
@@ -361,10 +313,10 @@ async def change_password(
 @router.get("/users", response_model=List[UserResponse])
 async def list_users(
     security_context: Annotated[SecurityContext, Depends(require_auth)],
+    user_repository: Annotated[UserRepository, Depends(get_user_repository)],
     client_id: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
-    db: Session = Depends(get_db),
 ):
     """List users (admin only)."""
     try:
@@ -374,18 +326,16 @@ async def list_users(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied: users:read"
             )
 
-        # Import User model dynamically
-        from ..database.models import User
-
-        query = db.query(User)
-
-        # Filter by client if specified and user is not super admin
+        # Determine client filter
+        filter_client_id = None
         if not security_context.is_super_admin:
-            query = query.filter(User.client_id == security_context.client_id)
+            filter_client_id = security_context.client_id
         elif client_id:
-            query = query.filter(User.client_id == client_id)
+            filter_client_id = client_id
 
-        users = query.offset(offset).limit(limit).all()
+        users = await user_repository.list_users(
+            limit=limit, offset=offset, client_id=filter_client_id
+        )
 
         return [
             UserResponse(
@@ -393,9 +343,9 @@ async def list_users(
                 username=user.username,
                 email=user.email,
                 full_name=user.full_name,
-                role=user.role.value,
+                role=user.role,
                 client_id=user.client_id,
-                status=user.status.value,
+                status=user.status,
                 created_at=user.created_at.isoformat(),
                 last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
             )
@@ -415,7 +365,8 @@ async def list_users(
 async def delete_user(
     user_id: int,
     security_context: Annotated[SecurityContext, Depends(require_auth)],
-    db: Session = Depends(get_db),
+    user_repository: Annotated[UserRepository, Depends(get_user_repository)],
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ):
     """Delete user (super admin only)."""
     try:
@@ -436,25 +387,17 @@ async def delete_user(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete your own account"
             )
 
-        auth_service = get_auth_service(db)
-        if not auth_service:
-            raise HTTPException(
-                status_code=500, detail="Could not initialize authentication service."
-            )
-
-        # Import User model dynamically
-        from ..database.models import User
-
-        user = db.query(User).filter(User.id == user_id).first()
+        user = await user_repository.find_by_id(user_id)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
         # Revoke all user tokens
-        auth_service.revoke_all_user_tokens(user_id, "account_deleted")
+        await auth_service.revoke_all_user_tokens(user_id, "account_deleted")
 
         # Delete user
-        db.delete(user)
-        db.commit()
+        deleted = await user_repository.delete_user(user_id)
+        if not deleted:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
         logger.info(f"User '{user.username}' deleted by super admin '{security_context.username}'")
 
@@ -478,19 +421,12 @@ async def delete_user(
 @router.get("/sessions")
 async def list_active_sessions(
     security_context: Annotated[SecurityContext, Depends(require_auth)],
-    db: Session = Depends(get_db),
+    user_repository: Annotated[UserRepository, Depends(get_user_repository)],
 ):
     """List active sessions for current user."""
     try:
-
-        # Import models dynamically
-        from ..database.models import UserSession
-
-        sessions = (
-            db.query(UserSession)
-            .filter(UserSession.user_id == int(security_context.user_id), UserSession.is_active)
-            .order_by(UserSession.created_at.desc())
-            .all()
+        sessions = await user_repository.list_user_sessions(
+            int(security_context.user_id), active_only=True
         )
 
         return {
@@ -498,7 +434,7 @@ async def list_active_sessions(
                 {
                     "session_id": session.session_id,
                     "token_type": session.token_type,
-                    "created_at": session.created_at.isoformat(),
+                    "issued_at": session.issued_at.isoformat(),
                     "last_used_at": (
                         session.last_used_at.isoformat() if session.last_used_at else None
                     ),
@@ -521,34 +457,18 @@ async def list_active_sessions(
 async def revoke_session(
     session_id: str,
     security_context: Annotated[SecurityContext, Depends(require_auth)],
-    db: Session = Depends(get_db),
+    user_repository: Annotated[UserRepository, Depends(get_user_repository)],
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ):
     """Revoke a specific session."""
     try:
-        auth_service = get_auth_service(db)
-        if not auth_service:
-            raise HTTPException(
-                status_code=500, detail="Could not initialize authentication service."
-            )
-
-        # Import models dynamically
-        from ..database.models import UserSession
-
         # Verify session belongs to current user
-        session = (
-            db.query(UserSession)
-            .filter(
-                UserSession.session_id == session_id,
-                UserSession.user_id == int(security_context.user_id),
-            )
-            .first()
-        )
-
-        if not session:
+        session = await user_repository.find_session(session_id)
+        if not session or session.user_id != int(security_context.user_id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
 
         # Revoke session
-        success = auth_service.revoke_token(session_id, "user_revoked")
+        success = await auth_service.revoke_token(session_id, "user_revoked")
         if success:
             return {"message": "Session revoked successfully"}
         else:
