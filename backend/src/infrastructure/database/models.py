@@ -5,7 +5,6 @@ SQLAlchemy models for configuration storage.
 
 import enum
 from datetime import datetime
-from typing import Any
 
 from sqlalchemy import (
     JSON,

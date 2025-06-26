@@ -259,7 +259,7 @@ class SQLAlchemyAnalyticsRepository(AnalyticsRepository):
             )
 
             # Escalations count
-            escalations = base_query.filter(RoutingHistory.escalated == True).count()
+            escalations = base_query.filter(RoutingHistory.escalated).count()
 
             # Special handling count
             special_handling_count = base_query.filter(
@@ -267,11 +267,11 @@ class SQLAlchemyAnalyticsRepository(AnalyticsRepository):
             ).count()
 
             # Error rate
-            error_count = base_query.filter(RoutingHistory.error_occurred == True).count()
+            error_count = base_query.filter(RoutingHistory.error_occurred).count()
             error_rate = (error_count / total_emails * 100) if total_emails > 0 else 0.0
 
             # Fallback usage
-            fallback_count = base_query.filter(RoutingHistory.fallback_used == True).count()
+            fallback_count = base_query.filter(RoutingHistory.fallback_used).count()
             fallback_rate = (fallback_count / total_emails * 100) if total_emails > 0 else 0.0
 
             return {
