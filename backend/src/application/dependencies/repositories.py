@@ -12,8 +12,10 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
+from core.ports.analytics_repository import AnalyticsRepository
 from core.ports.client_repository import ClientRepository
 from core.ports.user_repository import UserRepository
+from infrastructure.adapters.analytics_repository_impl import SQLAlchemyAnalyticsRepository
 from infrastructure.adapters.client_repository_impl import SQLAlchemyClientRepository
 from infrastructure.adapters.user_repository_impl import SQLAlchemyUserRepository
 from infrastructure.database.connection import get_database_session
@@ -52,6 +54,21 @@ def get_client_repository(
         ClientRepository implementation
     """
     return SQLAlchemyClientRepository(db)
+
+
+def get_analytics_repository(
+    db: Annotated[Session, Depends(get_database_session)],
+) -> AnalyticsRepository:
+    """
+    Dependency that provides AnalyticsRepository implementation.
+
+    Args:
+        db: Database session from dependency injection
+
+    Returns:
+        AnalyticsRepository implementation
+    """
+    return SQLAlchemyAnalyticsRepository(db)
 
 
 # =============================================================================

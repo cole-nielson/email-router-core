@@ -13,6 +13,7 @@ from infrastructure.config.schema import ClientConfig
 
 from ..clients.manager import ClientManager
 from ..clients.resolver import extract_domain_from_email
+from ..ports.analytics_repository import AnalyticsRepository
 
 logger = logging.getLogger(__name__)
 
@@ -25,14 +26,20 @@ class RoutingEngine:
     rules, escalation policies, and business hours.
     """
 
-    def __init__(self, client_manager: ClientManager):
+    def __init__(
+        self,
+        client_manager: ClientManager,
+        analytics_repository: Optional[AnalyticsRepository] = None,
+    ):
         """
         Initialize routing engine.
 
         Args:
             client_manager: ClientManager instance for client operations
+            analytics_repository: Optional analytics repository for capturing routing data
         """
         self.client_manager = client_manager
+        self.analytics_repository = analytics_repository
 
     def route_email(
         self,
@@ -51,6 +58,9 @@ class RoutingEngine:
         Returns:
             Routing decision with destination, escalation info, etc.
         """
+        start_time = datetime.utcnow()
+        routing_start = None
+
         try:
             client_config = self.client_manager.get_client_config(client_id)
             if not client_config:
@@ -58,6 +68,9 @@ class RoutingEngine:
 
             category = classification.get("category", "general")
             confidence = classification.get("confidence", 0.5)
+
+            # Start routing timing
+            routing_start = datetime.utcnow()
 
             # Check for immediate escalation triggers
             escalation_result = self._check_immediate_escalation(
@@ -111,6 +124,16 @@ class RoutingEngine:
                 ),
                 "timestamp": datetime.utcnow().isoformat(),
             }
+
+            # Capture analytics data
+            self._capture_routing_analytics(
+                client_id=client_id,
+                email_data=email_data or {},
+                classification=classification,
+                routing_result=routing_result,
+                start_time=start_time,
+                routing_start=routing_start,
+            )
 
             logger.info(f"📍 Routed {category} email for {client_id} to {final_destination}")
             return routing_result
@@ -442,6 +465,98 @@ class RoutingEngine:
                 "timestamp": datetime.utcnow().isoformat(),
             }
 
+    def _capture_routing_analytics(
+        self,
+        client_id: str,
+        email_data: Dict[str, Any],
+        classification: Dict[str, Any],
+        routing_result: Dict[str, Any],
+        start_time: datetime,
+        routing_start: Optional[datetime],
+    ) -> None:
+        """
+        Capture routing analytics data for analysis.
+
+        Args:
+            client_id: Client identifier
+            email_data: Original email data
+            classification: AI classification results
+            routing_result: Routing decision details
+            start_time: When processing started
+            routing_start: When routing logic started
+        """
+        if not self.analytics_repository:
+            # Analytics not enabled, skip capture
+            return
+
+        try:
+            end_time = datetime.utcnow()
+
+            # Calculate performance metrics
+            total_time_ms = int((end_time - start_time).total_seconds() * 1000)
+            routing_time_ms = None
+            if routing_start:
+                routing_time_ms = int((end_time - routing_start).total_seconds() * 1000)
+
+            # Get classification timing if available
+            classification_time_ms = classification.get("processing_time_ms")
+
+            # Build analytics data structure
+            analytics_data = {
+                "client_id": client_id,
+                "email_data": {
+                    "sender": email_data.get("sender", ""),
+                    "subject": email_data.get("subject", ""),
+                    "message_id": email_data.get("message_id"),
+                    "email_id": email_data.get("email_id"),
+                },
+                "classification": classification,
+                "routing_result": {
+                    "category": routing_result.get("category"),
+                    "forward_to": routing_result.get("primary_destination"),
+                    "cc": routing_result.get("backup_destinations"),
+                    "special_handling": routing_result.get("special_handling"),
+                    "escalated": routing_result.get("escalation_schedule") is not None,
+                    "priority": routing_result.get("confidence_level"),
+                    "fallback_used": routing_result.get("fallback_used", False),
+                    "version": "1.0",  # Routing engine version
+                },
+                "performance_metrics": {
+                    "total_time_ms": total_time_ms,
+                    "classification_time_ms": classification_time_ms,
+                    "routing_time_ms": routing_time_ms,
+                },
+                "metadata": {
+                    "business_hours_applied": routing_result.get("business_hours_applied", False),
+                    "confidence_level": routing_result.get("confidence_level"),
+                    "timestamp": routing_result.get("timestamp"),
+                },
+                "routed_at": end_time,
+                "error_occurred": False,
+            }
+
+            # Capture the analytics asynchronously (fire and forget)
+            try:
+                import asyncio
+
+                # Try to run async method in background
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # If we're in an async context, schedule the task
+                    loop.create_task(
+                        self.analytics_repository.save_routing_decision(analytics_data)
+                    )
+                else:
+                    # Run sync
+                    asyncio.run(self.analytics_repository.save_routing_decision(analytics_data))
+            except Exception as async_error:
+                logger.warning(f"Failed to capture routing analytics asynchronously: {async_error}")
+                # Could implement a queue-based fallback here
+
+        except Exception as e:
+            logger.warning(f"Failed to capture routing analytics for {client_id}: {e}")
+            # Don't let analytics failure affect the main routing flow
+
     def get_routing_analytics(self, client_id: str, time_period_hours: int = 24) -> Dict[str, Any]:
         """
         Get routing analytics for a client.
@@ -476,5 +591,20 @@ def get_routing_engine() -> RoutingEngine:
         from ..clients.manager import get_client_manager
 
         client_manager = get_client_manager()
-        _routing_engine_instance = RoutingEngine(client_manager)
+
+        # Try to get analytics repository, but don't fail if not available
+        analytics_repository = None
+        try:
+            from infrastructure.adapters.analytics_repository_impl import (
+                SQLAlchemyAnalyticsRepository,
+            )
+            from infrastructure.database.connection import get_database_session
+
+            db_session = get_database_session()
+            analytics_repository = SQLAlchemyAnalyticsRepository(next(db_session))
+        except Exception as e:
+            logger.warning(f"Analytics repository not available: {e}")
+            # Continue without analytics - it's optional
+
+        _routing_engine_instance = RoutingEngine(client_manager, analytics_repository)
     return _routing_engine_instance

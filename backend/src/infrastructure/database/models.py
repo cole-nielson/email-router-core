@@ -5,9 +5,19 @@ SQLAlchemy models for configuration storage.
 
 import enum
 from datetime import datetime
-from typing import Any
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 
@@ -184,6 +194,9 @@ class Client(Base):
     )
     ai_prompts = relationship("AIPrompt", back_populates="client", cascade="all, delete-orphan")
     settings = relationship("ClientSetting", back_populates="client", cascade="all, delete-orphan")
+    routing_history = relationship(
+        "RoutingHistory", back_populates="client", cascade="all, delete-orphan"
+    )
 
 
 class ClientDomain(Base):
@@ -326,3 +339,75 @@ class ConfigurationChange(Base):
     change_reason = Column(String(500), nullable=True)
 
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+# =============================================================================
+# ANALYTICS & ROUTING HISTORY MODELS
+# =============================================================================
+
+
+class RoutingHistory(Base):
+    """
+    Routing analytics data for tracking email routing decisions.
+
+    This model captures every routing decision made by the system for
+    analytics, reporting, and performance analysis.
+    """
+
+    __tablename__ = "routing_history"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Email identification
+    email_id = Column(String(255), nullable=True)  # Optional external email ID
+    message_id = Column(String(255), nullable=True)  # Mailgun message ID
+
+    # Client context
+    client_id = Column(String(100), ForeignKey("clients.id"), nullable=True)
+
+    # Email details
+    sender_email = Column(String(200), nullable=False)
+    sender_domain = Column(String(100), nullable=True)
+    subject = Column(String(500), nullable=True)
+
+    # Routing decision
+    category = Column(String(50), nullable=False)  # support, billing, sales, etc.
+    primary_destination = Column(String(200), nullable=False)  # Main routing target
+    cc_destinations = Column(JSON, nullable=True)  # Additional recipients as JSON list
+
+    # AI classification data
+    confidence_level = Column(Float, nullable=True)  # AI confidence score (0.0-1.0)
+    ai_model = Column(String(50), nullable=True)  # Model used (e.g., claude-3-5-sonnet)
+    classification_method = Column(
+        String(30), nullable=False, default="ai"
+    )  # ai, keyword, fallback
+
+    # Special handling
+    special_handling = Column(JSON, nullable=True)  # List of special flags
+    escalated = Column(Boolean, nullable=False, default=False)
+    priority_level = Column(String(20), nullable=True)  # urgent, high, medium, low
+
+    # Routing performance
+    processing_time_ms = Column(Integer, nullable=True)  # Total processing time
+    classification_time_ms = Column(Integer, nullable=True)  # Time for AI classification
+    routing_time_ms = Column(Integer, nullable=True)  # Time for routing decision
+
+    # Business context
+    business_hours = Column(Boolean, nullable=True)  # Was it during business hours?
+    day_of_week = Column(String(10), nullable=True)  # Monday, Tuesday, etc.
+
+    # Routing metadata
+    routing_version = Column(String(20), nullable=True)  # Version of routing rules used
+    fallback_used = Column(Boolean, nullable=False, default=False)
+    error_occurred = Column(Boolean, nullable=False, default=False)
+    error_details = Column(Text, nullable=True)
+
+    # Additional metadata for future analysis
+    additional_metadata = Column(JSON, nullable=True)  # Flexible storage for additional data
+
+    # Timestamps
+    routed_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    # Relationships
+    client = relationship("Client", back_populates="routing_history", foreign_keys=[client_id])
