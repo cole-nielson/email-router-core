@@ -9,7 +9,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
-from infrastructure.config.manager import get_app_config, get_config_manager
+from core.ports.config_provider import ConfigurationProvider
 
 from ..clients.manager import ClientManager
 from ..models.dashboard import (
@@ -32,9 +32,9 @@ class DashboardService:
     Core service for dashboard data aggregation and metrics generation.
     """
 
-    def __init__(self, client_manager: ClientManager):
+    def __init__(self, config_provider: ConfigurationProvider, client_manager: ClientManager):
+        self.config_provider = config_provider
         self.client_manager = client_manager
-        self.config = get_app_config()
 
         # In-memory storage for demo (would be replaced with database in production)
         self._activities_cache: Dict[str, List[ProcessingActivity]] = defaultdict(list)
@@ -75,7 +75,7 @@ class DashboardService:
     async def get_client_info(self, client_id: str) -> ClientInfo:
         """Get basic client information."""
         try:
-            client_summary = self.client_manager.get_client_summary(client_id)
+            client_summary = await self.client_manager.get_client_summary(client_id)
 
             return ClientInfo(
                 id=client_id,
@@ -560,9 +560,10 @@ def get_dashboard_service() -> DashboardService:
     global _dashboard_service
 
     if _dashboard_service is None:
-        from ..clients.manager import get_client_manager
+        from application.dependencies.config import get_client_manager, get_config_provider
 
+        config_provider = get_config_provider()
         client_manager = get_client_manager()
-        _dashboard_service = DashboardService(client_manager)
+        _dashboard_service = DashboardService(config_provider, client_manager)
 
     return _dashboard_service

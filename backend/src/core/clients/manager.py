@@ -8,10 +8,10 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from pydantic import BaseModel, Field
 
+from core.models.client import ClientInfo
 from core.models.schemas import ClientSummary
 from core.ports.client_repository import ClientRepository
-from infrastructure.config.manager import get_config_manager
-from infrastructure.config.schema import ClientConfig
+from core.ports.config_provider import ConfigurationProvider
 
 from .resolver import (
     DomainMatcher,
@@ -73,14 +73,20 @@ class EnhancedClientManager:
     fuzzy matching, and confidence scoring. Designed for complex enterprise scenarios.
     """
 
-    def __init__(self, client_repository: Optional[ClientRepository] = None) -> None:
+    def __init__(
+        self,
+        config_provider: ConfigurationProvider,
+        client_repository: Optional[ClientRepository] = None,
+    ) -> None:
         """Initialize the enhanced client manager.
 
         Args:
+            config_provider: Configuration provider interface
             client_repository: Repository for client data operations
         """
+        self._config_provider = config_provider
         self._client_repository = client_repository
-        self._clients_cache: Dict[str, ClientConfig] = {}
+        self._clients_cache: Dict[str, ClientInfo] = {}
         self._domain_to_client_cache: Dict[str, str] = {}
         self._client_to_domains_cache: Dict[str, Set[str]] = {}
         self._domain_matcher = DomainMatcher()
@@ -108,8 +114,7 @@ class EnhancedClientManager:
         self._domain_to_client_cache.clear()
         self._client_to_domains_cache.clear()
 
-        config_manager = get_config_manager()
-        available_clients = config_manager.get_all_clients()
+        available_clients = self._config_provider.get_all_clients()
 
         for client_id, client_config in available_clients.items():
             client_domains = set()
@@ -189,23 +194,23 @@ class EnhancedClientManager:
             f"for {len(available_clients)} clients"
         )
 
-    async def _convert_summary_to_config(self, summary: ClientSummary) -> Optional[ClientConfig]:
+    async def _convert_summary_to_config(self, summary: ClientSummary) -> Optional[ClientInfo]:
         """
-        Convert ClientSummary to ClientConfig for backward compatibility.
+        Convert ClientSummary to ClientInfo for backward compatibility.
 
         Args:
             summary: ClientSummary from repository
 
         Returns:
-            ClientConfig or None if conversion fails
+            ClientInfo or None if conversion fails
         """
         try:
             # This is a simplified conversion - in practice you might need
             # to fetch additional data from the repository or fall back to file config
             # For now, fall back to file-based config for missing data
-            return get_config_manager().get_client_config(summary.client_id)
+            return self._config_provider.get_client_config(summary.client_id)
         except Exception as e:
-            logger.error(f"Failed to convert ClientSummary to ClientConfig: {e}")
+            logger.error(f"Failed to convert ClientSummary to ClientInfo: {e}")
             return None
 
     async def get_available_clients(self) -> List[str]:
@@ -227,9 +232,9 @@ class EnhancedClientManager:
                     f"Failed to get clients from repository: {e}, falling back to config"
                 )
 
-        return list(get_config_manager().get_all_clients().keys())
+        return list(self._config_provider.get_all_clients().keys())
 
-    async def get_client_config(self, client_id: str) -> Optional[ClientConfig]:
+    async def get_client_config(self, client_id: str) -> Optional[ClientInfo]:
         """
         Get client configuration by ID.
 
@@ -237,21 +242,21 @@ class EnhancedClientManager:
             client_id: Client identifier
 
         Returns:
-            ClientConfig object or None
+            ClientInfo object or None
         """
         self._ensure_initialized()
 
-        # Use repository if available, otherwise fall back to config manager
+        # Use repository if available, otherwise fall back to config provider
         if self._client_repository:
             try:
                 client_summary = await self._client_repository.find_by_id(client_id)
                 if client_summary:
-                    # Convert ClientSummary back to ClientConfig for compatibility
+                    # Convert ClientSummary back to ClientInfo for compatibility
                     return await self._convert_summary_to_config(client_summary)
             except Exception as e:
                 logger.warning(f"Failed to get client from repository: {e}, falling back to config")
 
-        return get_config_manager().get_client_config(client_id)
+        return self._config_provider.get_client_config(client_id)
 
     async def get_routing_rules(self, client_id: str) -> Optional[RoutingRules]:
         """
@@ -601,8 +606,7 @@ class EnhancedClientManager:
         Args:
             client_id: Client identifier to refresh
         """
-        config_manager = get_config_manager()
-        if config_manager.reload_client_config(client_id):
+        if self._config_provider.reload_client_config(client_id):
             # Rebuild domain mapping to pick up changes
             self._build_comprehensive_domain_mapping()
             logger.info(f"Refreshed configuration for client {client_id}")
@@ -614,7 +618,7 @@ class EnhancedClientManager:
         logger.info("Refreshing all client configurations...")
 
         # This can be simplified as reload_configuration() in the manager does this
-        get_config_manager().reload_configuration()
+        self._config_provider.reload_configuration()
         self._build_comprehensive_domain_mapping()
 
         logger.info("Completed refreshing all client configurations")

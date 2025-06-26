@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional
 
 import httpx
 
-from infrastructure.config.manager import get_app_config, get_config_manager
+from core.ports.config_provider import ConfigurationProvider
 
 from ..clients.manager import ClientManager
 from ..clients.resolver import extract_domain_from_email
@@ -31,17 +31,17 @@ class AIClassifier:
     - Confidence scoring and detailed reasoning
     """
 
-    def __init__(self, client_manager: ClientManager):
+    def __init__(self, config_provider: ConfigurationProvider, client_manager: ClientManager):
         """
         Initialize dynamic classifier.
 
         Args:
+            config_provider: Configuration provider interface
             client_manager: ClientManager instance for client operations
         """
+        self.config_provider = config_provider
         self.client_manager = client_manager
         self.email_service = EmailService(client_manager)
-        self.config = get_app_config()
-        self.config_manager = get_config_manager()
 
     async def classify_email(
         self, email_data: Dict[str, Any], client_id: Optional[str] = None
@@ -86,7 +86,9 @@ class AIClassifier:
             classification.update(
                 {
                     "client_id": client_id,
-                    "ai_model": self.config.services.anthropic_model,
+                    "ai_model": self.config_provider.get(
+                        "services.anthropic_model", "claude-3-5-sonnet-20241022"
+                    ),
                     "timestamp": datetime.utcnow().isoformat(),
                     "method": "ai_client_specific",
                 }
@@ -166,11 +168,13 @@ class AIClassifier:
                 "https://api.anthropic.com/v1/messages",
                 headers={
                     "Content-Type": "application/json",
-                    "x-api-key": self.config.services.anthropic_api_key,
+                    "x-api-key": self.config_provider.get_required("services.anthropic_api_key"),
                     "anthropic-version": "2023-06-01",
                 },
                 json={
-                    "model": self.config.services.anthropic_model,
+                    "model": self.config_provider.get(
+                        "services.anthropic_model", "claude-3-5-sonnet-20241022"
+                    ),
                     "max_tokens": 500,
                     "temperature": 0.1,  # Low temperature for consistent classification
                     "messages": [{"role": "user", "content": prompt}],
@@ -283,7 +287,9 @@ class AIClassifier:
             classification.update(
                 {
                     "client_id": None,
-                    "ai_model": self.config.services.anthropic_model,
+                    "ai_model": self.config_provider.get(
+                        "services.anthropic_model", "claude-3-5-sonnet-20241022"
+                    ),
                     "timestamp": datetime.utcnow().isoformat(),
                     "method": "ai_generic_fallback",
                 }
@@ -391,10 +397,11 @@ def get_ai_classifier() -> AIClassifier:
     """Dependency injection function for AIClassifier."""
     global _ai_classifier_instance
     if _ai_classifier_instance is None:
-        from ..clients.manager import get_client_manager
+        from application.dependencies.config import get_client_manager, get_config_provider
 
+        config_provider = get_config_provider()
         client_manager = get_client_manager()
-        _ai_classifier_instance = AIClassifier(client_manager)
+        _ai_classifier_instance = AIClassifier(config_provider, client_manager)
     return _ai_classifier_instance
 
 
