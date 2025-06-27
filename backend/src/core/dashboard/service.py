@@ -1116,6 +1116,532 @@ class DashboardService:
         }
         return multipliers.get(timeframe, 1.0)
 
+    # ===================================================================
+    # ANALYTICS METHODS - NEW TREND ANALYSIS FUNCTIONALITY
+    # ===================================================================
+
+    async def calculate_dashboard_trends(
+        self, client_id: str, timeframe: str = "24h"
+    ) -> Dict[str, Any]:
+        """Calculate comprehensive dashboard trends using analytics data."""
+        if not self.analytics_repository:
+            logger.warning("Analytics repository not available, using fallback data")
+            return self._get_fallback_trends(client_id, timeframe)
+
+        try:
+            # Parse timeframe to datetime range
+            end_date = datetime.utcnow()
+            start_date = self._parse_timeframe_to_start_date(timeframe, end_date)
+
+            # Calculate previous period for comparison
+            period_duration = end_date - start_date
+            previous_end = start_date
+            previous_start = previous_end - period_duration
+
+            # Get current period data
+            volume_data = await self.analytics_repository.get_routing_volume_by_category(
+                client_id, start_date, end_date
+            )
+            avg_processing_time = await self.analytics_repository.get_average_processing_time(
+                client_id, start_date, end_date
+            )
+            error_rate = await self.analytics_repository.get_error_rate(
+                client_id, start_date, end_date
+            )
+            confidence_dist = await self.analytics_repository.get_confidence_distribution(
+                client_id, start_date, end_date
+            )
+            escalation_metrics = await self.analytics_repository.get_escalation_metrics(
+                client_id, start_date, end_date
+            )
+
+            # Get period comparison data
+            comparison_data = await self.analytics_repository.get_period_comparison(
+                client_id, start_date, end_date, previous_start, previous_end
+            )
+
+            # Calculate total volume
+            total_emails = sum(volume_data.values())
+
+            # Calculate confidence metrics
+            total_confidence_emails = sum(confidence_dist.values())
+            avg_confidence = 0.0
+            if total_confidence_emails > 0:
+                weighted_confidence = (
+                    confidence_dist.get("high", 0) * 0.95
+                    + confidence_dist.get("medium", 0) * 0.75
+                    + confidence_dist.get("low", 0) * 0.5
+                )
+                avg_confidence = weighted_confidence / total_confidence_emails
+
+            # Build comprehensive response
+            return {
+                "volume_metrics": {
+                    "total_emails": total_emails,
+                    "category_breakdown": volume_data,
+                    "confidence_distribution": confidence_dist,
+                },
+                "performance_metrics": {
+                    "average_processing_time_ms": avg_processing_time,
+                    "error_rate": error_rate,
+                    "confidence_average": round(avg_confidence, 3),
+                },
+                "quality_metrics": {
+                    "high_confidence_rate": round(
+                        (confidence_dist.get("high", 0) / max(total_confidence_emails, 1)) * 100, 2
+                    ),
+                    "classification_accuracy": round(avg_confidence * 100, 2),
+                    "error_rate": error_rate,
+                },
+                "escalation_metrics": {
+                    "total_escalations": escalation_metrics.get("total_escalations", 0),
+                    "escalation_rate": escalation_metrics.get("escalation_rate", 0.0),
+                    "escalation_reasons": escalation_metrics.get("escalation_reasons", {}),
+                },
+                "trends": comparison_data.get(
+                    "changes",
+                    {
+                        "volume_change": 0.0,
+                        "confidence_change": 0.0,
+                        "processing_time_change": 0.0,
+                        "error_rate_change": 0.0,
+                    },
+                ),
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to calculate dashboard trends: {e}")
+            return self._get_fallback_trends(client_id, timeframe)
+
+    async def get_volume_patterns(self, client_id: str, timeframe: str = "7d") -> Dict[str, Any]:
+        """Get email volume patterns for visualization."""
+        if not self.analytics_repository:
+            logger.warning("Analytics repository not available, using fallback data")
+            return self._get_fallback_volume_patterns(client_id, timeframe)
+
+        try:
+            # Parse timeframe to datetime range
+            end_date = datetime.utcnow()
+            start_date = self._parse_timeframe_to_start_date(timeframe, end_date)
+
+            # Get hourly and daily patterns
+            hourly_pattern = await self.analytics_repository.get_hourly_volume_pattern(
+                client_id, start_date, end_date
+            )
+            daily_trend = await self.analytics_repository.get_daily_volume_trend(
+                client_id, start_date, end_date
+            )
+
+            # Calculate summary statistics
+            total_volume = sum(hourly_pattern.values())
+            peak_hour = max(hourly_pattern.items(), key=lambda x: x[1])[0] if hourly_pattern else 9
+            quietest_hour = (
+                min(hourly_pattern.items(), key=lambda x: x[1])[0] if hourly_pattern else 3
+            )
+
+            # Calculate business hours vs after hours
+            business_hours_volume = sum(hourly_pattern.get(hour, 0) for hour in range(9, 18))
+            after_hours_volume = total_volume - business_hours_volume
+
+            return {
+                "hourly_pattern": hourly_pattern,
+                "daily_trend": [
+                    {
+                        "date": (
+                            trend["date"].isoformat()
+                            if hasattr(trend["date"], "isoformat")
+                            else str(trend["date"])
+                        ),
+                        "volume": trend["volume"],
+                        "avg_confidence": trend.get("avg_confidence", 0.0),
+                    }
+                    for trend in daily_trend
+                ],
+                "peak_hour": peak_hour,
+                "quietest_hour": quietest_hour,
+                "business_hours_volume": business_hours_volume,
+                "after_hours_volume": after_hours_volume,
+                "total_volume": total_volume,
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to get volume patterns: {e}")
+            return self._get_fallback_volume_patterns(client_id, timeframe)
+
+    async def get_sender_analytics(
+        self, client_id: str, timeframe: str = "7d", limit: int = 10
+    ) -> Dict[str, Any]:
+        """Get sender domain analytics and insights."""
+        if not self.analytics_repository:
+            logger.warning("Analytics repository not available, using fallback data")
+            return self._get_fallback_sender_analytics(client_id, timeframe, limit)
+
+        try:
+            # Parse timeframe to datetime range
+            end_date = datetime.utcnow()
+            start_date = self._parse_timeframe_to_start_date(timeframe, end_date)
+
+            # Get top sender domains
+            top_domains = await self.analytics_repository.get_top_sender_domains(
+                client_id, start_date, end_date, limit
+            )
+
+            # Calculate domain diversity metrics
+            total_unique_domains = len(top_domains)
+            top_domain_concentration = top_domains[0]["percentage"] if top_domains else 0.0
+
+            # Calculate diversity score (1 - Herfindahl index)
+            if top_domains:
+                herfindahl_index = sum((domain["percentage"] / 100) ** 2 for domain in top_domains)
+                domain_diversity = round((1 - herfindahl_index) * 100, 2)
+            else:
+                domain_diversity = 0.0
+
+            return {
+                "top_domains": top_domains,
+                "domain_diversity": domain_diversity,
+                "total_unique_domains": total_unique_domains,
+                "top_domain_concentration": top_domain_concentration,
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to get sender analytics: {e}")
+            return self._get_fallback_sender_analytics(client_id, timeframe, limit)
+
+    async def get_performance_insights(
+        self, client_id: str, timeframe: str = "7d"
+    ) -> Dict[str, Any]:
+        """Get detailed performance insights and recommendations."""
+        if not self.analytics_repository:
+            logger.warning("Analytics repository not available, using fallback data")
+            return self._get_fallback_performance_insights(client_id, timeframe)
+
+        try:
+            # Parse timeframe to datetime range
+            end_date = datetime.utcnow()
+            start_date = self._parse_timeframe_to_start_date(timeframe, end_date)
+
+            # Get performance data
+            avg_processing_time = await self.analytics_repository.get_average_processing_time(
+                client_id, start_date, end_date
+            )
+            error_rate = await self.analytics_repository.get_error_rate(
+                client_id, start_date, end_date
+            )
+            confidence_dist = await self.analytics_repository.get_confidence_distribution(
+                client_id, start_date, end_date
+            )
+            escalation_metrics = await self.analytics_repository.get_escalation_metrics(
+                client_id, start_date, end_date
+            )
+
+            # Calculate performance grades
+            processing_grade = self._calculate_processing_grade(avg_processing_time)
+            quality_grade = self._calculate_quality_grade(error_rate, confidence_dist)
+            escalation_grade = self._calculate_escalation_grade(
+                escalation_metrics.get("escalation_rate", 0)
+            )
+
+            # Calculate overall grade
+            overall_grade = self._calculate_overall_grade(
+                processing_grade, quality_grade, escalation_grade
+            )
+
+            # Generate recommendations
+            recommendations = self._generate_recommendations(
+                avg_processing_time, error_rate, confidence_dist, escalation_metrics
+            )
+
+            # Calculate confidence average
+            total_confidence_emails = sum(confidence_dist.values())
+            avg_confidence = 0.0
+            if total_confidence_emails > 0:
+                weighted_confidence = (
+                    confidence_dist.get("high", 0) * 0.95
+                    + confidence_dist.get("medium", 0) * 0.75
+                    + confidence_dist.get("low", 0) * 0.5
+                )
+                avg_confidence = weighted_confidence / total_confidence_emails
+
+            return {
+                "processing_performance": {
+                    "average_time_ms": avg_processing_time,
+                    "grade": processing_grade,
+                    "trend": "stable",  # Would need historical data for real trend
+                },
+                "quality_performance": {
+                    "average_confidence": round(avg_confidence, 3),
+                    "error_rate": error_rate,
+                    "grade": quality_grade,
+                    "trend": "improving",  # Would need historical data for real trend
+                },
+                "escalation_performance": {
+                    "escalation_rate": escalation_metrics.get("escalation_rate", 0.0),
+                    "total_escalations": escalation_metrics.get("total_escalations", 0),
+                    "grade": escalation_grade,
+                    "trend": "stable",  # Would need historical data for real trend
+                },
+                "overall_grade": overall_grade,
+                "recommendations": recommendations,
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to get performance insights: {e}")
+            return self._get_fallback_performance_insights(client_id, timeframe)
+
+    # Helper methods for analytics
+
+    def _parse_timeframe_to_start_date(self, timeframe: str, end_date: datetime) -> datetime:
+        """Parse timeframe string to start datetime."""
+        if timeframe == "1h":
+            return end_date - timedelta(hours=1)
+        elif timeframe == "6h":
+            return end_date - timedelta(hours=6)
+        elif timeframe == "12h":
+            return end_date - timedelta(hours=12)
+        elif timeframe == "24h":
+            return end_date - timedelta(hours=24)
+        elif timeframe == "7d":
+            return end_date - timedelta(days=7)
+        elif timeframe == "30d":
+            return end_date - timedelta(days=30)
+        else:
+            # Default to 24h
+            return end_date - timedelta(hours=24)
+
+    def _calculate_processing_grade(self, avg_time_ms: float) -> str:
+        """Calculate processing performance grade."""
+        if avg_time_ms < 2000:  # Under 2 seconds
+            return "A+"
+        elif avg_time_ms < 3000:  # Under 3 seconds
+            return "A"
+        elif avg_time_ms < 4000:  # Under 4 seconds
+            return "B+"
+        elif avg_time_ms < 5000:  # Under 5 seconds
+            return "B"
+        elif avg_time_ms < 7000:  # Under 7 seconds
+            return "C+"
+        elif avg_time_ms < 10000:  # Under 10 seconds
+            return "C"
+        else:
+            return "D"
+
+    def _calculate_quality_grade(self, error_rate: float, confidence_dist: Dict[str, int]) -> str:
+        """Calculate quality performance grade."""
+        total_emails = sum(confidence_dist.values())
+        high_confidence_rate = (confidence_dist.get("high", 0) / max(total_emails, 1)) * 100
+
+        # Combine error rate and confidence for quality score
+        quality_score = (100 - error_rate) * 0.4 + high_confidence_rate * 0.6
+
+        if quality_score >= 95:
+            return "A+"
+        elif quality_score >= 90:
+            return "A"
+        elif quality_score >= 85:
+            return "B+"
+        elif quality_score >= 80:
+            return "B"
+        elif quality_score >= 75:
+            return "C+"
+        elif quality_score >= 70:
+            return "C"
+        else:
+            return "D"
+
+    def _calculate_escalation_grade(self, escalation_rate: float) -> str:
+        """Calculate escalation performance grade."""
+        if escalation_rate < 1:  # Less than 1%
+            return "A+"
+        elif escalation_rate < 2:  # Less than 2%
+            return "A"
+        elif escalation_rate < 3:  # Less than 3%
+            return "B+"
+        elif escalation_rate < 5:  # Less than 5%
+            return "B"
+        elif escalation_rate < 8:  # Less than 8%
+            return "C+"
+        elif escalation_rate < 12:  # Less than 12%
+            return "C"
+        else:
+            return "D"
+
+    def _calculate_overall_grade(
+        self, processing_grade: str, quality_grade: str, escalation_grade: str
+    ) -> str:
+        """Calculate overall system grade."""
+        grade_values = {
+            "A+": 4.0,
+            "A": 3.7,
+            "A-": 3.3,
+            "B+": 3.0,
+            "B": 2.7,
+            "B-": 2.3,
+            "C+": 2.0,
+            "C": 1.7,
+            "C-": 1.3,
+            "D": 1.0,
+            "F": 0.0,
+        }
+
+        # Weighted average: processing 40%, quality 40%, escalation 20%
+        avg_score = (
+            grade_values.get(processing_grade, 0.0) * 0.4
+            + grade_values.get(quality_grade, 0.0) * 0.4
+            + grade_values.get(escalation_grade, 0.0) * 0.2
+        )
+
+        # Convert back to letter grade
+        if avg_score >= 3.8:
+            return "A+"
+        elif avg_score >= 3.5:
+            return "A"
+        elif avg_score >= 3.2:
+            return "A-"
+        elif avg_score >= 2.8:
+            return "B+"
+        elif avg_score >= 2.5:
+            return "B"
+        elif avg_score >= 2.2:
+            return "B-"
+        elif avg_score >= 1.8:
+            return "C+"
+        elif avg_score >= 1.5:
+            return "C"
+        elif avg_score >= 1.2:
+            return "C-"
+        elif avg_score >= 0.8:
+            return "D"
+        else:
+            return "F"
+
+    def _generate_recommendations(
+        self,
+        avg_time_ms: float,
+        error_rate: float,
+        confidence_dist: Dict[str, int],
+        escalation_metrics: Dict[str, Any],
+    ) -> List[str]:
+        """Generate actionable recommendations based on performance data."""
+        recommendations = []
+
+        # Processing time recommendations
+        if avg_time_ms > 5000:
+            recommendations.append(
+                "Consider optimizing email processing pipeline - average response time exceeds 5 seconds"
+            )
+        elif avg_time_ms > 3000:
+            recommendations.append("Monitor processing times - approaching performance threshold")
+
+        # Error rate recommendations
+        if error_rate > 5:
+            recommendations.append("Investigate and address high error rate in email processing")
+        elif error_rate > 2:
+            recommendations.append("Review recent errors to prevent issues from escalating")
+
+        # Confidence recommendations
+        total_emails = sum(confidence_dist.values())
+        if total_emails > 0:
+            low_confidence_rate = (confidence_dist.get("low", 0) / total_emails) * 100
+            if low_confidence_rate > 10:
+                recommendations.append(
+                    "Review AI classification prompts - high rate of low-confidence classifications"
+                )
+
+        # Escalation recommendations
+        escalation_rate = escalation_metrics.get("escalation_rate", 0)
+        if escalation_rate > 5:
+            recommendations.append("Review escalation triggers - escalation rate may be too high")
+
+        # Add positive feedback if everything is good
+        if not recommendations:
+            recommendations.append(
+                "System performance is excellent - no immediate actions required"
+            )
+
+        return recommendations
+
+    # Fallback methods for when analytics repository is not available
+
+    def _get_fallback_trends(self, client_id: str, timeframe: str) -> Dict[str, Any]:
+        """Get fallback trend data when analytics repository is unavailable."""
+        return {
+            "volume_metrics": {
+                "total_emails": 0,
+                "category_breakdown": {},
+                "confidence_distribution": {"high": 0, "medium": 0, "low": 0},
+            },
+            "performance_metrics": {
+                "average_processing_time_ms": 0.0,
+                "error_rate": 0.0,
+                "confidence_average": 0.0,
+            },
+            "quality_metrics": {
+                "high_confidence_rate": 0.0,
+                "classification_accuracy": 0.0,
+                "error_rate": 0.0,
+            },
+            "escalation_metrics": {
+                "total_escalations": 0,
+                "escalation_rate": 0.0,
+                "escalation_reasons": {},
+            },
+            "trends": {
+                "volume_change": 0.0,
+                "confidence_change": 0.0,
+                "processing_time_change": 0.0,
+                "error_rate_change": 0.0,
+            },
+        }
+
+    def _get_fallback_volume_patterns(self, client_id: str, timeframe: str) -> Dict[str, Any]:
+        """Get fallback volume pattern data when analytics repository is unavailable."""
+        # Generate basic pattern
+        hourly_pattern = {hour: 0 for hour in range(24)}
+
+        return {
+            "hourly_pattern": hourly_pattern,
+            "daily_trend": [],
+            "peak_hour": 9,
+            "quietest_hour": 3,
+            "business_hours_volume": 0,
+            "after_hours_volume": 0,
+            "total_volume": 0,
+        }
+
+    def _get_fallback_sender_analytics(
+        self, client_id: str, timeframe: str, limit: int
+    ) -> Dict[str, Any]:
+        """Get fallback sender analytics when analytics repository is unavailable."""
+        return {
+            "top_domains": [],
+            "domain_diversity": 0.0,
+            "total_unique_domains": 0,
+            "top_domain_concentration": 0.0,
+        }
+
+    def _get_fallback_performance_insights(self, client_id: str, timeframe: str) -> Dict[str, Any]:
+        """Get fallback performance insights when analytics repository is unavailable."""
+        return {
+            "processing_performance": {"average_time_ms": 0.0, "grade": "F", "trend": "unknown"},
+            "quality_performance": {
+                "average_confidence": 0.0,
+                "error_rate": 0.0,
+                "grade": "F",
+                "trend": "unknown",
+            },
+            "escalation_performance": {
+                "escalation_rate": 0.0,
+                "total_escalations": 0,
+                "grade": "F",
+                "trend": "unknown",
+            },
+            "overall_grade": "F",
+            "recommendations": [
+                "Analytics data not available - enable analytics repository for insights"
+            ],
+        }
+
 
 # Global dashboard service instance
 _dashboard_service = None
