@@ -368,3 +368,500 @@ class SQLAlchemyAnalyticsRepository(AnalyticsRepository):
             return True
         except Exception:
             return False
+
+    # =============================================================================
+    # TREND ANALYSIS IMPLEMENTATION
+    # =============================================================================
+
+    async def get_routing_volume_by_category(
+        self, client_id: str, start_date: datetime, end_date: datetime
+    ) -> Dict[str, int]:
+        """
+        Get email routing volume grouped by category for a time period.
+
+        Args:
+            client_id: Client identifier
+            start_date: Start of the analysis period
+            end_date: End of the analysis period
+
+        Returns:
+            Dictionary mapping category names to email counts
+        """
+        try:
+            # Query volume by category using SQLAlchemy aggregation
+            volume_stats = (
+                self.db_session.query(
+                    RoutingHistory.category, func.count(RoutingHistory.id).label("count")
+                )
+                .filter(
+                    and_(
+                        RoutingHistory.client_id == client_id,
+                        RoutingHistory.routed_at >= start_date,
+                        RoutingHistory.routed_at <= end_date,
+                    )
+                )
+                .group_by(RoutingHistory.category)
+                .all()
+            )
+
+            # Convert to dictionary
+            volume_by_category = {}
+            for category, count in volume_stats:
+                volume_by_category[category] = count
+
+            return volume_by_category
+
+        except SQLAlchemyError as e:
+            error_msg = f"Failed to get routing volume by category: {e}"
+            logger.error(error_msg)
+            raise AnalyticsError(error_msg) from e
+
+    async def get_average_processing_time(
+        self, client_id: str, start_date: datetime, end_date: datetime
+    ) -> float:
+        """
+        Get average email processing time for a time period.
+
+        Args:
+            client_id: Client identifier
+            start_date: Start of the analysis period
+            end_date: End of the analysis period
+
+        Returns:
+            Average processing time in milliseconds
+        """
+        try:
+            # Query average processing time with null filtering
+            avg_result = (
+                self.db_session.query(func.avg(RoutingHistory.processing_time_ms).label("avg_time"))
+                .filter(
+                    and_(
+                        RoutingHistory.client_id == client_id,
+                        RoutingHistory.routed_at >= start_date,
+                        RoutingHistory.routed_at <= end_date,
+                        RoutingHistory.processing_time_ms.isnot(None),
+                    )
+                )
+                .first()
+            )
+
+            return float(avg_result.avg_time) if avg_result.avg_time else 0.0
+
+        except SQLAlchemyError as e:
+            error_msg = f"Failed to get average processing time: {e}"
+            logger.error(error_msg)
+            raise AnalyticsError(error_msg) from e
+
+    async def get_error_rate(
+        self, client_id: str, start_date: datetime, end_date: datetime
+    ) -> float:
+        """
+        Get error rate percentage for a time period.
+
+        Args:
+            client_id: Client identifier
+            start_date: Start of the analysis period
+            end_date: End of the analysis period
+
+        Returns:
+            Error rate as percentage (0.0 to 100.0)
+        """
+        try:
+            # Base query for the time period
+            base_query = self.db_session.query(RoutingHistory).filter(
+                and_(
+                    RoutingHistory.client_id == client_id,
+                    RoutingHistory.routed_at >= start_date,
+                    RoutingHistory.routed_at <= end_date,
+                )
+            )
+
+            # Count total and error emails
+            total_emails = base_query.count()
+            error_emails = base_query.filter(RoutingHistory.error_occurred).count()
+
+            # Calculate error rate percentage
+            error_rate = (error_emails / total_emails * 100) if total_emails > 0 else 0.0
+            return round(error_rate, 2)
+
+        except SQLAlchemyError as e:
+            error_msg = f"Failed to get error rate: {e}"
+            logger.error(error_msg)
+            raise AnalyticsError(error_msg) from e
+
+    async def get_confidence_distribution(
+        self, client_id: str, start_date: datetime, end_date: datetime
+    ) -> Dict[str, int]:
+        """
+        Get distribution of AI confidence levels for a time period.
+
+        Args:
+            client_id: Client identifier
+            start_date: Start of the analysis period
+            end_date: End of the analysis period
+
+        Returns:
+            Dictionary mapping confidence ranges to counts
+        """
+        try:
+            # Query all confidence levels within the period
+            confidence_records = (
+                self.db_session.query(RoutingHistory.confidence_level)
+                .filter(
+                    and_(
+                        RoutingHistory.client_id == client_id,
+                        RoutingHistory.routed_at >= start_date,
+                        RoutingHistory.routed_at <= end_date,
+                        RoutingHistory.confidence_level.isnot(None),
+                    )
+                )
+                .all()
+            )
+
+            # Categorize confidence levels and count
+            distribution = {
+                "very_high": 0,  # >= 0.9
+                "high": 0,  # 0.7-0.89
+                "medium": 0,  # 0.5-0.69
+                "low": 0,  # 0.3-0.49
+                "very_low": 0,  # < 0.3
+            }
+
+            for (confidence,) in confidence_records:
+                if confidence >= 0.9:
+                    distribution["very_high"] += 1
+                elif confidence >= 0.7:
+                    distribution["high"] += 1
+                elif confidence >= 0.5:
+                    distribution["medium"] += 1
+                elif confidence >= 0.3:
+                    distribution["low"] += 1
+                else:
+                    distribution["very_low"] += 1
+
+            return distribution
+
+        except SQLAlchemyError as e:
+            error_msg = f"Failed to get confidence distribution: {e}"
+            logger.error(error_msg)
+            raise AnalyticsError(error_msg) from e
+
+    async def get_hourly_volume_pattern(
+        self, client_id: str, start_date: datetime, end_date: datetime
+    ) -> Dict[int, int]:
+        """
+        Get email volume by hour of day for pattern analysis.
+
+        Args:
+            client_id: Client identifier
+            start_date: Start of the analysis period
+            end_date: End of the analysis period
+
+        Returns:
+            Dictionary mapping hour (0-23) to email counts
+        """
+        try:
+            # Extract hour and count using SQLAlchemy func.extract
+            hourly_stats = (
+                self.db_session.query(
+                    func.extract("hour", RoutingHistory.routed_at).label("hour"),
+                    func.count(RoutingHistory.id).label("count"),
+                )
+                .filter(
+                    and_(
+                        RoutingHistory.client_id == client_id,
+                        RoutingHistory.routed_at >= start_date,
+                        RoutingHistory.routed_at <= end_date,
+                    )
+                )
+                .group_by(func.extract("hour", RoutingHistory.routed_at))
+                .all()
+            )
+
+            # Initialize all hours with 0, then fill in actual data
+            hourly_pattern = {hour: 0 for hour in range(24)}
+            for hour, count in hourly_stats:
+                hourly_pattern[int(hour)] = count
+
+            return hourly_pattern
+
+        except SQLAlchemyError as e:
+            error_msg = f"Failed to get hourly volume pattern: {e}"
+            logger.error(error_msg)
+            raise AnalyticsError(error_msg) from e
+
+    async def get_daily_volume_trend(
+        self, client_id: str, start_date: datetime, end_date: datetime
+    ) -> Dict[str, int]:
+        """
+        Get daily email volume for trend analysis.
+
+        Args:
+            client_id: Client identifier
+            start_date: Start of the analysis period
+            end_date: End of the analysis period
+
+        Returns:
+            Dictionary mapping date strings (YYYY-MM-DD) to email counts
+        """
+        try:
+            # Extract date and count using SQLAlchemy func.date
+            daily_stats = (
+                self.db_session.query(
+                    func.date(RoutingHistory.routed_at).label("date"),
+                    func.count(RoutingHistory.id).label("count"),
+                )
+                .filter(
+                    and_(
+                        RoutingHistory.client_id == client_id,
+                        RoutingHistory.routed_at >= start_date,
+                        RoutingHistory.routed_at <= end_date,
+                    )
+                )
+                .group_by(func.date(RoutingHistory.routed_at))
+                .order_by(func.date(RoutingHistory.routed_at))
+                .all()
+            )
+
+            # Convert to dictionary with string dates
+            daily_trend = {}
+            for date_obj, count in daily_stats:
+                # Handle SQLite returning string dates vs other DBs returning date objects
+                if isinstance(date_obj, str):
+                    date_str = date_obj  # SQLite already returns YYYY-MM-DD format
+                else:
+                    date_str = date_obj.strftime("%Y-%m-%d")  # Other databases
+                daily_trend[date_str] = count
+
+            return daily_trend
+
+        except SQLAlchemyError as e:
+            error_msg = f"Failed to get daily volume trend: {e}"
+            logger.error(error_msg)
+            raise AnalyticsError(error_msg) from e
+
+    async def get_top_sender_domains(
+        self, client_id: str, start_date: datetime, end_date: datetime, limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """
+        Get top sender domains by email volume.
+
+        Args:
+            client_id: Client identifier
+            start_date: Start of the analysis period
+            end_date: End of the analysis period
+            limit: Maximum number of domains to return
+
+        Returns:
+            List of dictionaries with domain info
+        """
+        try:
+            # Query sender domains with counts
+            domain_stats = (
+                self.db_session.query(
+                    RoutingHistory.sender_domain, func.count(RoutingHistory.id).label("count")
+                )
+                .filter(
+                    and_(
+                        RoutingHistory.client_id == client_id,
+                        RoutingHistory.routed_at >= start_date,
+                        RoutingHistory.routed_at <= end_date,
+                        RoutingHistory.sender_domain.isnot(None),
+                    )
+                )
+                .group_by(RoutingHistory.sender_domain)
+                .order_by(desc(func.count(RoutingHistory.id)))
+                .limit(limit)
+                .all()
+            )
+
+            # Get total count for percentage calculation
+            total_count = (
+                self.db_session.query(func.count(RoutingHistory.id))
+                .filter(
+                    and_(
+                        RoutingHistory.client_id == client_id,
+                        RoutingHistory.routed_at >= start_date,
+                        RoutingHistory.routed_at <= end_date,
+                        RoutingHistory.sender_domain.isnot(None),
+                    )
+                )
+                .scalar()
+            )
+
+            # Build result with percentages
+            top_domains = []
+            for domain, count in domain_stats:
+                percentage = (count / total_count * 100) if total_count > 0 else 0.0
+                top_domains.append(
+                    {"domain": domain, "count": count, "percentage": round(percentage, 1)}
+                )
+
+            return top_domains
+
+        except SQLAlchemyError as e:
+            error_msg = f"Failed to get top sender domains: {e}"
+            logger.error(error_msg)
+            raise AnalyticsError(error_msg) from e
+
+    async def get_escalation_metrics(
+        self, client_id: str, start_date: datetime, end_date: datetime
+    ) -> Dict[str, Any]:
+        """
+        Get escalation statistics and patterns.
+
+        Args:
+            client_id: Client identifier
+            start_date: Start of the analysis period
+            end_date: End of the analysis period
+
+        Returns:
+            Dictionary containing escalation metrics
+        """
+        try:
+            # Base query for the period
+            base_query = self.db_session.query(RoutingHistory).filter(
+                and_(
+                    RoutingHistory.client_id == client_id,
+                    RoutingHistory.routed_at >= start_date,
+                    RoutingHistory.routed_at <= end_date,
+                )
+            )
+
+            # Total emails and escalations
+            total_emails = base_query.count()
+            total_escalations = base_query.filter(RoutingHistory.escalated).count()
+
+            # Escalation rate
+            escalation_rate = (total_escalations / total_emails * 100) if total_emails > 0 else 0.0
+
+            # Escalations by category
+            escalations_by_category = {}
+            category_escalation_stats = (
+                base_query.filter(RoutingHistory.escalated)
+                .with_entities(
+                    RoutingHistory.category, func.count(RoutingHistory.id).label("count")
+                )
+                .group_by(RoutingHistory.category)
+                .all()
+            )
+            for category, count in category_escalation_stats:
+                escalations_by_category[category] = count
+
+            # Escalations by priority
+            escalations_by_priority = {}
+            priority_escalation_stats = (
+                base_query.filter(RoutingHistory.escalated)
+                .with_entities(
+                    RoutingHistory.priority_level, func.count(RoutingHistory.id).label("count")
+                )
+                .group_by(RoutingHistory.priority_level)
+                .all()
+            )
+            for priority, count in priority_escalation_stats:
+                if priority:  # Skip None values
+                    escalations_by_priority[priority] = count
+
+            return {
+                "total_escalations": total_escalations,
+                "escalation_rate": round(escalation_rate, 2),
+                "by_category": escalations_by_category,
+                "by_priority": escalations_by_priority,
+            }
+
+        except SQLAlchemyError as e:
+            error_msg = f"Failed to get escalation metrics: {e}"
+            logger.error(error_msg)
+            raise AnalyticsError(error_msg) from e
+
+    async def get_period_comparison(
+        self,
+        client_id: str,
+        current_start: datetime,
+        current_end: datetime,
+        previous_start: datetime,
+        previous_end: datetime,
+    ) -> Dict[str, Any]:
+        """
+        Compare metrics between two time periods for trend analysis.
+
+        Args:
+            client_id: Client identifier
+            current_start: Start of current period
+            current_end: End of current period
+            previous_start: Start of previous period
+            previous_end: End of previous period
+
+        Returns:
+            Dictionary containing period comparison with change calculations
+        """
+        try:
+            # Helper function to get period metrics
+            def get_period_metrics(start_date: datetime, end_date: datetime) -> Dict[str, Any]:
+                period_query = self.db_session.query(RoutingHistory).filter(
+                    and_(
+                        RoutingHistory.client_id == client_id,
+                        RoutingHistory.routed_at >= start_date,
+                        RoutingHistory.routed_at <= end_date,
+                    )
+                )
+
+                # Total emails
+                total_emails = period_query.count()
+
+                # Average processing time
+                avg_time_result = (
+                    period_query.filter(RoutingHistory.processing_time_ms.isnot(None))
+                    .with_entities(func.avg(RoutingHistory.processing_time_ms))
+                    .scalar()
+                )
+                avg_processing_time = float(avg_time_result) if avg_time_result else 0.0
+
+                # Error rate
+                error_count = period_query.filter(RoutingHistory.error_occurred).count()
+                error_rate = (error_count / total_emails * 100) if total_emails > 0 else 0.0
+
+                # Escalation rate
+                escalation_count = period_query.filter(RoutingHistory.escalated).count()
+                escalation_rate = (
+                    (escalation_count / total_emails * 100) if total_emails > 0 else 0.0
+                )
+
+                return {
+                    "total_emails": total_emails,
+                    "avg_processing_time": round(avg_processing_time, 1),
+                    "error_rate": round(error_rate, 2),
+                    "escalation_rate": round(escalation_rate, 2),
+                }
+
+            # Get metrics for both periods
+            current_metrics = get_period_metrics(current_start, current_end)
+            previous_metrics = get_period_metrics(previous_start, previous_end)
+
+            # Calculate changes
+            changes = {}
+            for metric in current_metrics.keys():
+                current_val = current_metrics[metric]
+                previous_val = previous_metrics[metric]
+
+                # Calculate absolute and percentage change
+                absolute_change = current_val - previous_val
+                percentage_change = (
+                    (absolute_change / previous_val * 100) if previous_val != 0 else 0.0
+                )
+
+                changes[metric] = {
+                    "value": round(absolute_change, 2),
+                    "percentage": round(percentage_change, 1),
+                }
+
+            return {
+                "current_period": current_metrics,
+                "previous_period": previous_metrics,
+                "changes": changes,
+            }
+
+        except SQLAlchemyError as e:
+            error_msg = f"Failed to get period comparison: {e}"
+            logger.error(error_msg)
+            raise AnalyticsError(error_msg) from e
