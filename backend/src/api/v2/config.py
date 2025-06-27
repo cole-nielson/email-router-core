@@ -368,7 +368,8 @@ async def get_response_times(
     # Check permission
     if not security_context.has_permission("response_times:read", client_id):
         raise HTTPException(
-            status_code=403, detail=f"Permission denied: response_times:read for {client_id}"
+            status_code=403,
+            detail=f"Permission denied: response_times:read for {client_id}",
         )
 
     config_bridge = DatabaseConfigBridge(db_session)
@@ -396,7 +397,8 @@ async def update_response_time(
     # Check permission
     if not security_context.has_permission("response_times:write", client_id):
         raise HTTPException(
-            status_code=403, detail=f"Permission denied: response_times:write for {client_id}"
+            status_code=403,
+            detail=f"Permission denied: response_times:write for {client_id}",
         )
 
     config_bridge = DatabaseConfigBridge(db_session)
@@ -432,7 +434,8 @@ async def get_ai_prompt(
     # Check permission
     if not security_context.has_permission("ai_prompts:read", client_id):
         raise HTTPException(
-            status_code=403, detail=f"Permission denied: ai_prompts:read for {client_id}"
+            status_code=403,
+            detail=f"Permission denied: ai_prompts:read for {client_id}",
         )
 
     config_bridge = DatabaseConfigBridge(db_session)
@@ -460,7 +463,8 @@ async def update_ai_prompt(
     # Check permission
     if not security_context.has_permission("ai_prompts:write", client_id):
         raise HTTPException(
-            status_code=403, detail=f"Permission denied: ai_prompts:write for {client_id}"
+            status_code=403,
+            detail=f"Permission denied: ai_prompts:write for {client_id}",
         )
 
     config_bridge = DatabaseConfigBridge(db_session)

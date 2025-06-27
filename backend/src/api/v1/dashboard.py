@@ -325,7 +325,9 @@ async def get_client_metrics(
 
 
 @router.get(
-    "/clients/{client_id}/activity", response_model=ActivityFeedResponse, tags=["Dashboard"]
+    "/clients/{client_id}/activity",
+    response_model=ActivityFeedResponse,
+    tags=["Dashboard"],
 )
 async def get_client_activity(
     current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
@@ -431,7 +433,9 @@ async def resolve_alert(
 
 
 @router.get(
-    "/clients/{client_id}/automations", response_model=list[AutomationStatus], tags=["Dashboard"]
+    "/clients/{client_id}/automations",
+    response_model=list[AutomationStatus],
+    tags=["Dashboard"],
 )
 async def get_client_automations(
     current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
@@ -457,7 +461,9 @@ async def get_client_automations(
 
 
 @router.get(
-    "/clients/{client_id}/integrations", response_model=list[IntegrationHealth], tags=["Dashboard"]
+    "/clients/{client_id}/integrations",
+    response_model=list[IntegrationHealth],
+    tags=["Dashboard"],
 )
 async def get_client_integrations(
     current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
@@ -482,7 +488,11 @@ async def get_client_integrations(
         )
 
 
-@router.get("/clients/{client_id}/dashboard", response_model=DashboardResponse, tags=["Dashboard"])
+@router.get(
+    "/clients/{client_id}/dashboard",
+    response_model=DashboardResponse,
+    tags=["Dashboard"],
+)
 async def get_dashboard_data(
     current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
     dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
@@ -543,7 +553,8 @@ async def get_dashboard_data(
 
         if client_info is None:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail=f"Client {client_id} not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Client {client_id} not found",
             )
 
         return DashboardResponse(

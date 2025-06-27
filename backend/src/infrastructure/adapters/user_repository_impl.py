@@ -628,7 +628,11 @@ class SQLAlchemyUserRepository(UserRepository):
                 self.db.query(DBUserSession)
                 .filter(DBUserSession.user_id == user_id, DBUserSession.is_active == True)
                 .update(
-                    {"is_active": False, "revoked_at": datetime.utcnow(), "revoked_reason": reason}
+                    {
+                        "is_active": False,
+                        "revoked_at": datetime.utcnow(),
+                        "revoked_reason": reason,
+                    }
                 )
             )
 

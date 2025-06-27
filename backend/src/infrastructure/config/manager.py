@@ -98,7 +98,13 @@ class ConfigManager:
             },
             "EMAIL_ROUTER_ENVIRONMENT": {
                 "required": False,
-                "allowed_values": ["development", "staging", "production", "test", "testing"],
+                "allowed_values": [
+                    "development",
+                    "staging",
+                    "production",
+                    "test",
+                    "testing",
+                ],
                 "description": "Application environment",
             },
         }
@@ -552,14 +558,28 @@ class ConfigManager:
                     "name": "Billing & Payments",
                     "description": "Payment issues, invoices, account billing, refunds",
                     "priority": "high",
-                    "keywords": ["invoice", "payment", "billing", "charge", "refund", "receipt"],
+                    "keywords": [
+                        "invoice",
+                        "payment",
+                        "billing",
+                        "charge",
+                        "refund",
+                        "receipt",
+                    ],
                     "confidence_threshold": 0.85,
                 },
                 "sales": {
                     "name": "Sales Inquiries",
                     "description": "Pricing inquiries, product demos, new business",
                     "priority": "medium",
-                    "keywords": ["pricing", "demo", "quote", "purchase", "buy", "trial"],
+                    "keywords": [
+                        "pricing",
+                        "demo",
+                        "quote",
+                        "purchase",
+                        "buy",
+                        "trial",
+                    ],
                     "confidence_threshold": 0.75,
                 },
                 "general": {

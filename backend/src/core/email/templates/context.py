@@ -62,7 +62,7 @@ class TemplateContextBuilder:
                         "footer_text": client_config.branding.footer_text,
                     },
                 },
-                "today": str(datetime.now().date()) if "datetime" in globals() else "today",
+                "today": (str(datetime.now().date()) if "datetime" in globals() else "today"),
                 "timestamp": str(datetime.now()) if "datetime" in globals() else "now",
             }
 
@@ -181,7 +181,9 @@ class TemplateContextBuilder:
 _context_builder_instance: Optional[TemplateContextBuilder] = None
 
 
-def get_template_context_builder(client_manager: Optional[Any] = None) -> TemplateContextBuilder:
+def get_template_context_builder(
+    client_manager: Optional[Any] = None,
+) -> TemplateContextBuilder:
     """
     Get or create the singleton TemplateContextBuilder instance.
 

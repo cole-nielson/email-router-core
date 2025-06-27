@@ -13,7 +13,10 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 from application.dependencies.repositories import get_client_manager
 from application.middleware.auth import DualAuthUser, get_dual_auth_user  # type: ignore
 from core.clients.manager import ClientManager  # type: ignore
-from core.dashboard.service import DashboardService, get_dashboard_service  # type: ignore
+from core.dashboard.service import (  # type: ignore
+    DashboardService,
+    get_dashboard_service,
+)
 from core.email.classifier import AIClassifier, get_ai_classifier  # type: ignore
 from core.email.router import RoutingEngine, get_routing_engine  # type: ignore
 from core.email.service import (  # type: ignore
@@ -21,7 +24,10 @@ from core.email.service import (  # type: ignore
     get_email_service,
 )
 from infrastructure.config.manager import get_app_config  # type: ignore
-from infrastructure.external.mailgun import forward_to_team, send_auto_reply  # type: ignore
+from infrastructure.external.mailgun import (  # type: ignore
+    forward_to_team,
+    send_auto_reply,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -115,7 +121,8 @@ async def mailgun_inbound_webhook(
                     f"🔐 Signature details - timestamp: {timestamp}, token: {str(token)[:8]}..., signature: {str(signature)[:8]}..."
                 )
                 raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature"
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid webhook signature",
                 )
             logger.info("✅ Mailgun signature verified successfully")
         else:
@@ -162,7 +169,11 @@ async def mailgun_inbound_webhook(
             email_service,
         )
 
-        return {"status": "received", "message": "Email processing started", "client_id": client_id}
+        return {
+            "status": "received",
+            "message": "Email processing started",
+            "client_id": client_id,
+        }
 
     except HTTPException:
         # Re-raise HTTP exceptions (like signature verification failures)

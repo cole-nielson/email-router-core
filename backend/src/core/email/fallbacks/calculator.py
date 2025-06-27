@@ -164,7 +164,9 @@ class ResponseTimeCalculator:
 _calculator_instance: Optional[ResponseTimeCalculator] = None
 
 
-def get_response_time_calculator(client_manager: Optional[Any] = None) -> ResponseTimeCalculator:
+def get_response_time_calculator(
+    client_manager: Optional[Any] = None,
+) -> ResponseTimeCalculator:
     """
     Dependency injection function for ResponseTimeCalculator.
 

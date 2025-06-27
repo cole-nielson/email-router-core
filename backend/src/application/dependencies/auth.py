@@ -38,7 +38,8 @@ async def get_security_context(request: Request) -> SecurityContext:
         # This should not happen if middleware is properly configured
         logger.error("Security context not found in request state")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Authentication system error"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Authentication system error",
         )
 
     return security_context
@@ -292,7 +293,8 @@ def require_client_access(client_id_param: str = "client_id"):
 
         if not client_id:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=f"Missing {client_id_param} in path"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Missing {client_id_param} in path",
             )
 
         # Check client access
@@ -302,7 +304,8 @@ def require_client_access(client_id_param: str = "client_id"):
                 f"(user client: {security_context.client_id})"
             )
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail=f"Access denied to client {client_id}"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied to client {client_id}",
             )
 
         return security_context
@@ -359,7 +362,8 @@ def require_permission(permission: str, client_id_param: str = "client_id"):
                 f"(role: {security_context.role}, client: {security_context.client_id})"
             )
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail=f"Permission denied: {permission}"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permission denied: {permission}",
             )
 
         return security_context

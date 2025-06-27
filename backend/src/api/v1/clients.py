@@ -6,7 +6,7 @@ API v1 Router for client management and system operations.
 import logging
 import time
 from datetime import datetime
-from typing import Annotated, Dict, Optional
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
@@ -32,7 +32,9 @@ metrics = MetricsCollector()
 
 
 @router.get("/status", response_model=APIStatusResponse, tags=["System Status"])
-async def get_api_status(client_manager: Annotated[ClientManager, Depends(get_client_manager)]):
+async def get_api_status(
+    client_manager: Annotated[ClientManager, Depends(get_client_manager)],
+):
     """
     Get comprehensive API status and system information.
 
@@ -84,7 +86,9 @@ async def get_api_status(client_manager: Annotated[ClientManager, Depends(get_cl
         # Component status
         component_status = {
             "api_server": "healthy",
-            "client_manager": "healthy" if valid_clients == len(available_clients) else "degraded",
+            "client_manager": (
+                "healthy" if valid_clients == len(available_clients) else "degraded"
+            ),
             "domain_resolver": "healthy",
             "rate_limiter": "healthy",
             "metrics_collector": "healthy",
@@ -245,7 +249,8 @@ async def get_client(
         available_clients = await client_manager.get_available_clients()
         if client_id not in available_clients:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail=f"Client '{client_id}' not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Client '{client_id}' not found",
             )
 
         # Check permissions (client-specific keys can only access their own data)
@@ -308,7 +313,8 @@ async def validate_client(
         available_clients = await client_manager.get_available_clients()
         if client_id not in available_clients:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail=f"Client '{client_id}' not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Client '{client_id}' not found",
             )
 
         # Perform validation
@@ -427,12 +433,15 @@ async def resolve_domain(
     except Exception as e:
         logger.error(f"Failed to resolve domain {domain}: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to resolve domain"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to resolve domain",
         )
 
 
 @router.get("/metrics/summary", tags=["System Metrics"])
-async def get_metrics_summary(current_user: Annotated[DualAuthUser, Depends(require_dual_auth)]):
+async def get_metrics_summary(
+    current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
+):
     """
     Get comprehensive system metrics summary.
 
@@ -463,7 +472,8 @@ async def get_metrics_summary(current_user: Annotated[DualAuthUser, Depends(requ
     except Exception as e:
         logger.error(f"Failed to get metrics summary: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve metrics"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve metrics",
         )
 
 
@@ -485,14 +495,16 @@ async def refresh_client_config(
         # Check permissions
         if current_user and "write" not in current_user.get("permissions", []):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Write permissions required"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Write permissions required",
             )
 
         # Check if client exists
         available_clients = await client_manager.get_available_clients()
         if client_id not in available_clients:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail=f"Client '{client_id}' not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Client '{client_id}' not found",
             )
 
         # Refresh client configuration

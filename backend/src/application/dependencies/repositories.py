@@ -15,7 +15,9 @@ from sqlalchemy.orm import Session
 from core.ports.analytics_repository import AnalyticsRepository
 from core.ports.client_repository import ClientRepository
 from core.ports.user_repository import UserRepository
-from infrastructure.adapters.analytics_repository_impl import SQLAlchemyAnalyticsRepository
+from infrastructure.adapters.analytics_repository_impl import (
+    SQLAlchemyAnalyticsRepository,
+)
 from infrastructure.adapters.client_repository_impl import SQLAlchemyClientRepository
 from infrastructure.adapters.user_repository_impl import SQLAlchemyUserRepository
 from infrastructure.database.connection import get_database_session
@@ -28,7 +30,9 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 
-def get_user_repository(db: Annotated[Session, Depends(get_database_session)]) -> UserRepository:
+def get_user_repository(
+    db: Annotated[Session, Depends(get_database_session)],
+) -> UserRepository:
     """
     Dependency that provides UserRepository implementation.
 

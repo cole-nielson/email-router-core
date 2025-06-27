@@ -336,7 +336,10 @@ class SQLAlchemyClientRepository(ClientRepository):
         try:
             domain_record = (
                 self.db.query(ClientDomain)
-                .filter(ClientDomain.client_id == client_id, ClientDomain.domain_value == domain)
+                .filter(
+                    ClientDomain.client_id == client_id,
+                    ClientDomain.domain_value == domain,
+                )
                 .first()
             )
 
@@ -359,7 +362,10 @@ class SQLAlchemyClientRepository(ClientRepository):
         try:
             domain_record = (
                 self.db.query(ClientDomain)
-                .filter(ClientDomain.client_id == client_id, ClientDomain.domain_value == domain)
+                .filter(
+                    ClientDomain.client_id == client_id,
+                    ClientDomain.domain_value == domain,
+                )
                 .first()
             )
 
@@ -631,7 +637,10 @@ class SQLAlchemyClientRepository(ClientRepository):
         try:
             response_time = (
                 self.db.query(ResponseTime)
-                .filter(ResponseTime.client_id == client_id, ResponseTime.category == category)
+                .filter(
+                    ResponseTime.client_id == client_id,
+                    ResponseTime.category == category,
+                )
                 .first()
             )
 
@@ -648,7 +657,9 @@ class SQLAlchemyClientRepository(ClientRepository):
             if not response_time:
                 # Create new response time
                 response_time = ResponseTime(
-                    client_id=client_id, category=category, target_response=target_response
+                    client_id=client_id,
+                    category=category,
+                    target_response=target_response,
                 )
                 self.db.add(response_time)
             else:
@@ -738,7 +749,8 @@ class SQLAlchemyClientRepository(ClientRepository):
             setting = (
                 self.db.query(ClientSetting)
                 .filter(
-                    ClientSetting.client_id == client_id, ClientSetting.setting_key == setting_key
+                    ClientSetting.client_id == client_id,
+                    ClientSetting.setting_key == setting_key,
                 )
                 .first()
             )
@@ -746,7 +758,9 @@ class SQLAlchemyClientRepository(ClientRepository):
             if not setting:
                 # Create new setting
                 setting = ClientSetting(
-                    client_id=client_id, setting_key=setting_key, setting_value=setting_value
+                    client_id=client_id,
+                    setting_key=setting_key,
+                    setting_value=setting_value,
                 )
                 self.db.add(setting)
             else:

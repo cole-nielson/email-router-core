@@ -403,7 +403,8 @@ class AppConfig(BaseModel):
 
     # Fallback Configuration
     fallback_admin_email: str = Field(
-        default="admin@example.com", description="Fallback admin email for unknown clients"
+        default="admin@example.com",
+        description="Fallback admin email for unknown clients",
     )
 
     # Feature Flags

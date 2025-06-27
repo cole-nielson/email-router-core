@@ -67,7 +67,10 @@ def db_session():
 @pytest.fixture(scope="function")
 def client(db_session):
     """Yield a TestClient with a database override for each test function."""
-    from application.dependencies.repositories import get_auth_service, get_user_repository
+    from application.dependencies.repositories import (
+        get_auth_service,
+        get_user_repository,
+    )
     from core.authentication.auth_service import AuthService
 
     def override_get_db():
@@ -168,7 +171,10 @@ def mock_external_services():
     """Mock all external services for test isolation."""
 
     # Mock requests (used by Mailgun and other HTTP APIs)
-    with patch("requests.post") as mock_requests_post, patch("requests.get") as mock_requests_get:
+    with (
+        patch("requests.post") as mock_requests_post,
+        patch("requests.get") as mock_requests_get,
+    ):
 
         # Set up default responses for requests
         mock_requests_post.return_value.status_code = 200

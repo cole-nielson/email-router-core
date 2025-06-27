@@ -7,8 +7,8 @@ import time
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
+import jwt
 import pytest
-from jose import jwt
 
 from core.authentication.jwt import AuthenticatedUser, AuthService
 from infrastructure.database.models import UserRole, UserStatus
@@ -140,7 +140,13 @@ class TestJWTTokenSecurity:
 
     def test_malformed_token_handling(self, auth_service):
         """Test handling of malformed tokens."""
-        malformed_tokens = ["not.a.jwt", "too.few.parts", "invalid.signature.token", "", None]
+        malformed_tokens = [
+            "not.a.jwt",
+            "too.few.parts",
+            "invalid.signature.token",
+            "",
+            None,
+        ]
 
         for token in malformed_tokens:
             if token is not None:

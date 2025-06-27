@@ -184,7 +184,10 @@ class Client(Base):
     users = relationship("User", back_populates="client", cascade="all, delete-orphan")
     domains = relationship("ClientDomain", back_populates="client", cascade="all, delete-orphan")
     branding = relationship(
-        "ClientBranding", back_populates="client", uselist=False, cascade="all, delete-orphan"
+        "ClientBranding",
+        back_populates="client",
+        uselist=False,
+        cascade="all, delete-orphan",
     )
     routing_rules = relationship(
         "RoutingRule", back_populates="client", cascade="all, delete-orphan"

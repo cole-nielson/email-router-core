@@ -348,7 +348,10 @@ class AIClassifier:
         """
         # Add additional context to email data if provided
         if additional_context:
-            enhanced_email_data = {**email_data, "additional_context": additional_context}
+            enhanced_email_data = {
+                **email_data,
+                "additional_context": additional_context,
+            }
         else:
             enhanced_email_data = email_data
 
@@ -405,7 +408,10 @@ def get_ai_classifier() -> AIClassifier:
     """Dependency injection function for AIClassifier."""
     global _ai_classifier_instance
     if _ai_classifier_instance is None:
-        from application.dependencies.config import get_client_manager, get_config_provider
+        from application.dependencies.config import (
+            get_client_manager,
+            get_config_provider,
+        )
 
         config_provider = get_config_provider()
         client_manager = get_client_manager()

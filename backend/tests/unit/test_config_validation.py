@@ -4,12 +4,14 @@ Configuration validation tests for all client configurations.
 """
 
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 import yaml
 from pydantic import ValidationError
 
 from core.clients.manager import ClientManager
+from core.ports.config_provider import ConfigurationProvider
 from infrastructure.config.schema import ClientConfig
 
 # Load the test client configuration file
@@ -21,7 +23,9 @@ class TestClientConfigValidation:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.client_manager = ClientManager()
+        # Create a mock config provider
+        self.config_provider = Mock(spec=ConfigurationProvider)
+        self.client_manager = ClientManager(config_provider=self.config_provider)
         self.clients_dir = Path("clients/active")
 
     async def test_all_clients_have_valid_configs(self):

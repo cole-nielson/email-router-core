@@ -61,7 +61,10 @@ class TestAuthenticationEndpoints:
         """Test login with invalid credentials."""
         response = client.post(
             "/auth/login",
-            json={"username": test_user["client_user"].username, "password": "wrongpassword"},
+            json={
+                "username": test_user["client_user"].username,
+                "password": "wrongpassword",
+            },
         )
 
         assert response.status_code == 401
@@ -534,7 +537,9 @@ class TestUserManagement:
 
         # Test negative offset
         response = client.get(
-            "/auth/users", params={"offset": -1}, headers={"Authorization": f"Bearer {admin_token}"}
+            "/auth/users",
+            params={"offset": -1},
+            headers={"Authorization": f"Bearer {admin_token}"},
         )
 
         assert response.status_code == 422  # Validation error
@@ -585,7 +590,10 @@ class TestUserManagement:
         # Verify new password works
         new_login_response = client.post(
             "/auth/login",
-            json={"username": test_user["client_user"].username, "password": "newtestpass123"},
+            json={
+                "username": test_user["client_user"].username,
+                "password": "newtestpass123",
+            },
         )
         assert new_login_response.status_code == 200
 
@@ -671,7 +679,10 @@ class TestSecurityFeatures:
         for i in range(6):  # Exceed the limit of 5
             response = client.post(
                 "/auth/login",
-                json={"username": test_user["client_user"].username, "password": "wrongpassword"},
+                json={
+                    "username": test_user["client_user"].username,
+                    "password": "wrongpassword",
+                },
             )
 
         # After 5 failed attempts, account should be locked

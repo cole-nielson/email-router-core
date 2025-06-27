@@ -13,8 +13,8 @@ import secrets
 from datetime import datetime, timedelta
 from typing import List, Optional, Union
 
+import jwt
 from fastapi import HTTPException, status
-from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from core.models.schemas import (
@@ -132,7 +132,8 @@ class AuthService:
             if user.status != "active":
                 logger.warning(f"Authentication failed: account '{username}' is {user.status}")
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN, detail=f"Account is {user.status}"
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Account is {user.status}",
                 )
 
             # Verify password
@@ -297,7 +298,7 @@ class AuthService:
         except jwt.ExpiredSignatureError:
             logger.warning("Token has expired")
             return None
-        except JWTError as e:
+        except jwt.InvalidTokenError as e:
             logger.warning(f"Invalid token: {e}")
             return None
         except Exception as e:
@@ -334,7 +335,7 @@ class AuthService:
 
             return claims
 
-        except JWTError as e:
+        except jwt.InvalidTokenError as e:
             logger.warning(f"JWT validation error: {e}")
             return None
         except Exception as e:
@@ -476,7 +477,11 @@ class AuthService:
         return permissions
 
     def check_permission(
-        self, user_claims: UserTokenClaims, resource: str, action: str, client_id: str = None
+        self,
+        user_claims: UserTokenClaims,
+        resource: str,
+        action: str,
+        client_id: str = None,
     ) -> bool:
         """
         Check if user has permission for resource:action.

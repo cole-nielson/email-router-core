@@ -16,7 +16,9 @@ class TemplateLoader:
     """Loads and caches email templates from client configurations."""
 
     def __init__(
-        self, config_provider: ConfigurationProvider, template_validator: Optional[Any] = None
+        self,
+        config_provider: ConfigurationProvider,
+        template_validator: Optional[Any] = None,
     ) -> None:
         """
         Initialize the template loader.

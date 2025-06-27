@@ -60,7 +60,9 @@ def user_filter_parameters(
         description="Search users by username, email, or full name",
     ),
     role: Optional[str] = Query(
-        None, regex="^(super_admin|client_admin|client_user)$", description="Filter by user role"
+        None,
+        regex="^(super_admin|client_admin|client_user)$",
+        description="Filter by user role",
     ),
     status: Optional[str] = Query(
         None, regex="^(active|inactive|locked)$", description="Filter by user status"

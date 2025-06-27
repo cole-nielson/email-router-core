@@ -82,7 +82,9 @@ class SQLAlchemyAnalyticsRepository(AnalyticsRepository):
                 # Routing decision
                 category=classification.get("category", "general"),
                 primary_destination=routing_result.get("forward_to", ""),
-                cc_destinations=routing_result.get("cc", []) if routing_result.get("cc") else None,
+                cc_destinations=(
+                    routing_result.get("cc", []) if routing_result.get("cc") else None
+                ),
                 # AI classification data
                 confidence_level=classification.get("confidence"),
                 ai_model=classification.get("ai_model"),
@@ -227,7 +229,10 @@ class SQLAlchemyAnalyticsRepository(AnalyticsRepository):
 
             # Base query for the time period
             base_query = self.db_session.query(RoutingHistory).filter(
-                and_(RoutingHistory.client_id == client_id, RoutingHistory.routed_at >= start_time)
+                and_(
+                    RoutingHistory.client_id == client_id,
+                    RoutingHistory.routed_at >= start_time,
+                )
             )
 
             # Total emails count
@@ -237,7 +242,8 @@ class SQLAlchemyAnalyticsRepository(AnalyticsRepository):
             category_breakdown = {}
             category_stats = (
                 base_query.with_entities(
-                    RoutingHistory.category, func.count(RoutingHistory.id).label("count")
+                    RoutingHistory.category,
+                    func.count(RoutingHistory.id).label("count"),
                 )
                 .group_by(RoutingHistory.category)
                 .all()

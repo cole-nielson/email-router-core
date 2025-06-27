@@ -199,7 +199,10 @@ personally with a detailed response.
 
 
 def create_team_template(
-    email_data: dict, classification: dict, draft_response: str, branding: Optional[dict] = None
+    email_data: dict,
+    classification: dict,
+    draft_response: str,
+    branding: Optional[dict] = None,
 ) -> tuple[str, str]:
     """
     Create team-facing forwarded email with client-specific branding (text + HTML).
@@ -448,7 +451,9 @@ def create_branded_template(
 
     if template_type == "customer_reply":
         return create_customer_template(
-            context.get("draft_response", ""), context.get("classification", {}), branding
+            context.get("draft_response", ""),
+            context.get("classification", {}),
+            branding,
         )
     elif template_type == "team_forward":
         return create_team_template(

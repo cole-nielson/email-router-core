@@ -140,7 +140,11 @@ class DatabaseConfigBridge:
         return db_rules
 
     def update_routing_rule(
-        self, client_id: str, category: str, email_address: str, updated_by: Optional[str] = None
+        self,
+        client_id: str,
+        category: str,
+        email_address: str,
+        updated_by: Optional[str] = None,
     ) -> RoutingRule:
         """Update or create routing rule for a category."""
         rule = (
@@ -187,7 +191,10 @@ class DatabaseConfigBridge:
         )
 
         if rule:
-            old_values = {"category": rule.category, "email_address": rule.email_address}
+            old_values = {
+                "category": rule.category,
+                "email_address": rule.email_address,
+            }
             rule.is_active = False
             self._log_change("DELETE", "routing_rules", rule.id, old_values, None, deleted_by)
             logger.info(f"🗑️ Deleted routing rule: {client_id} -> {category}")
@@ -228,7 +235,10 @@ class DatabaseConfigBridge:
         return None
 
     def update_branding(
-        self, client_id: str, branding_data: Dict[str, Any], updated_by: Optional[str] = None
+        self,
+        client_id: str,
+        branding_data: Dict[str, Any],
+        updated_by: Optional[str] = None,
     ) -> ClientBranding:
         """Update client branding configuration."""
         branding = self.get_branding(client_id)
@@ -250,14 +260,24 @@ class DatabaseConfigBridge:
                     setattr(branding, key, value)
 
             self._log_change(
-                "UPDATE", "client_branding", branding.id, old_values, branding_data, updated_by
+                "UPDATE",
+                "client_branding",
+                branding.id,
+                old_values,
+                branding_data,
+                updated_by,
             )
         else:
             branding = ClientBranding(client_id=client_id, **branding_data)
             self.db.add(branding)
             self.db.flush()
             self._log_change(
-                "CREATE", "client_branding", branding.id, None, branding_data, updated_by
+                "CREATE",
+                "client_branding",
+                branding.id,
+                None,
+                branding_data,
+                updated_by,
             )
 
         logger.info(f"🎨 Updated branding: {client_id}")
@@ -327,7 +347,10 @@ class DatabaseConfigBridge:
                 "response_times",
                 response_time.id,
                 old_values,
-                {"target_response": target_response, "business_hours_only": business_hours_only},
+                {
+                    "target_response": target_response,
+                    "business_hours_only": business_hours_only,
+                },
                 updated_by,
             )
         else:

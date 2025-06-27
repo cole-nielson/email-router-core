@@ -200,7 +200,8 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
             # Check if IP is blocked
             if storage.is_blocked(client_ip):
                 return self._rate_limit_response(
-                    message="IP temporarily blocked due to excessive requests", retry_after=3600
+                    message="IP temporarily blocked due to excessive requests",
+                    retry_after=3600,
                 )
 
             # Check rate limits
@@ -275,7 +276,9 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
 
         # Check burst rate limit (per 10 seconds)
         burst_bucket = storage.get_bucket(
-            f"burst:{client_id}", self.burst_limit, self.burst_limit / 10.0  # refill in 10 seconds
+            f"burst:{client_id}",
+            self.burst_limit,
+            self.burst_limit / 10.0,  # refill in 10 seconds
         )
 
         # Try to consume from both buckets
@@ -344,12 +347,12 @@ def get_rate_limit_info(client_identifier: str) -> Dict:
         return {
             "sustained": {
                 "limit": 60,  # calls per minute
-                "remaining": int(sustained_bucket.remaining_tokens()) if sustained_bucket else 60,
+                "remaining": (int(sustained_bucket.remaining_tokens()) if sustained_bucket else 60),
                 "reset_time": datetime.utcnow() + timedelta(minutes=1),
             },
             "burst": {
                 "limit": 10,  # calls per 10 seconds
-                "remaining": int(burst_bucket.remaining_tokens()) if burst_bucket else 10,
+                "remaining": (int(burst_bucket.remaining_tokens()) if burst_bucket else 10),
                 "reset_time": datetime.utcnow() + timedelta(seconds=10),
             },
             "request_rate": storage.get_request_rate(client_identifier),
@@ -362,7 +365,11 @@ def get_rate_limit_info(client_identifier: str) -> Dict:
     except Exception as e:
         logger.error(f"Failed to get rate limit info: {e}")
         return {
-            "sustained": {"limit": 60, "remaining": 60, "reset_time": datetime.utcnow()},
+            "sustained": {
+                "limit": 60,
+                "remaining": 60,
+                "reset_time": datetime.utcnow(),
+            },
             "burst": {"limit": 10, "remaining": 10, "reset_time": datetime.utcnow()},
             "request_rate": 0.0,
             "is_blocked": False,
