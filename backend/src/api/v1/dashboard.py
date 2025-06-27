@@ -25,6 +25,242 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# Analytics router for trend analysis endpoints
+analytics_router = APIRouter(prefix="/analytics", tags=["Analytics"])
+
+
+@analytics_router.get("/trends", tags=["Analytics"])
+async def get_dashboard_trends(
+    current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
+    dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
+    client_id: str = Query(..., description="Client identifier"),
+    timeframe: str = Query(default="24h", description="Time range (1h, 6h, 12h, 24h, 7d, 30d)"),
+) -> Dict[str, Any]:
+    """
+    Get comprehensive dashboard trend analysis.
+
+    Returns volume metrics, performance metrics, quality metrics, escalation metrics,
+    and trends compared to the previous period. Provides data-driven insights for
+    email routing performance and operational metrics.
+
+    **Features:**
+    - Volume analysis by category and time
+    - Performance metrics with processing times and success rates
+    - AI confidence distribution and quality metrics
+    - Escalation patterns and analysis
+    - Period-over-period trend comparisons
+    - Fallback support when analytics unavailable
+    """
+    try:
+        # Validate timeframe
+        valid_timeframes = ["1h", "6h", "12h", "24h", "7d", "30d"]
+        if timeframe not in valid_timeframes:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid timeframe. Must be one of: {', '.join(valid_timeframes)}",
+            )
+
+        # Check if user has access to this client
+        # TODO: Add client access validation based on user permissions
+
+        # Get trend analysis from dashboard service
+        trends = await dashboard_service.calculate_dashboard_trends(client_id, timeframe)
+
+        return {
+            "success": True,
+            "data": trends,
+            "timestamp": datetime.utcnow().isoformat(),
+            "client_id": client_id,
+            "timeframe": timeframe,
+        }
+
+    except HTTPException:
+        raise
+    except AttributeError as e:
+        # Handle case where trend analysis methods don't exist yet
+        logger.warning(f"Trend analysis not available: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Trend analysis feature is not yet available. Please ensure the analytics repository is properly configured.",
+        )
+    except Exception as e:
+        logger.error(f"❌ Failed to get dashboard trends for {client_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve dashboard trends: {str(e)}",
+        )
+
+
+@analytics_router.get("/volume-patterns", tags=["Analytics"])
+async def get_volume_patterns(
+    current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
+    dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
+    client_id: str = Query(..., description="Client identifier"),
+    timeframe: str = Query(default="7d", description="Time range (1h, 6h, 12h, 24h, 7d, 30d)"),
+) -> Dict[str, Any]:
+    """
+    Get email volume patterns for visualization.
+
+    Returns hourly and daily volume patterns, peak hours analysis, and business hours
+    vs after-hours volume distribution. Useful for understanding email traffic patterns
+    and optimizing resource allocation.
+
+    **Features:**
+    - Hourly volume patterns (0-23 hours)
+    - Daily volume trends over time period
+    - Peak hour and quietest hour identification
+    - Business hours vs after-hours analysis
+    - Total volume statistics
+    """
+    try:
+        # Validate timeframe
+        valid_timeframes = ["1h", "6h", "12h", "24h", "7d", "30d"]
+        if timeframe not in valid_timeframes:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid timeframe. Must be one of: {', '.join(valid_timeframes)}",
+            )
+
+        # Get volume patterns from dashboard service
+        patterns = await dashboard_service.get_volume_patterns(client_id, timeframe)
+
+        return {
+            "success": True,
+            "data": patterns,
+            "timestamp": datetime.utcnow().isoformat(),
+            "client_id": client_id,
+            "timeframe": timeframe,
+        }
+
+    except HTTPException:
+        raise
+    except AttributeError as e:
+        logger.warning(f"Volume patterns analysis not available: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Volume patterns analysis feature is not yet available. Please ensure the analytics repository is properly configured.",
+        )
+    except Exception as e:
+        logger.error(f"❌ Failed to get volume patterns for {client_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve volume patterns: {str(e)}",
+        )
+
+
+@analytics_router.get("/sender-analytics", tags=["Analytics"])
+async def get_sender_analytics(
+    current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
+    dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
+    client_id: str = Query(..., description="Client identifier"),
+    timeframe: str = Query(default="7d", description="Time range (1h, 6h, 12h, 24h, 7d, 30d)"),
+    limit: int = Query(default=10, ge=1, le=50, description="Number of top domains to return"),
+) -> Dict[str, Any]:
+    """
+    Get sender domain analytics and insights.
+
+    Returns top sender domains by volume, domain diversity metrics, and concentration
+    analysis. Helps identify email source patterns and potential security insights.
+
+    **Features:**
+    - Top sender domains with volume and percentage
+    - Domain diversity and concentration metrics
+    - Total unique domains count
+    - Top domain share analysis
+    """
+    try:
+        # Validate timeframe
+        valid_timeframes = ["1h", "6h", "12h", "24h", "7d", "30d"]
+        if timeframe not in valid_timeframes:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid timeframe. Must be one of: {', '.join(valid_timeframes)}",
+            )
+
+        # Get sender analytics from dashboard service
+        analytics = await dashboard_service.get_sender_analytics(client_id, timeframe, limit)
+
+        return {
+            "success": True,
+            "data": analytics,
+            "timestamp": datetime.utcnow().isoformat(),
+            "client_id": client_id,
+            "timeframe": timeframe,
+            "limit": limit,
+        }
+
+    except HTTPException:
+        raise
+    except AttributeError as e:
+        logger.warning(f"Sender analytics not available: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Sender analytics feature is not yet available. Please ensure the analytics repository is properly configured.",
+        )
+    except Exception as e:
+        logger.error(f"❌ Failed to get sender analytics for {client_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve sender analytics: {str(e)}",
+        )
+
+
+@analytics_router.get("/performance-insights", tags=["Analytics"])
+async def get_performance_insights(
+    current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
+    dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
+    client_id: str = Query(..., description="Client identifier"),
+    timeframe: str = Query(default="7d", description="Time range (1h, 6h, 12h, 24h, 7d, 30d)"),
+) -> Dict[str, Any]:
+    """
+    Get detailed performance insights and recommendations.
+
+    Returns processing performance analysis, quality metrics, escalation analysis,
+    overall system grading (A-F), and actionable recommendations for improvement.
+
+    **Features:**
+    - Processing performance with average times and grading
+    - Quality performance with confidence scores and error rates
+    - Escalation performance analysis
+    - Overall system grade (A+ to F)
+    - Actionable recommendations for improvement
+    - Performance trend indicators
+    """
+    try:
+        # Validate timeframe
+        valid_timeframes = ["1h", "6h", "12h", "24h", "7d", "30d"]
+        if timeframe not in valid_timeframes:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid timeframe. Must be one of: {', '.join(valid_timeframes)}",
+            )
+
+        # Get performance insights from dashboard service
+        insights = await dashboard_service.get_performance_insights(client_id, timeframe)
+
+        return {
+            "success": True,
+            "data": insights,
+            "timestamp": datetime.utcnow().isoformat(),
+            "client_id": client_id,
+            "timeframe": timeframe,
+        }
+
+    except HTTPException:
+        raise
+    except AttributeError as e:
+        logger.warning(f"Performance insights not available: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Performance insights feature is not yet available. Please ensure the analytics repository is properly configured.",
+        )
+    except Exception as e:
+        logger.error(f"❌ Failed to get performance insights for {client_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve performance insights: {str(e)}",
+        )
+
 
 @router.get("/clients/{client_id}", response_model=ClientInfo, tags=["Dashboard"])
 async def get_client_info(
@@ -329,3 +565,7 @@ async def get_dashboard_data(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve dashboard data: {str(e)}",
         )
+
+
+# Include analytics router in the main router
+router.include_router(analytics_router)
