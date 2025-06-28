@@ -53,13 +53,19 @@ from api.v1.clients import router as api_v1_router  # type: ignore # noqa: E402
 from api.v1.dashboard import router as dashboard_router  # type: ignore # noqa: E402
 from api.v1.webhooks import router as webhook_router  # type: ignore # noqa: E402
 from api.v2.config import router as api_v2_router  # type: ignore # noqa: E402
-from application.middleware.auth import (  # noqa: E402
-    UnifiedAuthMiddleware as DualAuthMiddleware,  # type: ignore
+from application.middleware.auth import (  # noqa: E402; type: ignore
+    UnifiedAuthMiddleware as DualAuthMiddleware,
 )
-from application.middleware.rate_limit import RateLimiterMiddleware  # type: ignore # noqa: E402
+from application.middleware.rate_limit import (  # type: ignore # noqa: E402
+    RateLimiterMiddleware,
+)
 from core.models.schemas import APIInfo, HealthResponse  # type: ignore # noqa: E402
-from infrastructure.monitoring.metrics import MetricsCollector  # type: ignore # noqa: E402
-from infrastructure.websockets.manager import get_websocket_manager  # type: ignore # noqa: E402
+from infrastructure.monitoring.metrics import (  # type: ignore # noqa: E402
+    MetricsCollector,
+)
+from infrastructure.websockets.manager import (  # type: ignore # noqa: E402
+    get_websocket_manager,
+)
 
 # Initialize metrics collector
 metrics = MetricsCollector()

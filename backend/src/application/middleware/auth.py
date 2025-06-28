@@ -286,9 +286,7 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
         try:
             # Inject auth service into request state for dependency injection compatibility
             try:
-                from application.dependencies.repositories import (
-                    get_auth_service,
-                )
+                from application.dependencies.repositories import get_auth_service
                 from main import app
 
                 # Use FastAPI's dependency system (respects test overrides)
