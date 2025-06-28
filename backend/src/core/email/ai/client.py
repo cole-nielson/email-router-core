@@ -149,7 +149,9 @@ class AIClient:
             )
             logger.error(f"Prompt preview: {prompt[:200]}...")
         elif "[" in prompt and "]" in prompt:
-            logger.warning("⚠️ Prompt contains placeholder brackets - may affect AI quality")
+            logger.warning(
+                "⚠️ Prompt contains placeholder brackets - may affect AI quality"
+            )
 
         if not prompt.strip():
             logger.error("🚨 CRITICAL: Empty prompt sent to AI")
@@ -183,7 +185,9 @@ class AIClient:
         """
         return {
             "Content-Type": "application/json",
-            "x-api-key": self.config_provider.get_required("services.anthropic_api_key"),
+            "x-api-key": self.config_provider.get_required(
+                "services.anthropic_api_key"
+            ),
             "anthropic-version": self.api_version,
         }
 
@@ -201,7 +205,9 @@ class AIClient:
         return {
             "model": kwargs.get(
                 "model",
-                self.config_provider.get("services.anthropic_model", "claude-3-5-sonnet-20241022"),
+                self.config_provider.get(
+                    "services.anthropic_model", "claude-3-5-sonnet-20241022"
+                ),
             ),
             "max_tokens": kwargs.get("max_tokens", self.default_max_tokens),
             "temperature": kwargs.get("temperature", self.default_temperature),

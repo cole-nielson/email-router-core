@@ -114,7 +114,9 @@ This is an automated acknowledgment, but a real person will review your message 
         else:
             response = f"Email classified as {category.upper()} inquiry. Please review and respond accordingly."
 
-        logger.info(f"Providing generic hard fallback for {response_type}, category: {category}")
+        logger.info(
+            f"Providing generic hard fallback for {response_type}, category: {category}"
+        )
         return response
 
 

@@ -34,7 +34,9 @@ async def get_dashboard_trends(
     current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
     dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
     client_id: str = Query(..., description="Client identifier"),
-    timeframe: str = Query(default="24h", description="Time range (1h, 6h, 12h, 24h, 7d, 30d)"),
+    timeframe: str = Query(
+        default="24h", description="Time range (1h, 6h, 12h, 24h, 7d, 30d)"
+    ),
 ) -> Dict[str, Any]:
     """
     Get comprehensive dashboard trend analysis.
@@ -64,7 +66,9 @@ async def get_dashboard_trends(
         # TODO: Add client access validation based on user permissions
 
         # Get trend analysis from dashboard service
-        trends = await dashboard_service.calculate_dashboard_trends(client_id, timeframe)
+        trends = await dashboard_service.calculate_dashboard_trends(
+            client_id, timeframe
+        )
 
         return {
             "success": True,
@@ -96,7 +100,9 @@ async def get_volume_patterns(
     current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
     dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
     client_id: str = Query(..., description="Client identifier"),
-    timeframe: str = Query(default="7d", description="Time range (1h, 6h, 12h, 24h, 7d, 30d)"),
+    timeframe: str = Query(
+        default="7d", description="Time range (1h, 6h, 12h, 24h, 7d, 30d)"
+    ),
 ) -> Dict[str, Any]:
     """
     Get email volume patterns for visualization.
@@ -153,8 +159,12 @@ async def get_sender_analytics(
     current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
     dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
     client_id: str = Query(..., description="Client identifier"),
-    timeframe: str = Query(default="7d", description="Time range (1h, 6h, 12h, 24h, 7d, 30d)"),
-    limit: int = Query(default=10, ge=1, le=50, description="Number of top domains to return"),
+    timeframe: str = Query(
+        default="7d", description="Time range (1h, 6h, 12h, 24h, 7d, 30d)"
+    ),
+    limit: int = Query(
+        default=10, ge=1, le=50, description="Number of top domains to return"
+    ),
 ) -> Dict[str, Any]:
     """
     Get sender domain analytics and insights.
@@ -178,7 +188,9 @@ async def get_sender_analytics(
             )
 
         # Get sender analytics from dashboard service
-        analytics = await dashboard_service.get_sender_analytics(client_id, timeframe, limit)
+        analytics = await dashboard_service.get_sender_analytics(
+            client_id, timeframe, limit
+        )
 
         return {
             "success": True,
@@ -210,7 +222,9 @@ async def get_performance_insights(
     current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
     dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
     client_id: str = Query(..., description="Client identifier"),
-    timeframe: str = Query(default="7d", description="Time range (1h, 6h, 12h, 24h, 7d, 30d)"),
+    timeframe: str = Query(
+        default="7d", description="Time range (1h, 6h, 12h, 24h, 7d, 30d)"
+    ),
 ) -> Dict[str, Any]:
     """
     Get detailed performance insights and recommendations.
@@ -236,7 +250,9 @@ async def get_performance_insights(
             )
 
         # Get performance insights from dashboard service
-        insights = await dashboard_service.get_performance_insights(client_id, timeframe)
+        insights = await dashboard_service.get_performance_insights(
+            client_id, timeframe
+        )
 
         return {
             "success": True,
@@ -285,12 +301,16 @@ async def get_client_info(
         )
 
 
-@router.get("/clients/{client_id}/metrics", response_model=MetricsResponse, tags=["Dashboard"])
+@router.get(
+    "/clients/{client_id}/metrics", response_model=MetricsResponse, tags=["Dashboard"]
+)
 async def get_client_metrics(
     current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
     dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
     client_id: str = Path(..., description="Client identifier"),
-    timeframe: str = Query(default="24h", description="Time range (1h, 6h, 12h, 24h, 7d, 30d)"),
+    timeframe: str = Query(
+        default="24h", description="Time range (1h, 6h, 12h, 24h, 7d, 30d)"
+    ),
 ):
     """
     Get aggregated system metrics for client dashboard.
@@ -312,7 +332,9 @@ async def get_client_metrics(
         # Metric changes calculation would require historical data storage
         changes: Dict[str, Any] = {}  # Placeholder for period-over-period comparison
 
-        return MetricsResponse(metrics=metrics, changes=changes, timestamp=datetime.utcnow())
+        return MetricsResponse(
+            metrics=metrics, changes=changes, timestamp=datetime.utcnow()
+        )
 
     except HTTPException:
         raise
@@ -333,7 +355,9 @@ async def get_client_activity(
     current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
     dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
     client_id: str = Path(..., description="Client identifier"),
-    limit: int = Query(default=50, ge=1, le=100, description="Maximum number of activities"),
+    limit: int = Query(
+        default=50, ge=1, le=100, description="Maximum number of activities"
+    ),
     offset: int = Query(default=0, ge=0, description="Number of activities to skip"),
 ):
     """
@@ -344,7 +368,9 @@ async def get_client_activity(
     """
     try:
         # Get activities (offset handling would be implemented in service layer)
-        activities = await dashboard_service.get_recent_activities(client_id, limit + offset)
+        activities = await dashboard_service.get_recent_activities(
+            client_id, limit + offset
+        )
 
         # Apply pagination
         paginated_activities = activities[offset : offset + limit]
@@ -364,7 +390,9 @@ async def get_client_activity(
         )
 
 
-@router.get("/clients/{client_id}/alerts", response_model=AlertsResponse, tags=["Dashboard"])
+@router.get(
+    "/clients/{client_id}/alerts", response_model=AlertsResponse, tags=["Dashboard"]
+)
 async def get_client_alerts(
     current_user: Annotated[DualAuthUser, Depends(require_dual_auth)],
     dashboard_service: Annotated[DashboardService, Depends(get_dashboard_service)],
@@ -381,7 +409,9 @@ async def get_client_alerts(
 
         # Calculate counts
         unread_count = len([a for a in alerts if not a.resolved])
-        critical_count = len([a for a in alerts if a.severity == "critical" and not a.resolved])
+        critical_count = len(
+            [a for a in alerts if a.severity == "critical" and not a.resolved]
+        )
 
         return AlertsResponse(
             alerts=alerts,
@@ -412,7 +442,9 @@ async def resolve_alert(
     """
     try:
         resolved_by = current_user.email if current_user else "system"
-        success = await dashboard_service.resolve_alert(client_id, alert_id, resolved_by)
+        success = await dashboard_service.resolve_alert(
+            client_id, alert_id, resolved_by
+        )
 
         if not success:
             raise HTTPException(

@@ -163,7 +163,10 @@ class EnhancedClientManager:
                         client_domains.add(variant)
 
             # Alias domains
-            if hasattr(client_config.domains, "aliases") and client_config.domains.aliases:
+            if (
+                hasattr(client_config.domains, "aliases")
+                and client_config.domains.aliases
+            ):
                 for alias_domain in client_config.domains.aliases:
                     alias_domain = normalize_domain(alias_domain)
                     if alias_domain and alias_domain not in [
@@ -197,7 +200,9 @@ class EnhancedClientManager:
             f"for {len(available_clients)} clients"
         )
 
-    async def _convert_summary_to_config(self, summary: ClientSummary) -> Optional[ClientInfo]:
+    async def _convert_summary_to_config(
+        self, summary: ClientSummary
+    ) -> Optional[ClientInfo]:
         """
         Convert ClientSummary to ClientInfo for backward compatibility.
 
@@ -257,7 +262,9 @@ class EnhancedClientManager:
                     # Convert ClientSummary back to ClientInfo for compatibility
                     return await self._convert_summary_to_config(client_summary)
             except Exception as e:
-                logger.warning(f"Failed to get client from repository: {e}, falling back to config")
+                logger.warning(
+                    f"Failed to get client from repository: {e}, falling back to config"
+                )
 
         return self._config_provider.get_client_config(client_id)
 
@@ -276,7 +283,9 @@ class EnhancedClientManager:
         # Use repository if available, otherwise fall back to config manager
         if self._client_repository:
             try:
-                routing_rules = await self._client_repository.get_routing_rules(client_id)
+                routing_rules = await self._client_repository.get_routing_rules(
+                    client_id
+                )
                 if routing_rules:
                     return RoutingRules(routing=routing_rules)
             except Exception as e:
@@ -289,7 +298,9 @@ class EnhancedClientManager:
             return None
 
         # Adapt from the main ClientConfig
-        routing_data = {"routing": {rule.category: rule.email for rule in client_config.routing}}
+        routing_data = {
+            "routing": {rule.category: rule.email for rule in client_config.routing}
+        }
         return RoutingRules(**routing_data)
 
     async def get_client_domains(self, client_id: str) -> Set[str]:
@@ -309,7 +320,9 @@ class EnhancedClientManager:
             try:
                 return await self._client_repository.get_client_domains(client_id)
             except Exception as e:
-                logger.warning(f"Failed to get domains from repository: {e}, falling back to cache")
+                logger.warning(
+                    f"Failed to get domains from repository: {e}, falling back to cache"
+                )
 
         return self._client_to_domains_cache.get(client_id, set())
 
@@ -349,7 +362,9 @@ class EnhancedClientManager:
             for i, level in enumerate(hierarchy[1:], 1):  # Skip first (exact) match
                 client_id = self._domain_to_client_cache.get(level)
                 if client_id:
-                    confidence = max(0.7, 1.0 - (i * 0.1))  # Decrease confidence by depth
+                    confidence = max(
+                        0.7, 1.0 - (i * 0.1)
+                    )  # Decrease confidence by depth
                     logger.debug(
                         f"Hierarchy match: {domain} -> {level} -> {client_id} (confidence: {confidence:.2f})"
                     )
@@ -456,7 +471,9 @@ class EnhancedClientManager:
         result = self.identify_client_by_domain(domain)
         return result.client_id if result.is_successful else None
 
-    async def get_routing_destination(self, client_id: str, category: str) -> Optional[str]:
+    async def get_routing_destination(
+        self, client_id: str, category: str
+    ) -> Optional[str]:
         """
         Get routing destination email for a category.
 
@@ -482,7 +499,9 @@ class EnhancedClientManager:
             if routing_rules is not None and routing_rules.backup_routing:
                 backup_destination = routing_rules.backup_routing.get(category)
                 if backup_destination:
-                    logger.info(f"Using backup routing for {category} -> {backup_destination}")
+                    logger.info(
+                        f"Using backup routing for {category} -> {backup_destination}"
+                    )
                     return backup_destination
 
             # Fallback to general if category not found
@@ -516,7 +535,9 @@ class EnhancedClientManager:
             # Use repository if available, otherwise fall back to config
             if self._client_repository:
                 try:
-                    response_times = await self._client_repository.get_response_times(client_id)
+                    response_times = await self._client_repository.get_response_times(
+                        client_id
+                    )
                     if response_times and category in response_times:
                         response_time_minutes = response_times[category]
                         # Convert to appropriate time unit
@@ -560,7 +581,9 @@ class EnhancedClientManager:
             logger.error(f"Failed to get response time: {e}")
             return "within 24 hours"  # Safe fallback
 
-    def find_similar_clients(self, domain: str, limit: int = 5) -> List[Tuple[str, float]]:
+    def find_similar_clients(
+        self, domain: str, limit: int = 5
+    ) -> List[Tuple[str, float]]:
         """
         Find clients with similar domains.
 
@@ -663,7 +686,9 @@ class EnhancedClientManager:
             required_categories = ["support", "billing", "sales", "general"]
             for category in required_categories:
                 if category not in routing_rules.routing:
-                    logger.warning(f"Missing routing rule for {category} in {client_id}")
+                    logger.warning(
+                        f"Missing routing rule for {category} in {client_id}"
+                    )
 
             # Validate domains
             domains = await self.get_client_domains(client_id)
@@ -726,7 +751,9 @@ class EnhancedClientManager:
                 "status": "active" if client_config.active else "inactive",
                 "domains": list(domains),
                 "primary_domain": client_config.domains.primary,
-                "routing_categories": (list(routing_rules.routing.keys()) if routing_rules else []),
+                "routing_categories": (
+                    list(routing_rules.routing.keys()) if routing_rules else []
+                ),
                 "total_domains": len(domains),
                 "settings": {
                     "ai_classification_enabled": client_config.settings.ai_classification_enabled,

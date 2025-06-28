@@ -298,7 +298,9 @@ class SecurityManager:
                 detail=f"Permission denied: {permission}",
             )
 
-    def require_role(self, security_context: SecurityContext, required_roles: List[str]) -> None:
+    def require_role(
+        self, security_context: SecurityContext, required_roles: List[str]
+    ) -> None:
         """
         Require specific role or raise HTTPException.
 
@@ -315,7 +317,9 @@ class SecurityManager:
                 detail=f"Role requirement not met. Required: {required_roles}",
             )
 
-    def require_client_access(self, security_context: SecurityContext, client_id: str) -> None:
+    def require_client_access(
+        self, security_context: SecurityContext, client_id: str
+    ) -> None:
         """
         Require access to specific client or raise HTTPException.
 
@@ -402,7 +406,10 @@ class SecurityManager:
         self._failed_attempts[ip_address].append(now)
 
         # Check if should block IP
-        if len(self._failed_attempts[ip_address]) >= self.config.alert_threshold_failed_logins:
+        if (
+            len(self._failed_attempts[ip_address])
+            >= self.config.alert_threshold_failed_logins
+        ):
             block_until = now + timedelta(hours=1)  # Block for 1 hour
             self._blocked_ips[ip_address] = block_until
 
@@ -478,7 +485,9 @@ class SecurityManager:
         elif path.startswith("/auth/"):
             # Some auth endpoints require authentication
             authenticated_auth_paths = ["/auth/me", "/auth/sessions", "/auth/users"]
-            if any(path.startswith(auth_path) for auth_path in authenticated_auth_paths):
+            if any(
+                path.startswith(auth_path) for auth_path in authenticated_auth_paths
+            ):
                 return "jwt_only"
             else:
                 return "public"  # login, register, etc.

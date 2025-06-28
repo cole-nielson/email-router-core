@@ -181,7 +181,9 @@ class SecurityContext(BaseModel):
             last_activity=datetime.utcnow(),
         )
 
-    def has_permission(self, permission: str, target_client_id: Optional[str] = None) -> bool:
+    def has_permission(
+        self, permission: str, target_client_id: Optional[str] = None
+    ) -> bool:
         """
         Check if the security context has a specific permission.
 

@@ -130,7 +130,9 @@ class AuthService:
 
             # Check account status
             if user.status != "active":
-                logger.warning(f"Authentication failed: account '{username}' is {user.status}")
+                logger.warning(
+                    f"Authentication failed: account '{username}' is {user.status}"
+                )
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=f"Account is {user.status}",
@@ -143,7 +145,9 @@ class AuthService:
 
                 # Check if we should lock the account
                 if user.login_attempts + 1 >= MAX_LOGIN_ATTEMPTS:
-                    lock_until = datetime.utcnow() + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
+                    lock_until = datetime.utcnow() + timedelta(
+                        minutes=LOCKOUT_DURATION_MINUTES
+                    )
                     await self.user_repository.lock_user_account(
                         user.id, lock_until, "Too many failed login attempts"
                     )
@@ -151,7 +155,9 @@ class AuthService:
                         f"Account '{username}' locked due to {MAX_LOGIN_ATTEMPTS} failed attempts"
                     )
 
-                logger.warning(f"Authentication failed: invalid password for user '{username}'")
+                logger.warning(
+                    f"Authentication failed: invalid password for user '{username}'"
+                )
                 return None
 
             # Check client scope for non-super-admin users
@@ -392,7 +398,9 @@ class AuthService:
         """
         return await self.user_repository.revoke_session(jti, reason)
 
-    async def revoke_all_user_tokens(self, user_id: int, reason: str = "security_action") -> int:
+    async def revoke_all_user_tokens(
+        self, user_id: int, reason: str = "security_action"
+    ) -> int:
         """
         Revoke all active tokens for a user.
 
@@ -534,7 +542,9 @@ class AuthService:
             HTTPException: If authentication fails
         """
         # Authenticate user
-        user = await self.authenticate_user(request.username, request.password, request.client_id)
+        user = await self.authenticate_user(
+            request.username, request.password, request.client_id
+        )
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
@@ -547,7 +557,9 @@ class AuthService:
         # Update session metadata if provided
         if ip_address or user_agent:
             for session_info in [access_result, refresh_result]:
-                session = await self.user_repository.find_session(session_info["claims"]["jti"])
+                session = await self.user_repository.find_session(
+                    session_info["claims"]["jti"]
+                )
                 if session:
                     # Note: This would require adding session metadata update to repository
                     pass

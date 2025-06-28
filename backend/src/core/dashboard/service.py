@@ -98,7 +98,9 @@ class DashboardService:
             logger.error(f"❌ Failed to get client info for {client_id}: {e}")
             raise
 
-    async def get_system_metrics(self, client_id: str, timeframe: str = "24h") -> DashboardMetrics:
+    async def get_system_metrics(
+        self, client_id: str, timeframe: str = "24h"
+    ) -> DashboardMetrics:
         """Get aggregated system metrics for a client."""
         try:
             # Get cached metrics or calculate real ones
@@ -143,7 +145,9 @@ class DashboardService:
             activities = self._activities_cache.get(client_id, [])
 
             # Sort by timestamp (newest first) and limit
-            sorted_activities = sorted(activities, key=lambda x: x.timestamp, reverse=True)
+            sorted_activities = sorted(
+                activities, key=lambda x: x.timestamp, reverse=True
+            )
             return sorted_activities[:limit]
 
         except Exception as e:
@@ -156,7 +160,9 @@ class DashboardService:
             alerts = self._alerts_cache.get(client_id, [])
 
             # Sort by timestamp (newest first) and return unresolved first
-            sorted_alerts = sorted(alerts, key=lambda x: (x.resolved, -x.timestamp.timestamp()))
+            sorted_alerts = sorted(
+                alerts, key=lambda x: (x.resolved, -x.timestamp.timestamp())
+            )
             return sorted_alerts
 
         except Exception as e:
@@ -181,7 +187,9 @@ class DashboardService:
             logger.error(f"❌ Failed to get integrations for {client_id}: {e}")
             return []
 
-    async def resolve_alert(self, client_id: str, alert_id: str, resolved_by: str) -> bool:
+    async def resolve_alert(
+        self, client_id: str, alert_id: str, resolved_by: str
+    ) -> bool:
         """Mark an alert as resolved."""
         try:
             alerts = self._alerts_cache.get(client_id, [])
@@ -206,7 +214,9 @@ class DashboardService:
         try:
             # Map stage to activity type and generate appropriate title/description
             stage = email_data.get("stage", "email_processed")
-            activity_type, title, description = self._get_activity_details(stage, email_data)
+            activity_type, title, description = self._get_activity_details(
+                stage, email_data
+            )
 
             activity = ProcessingActivity(
                 id=str(uuid.uuid4()),
@@ -224,7 +234,9 @@ class DashboardService:
             self._activities_cache[client_id].append(activity)
 
             # Keep only last 1000 activities per client
-            self._activities_cache[client_id] = self._activities_cache[client_id][-1000:]
+            self._activities_cache[client_id] = self._activities_cache[client_id][
+                -1000:
+            ]
 
             # Update metrics
             self._update_metrics_cache(client_id, activity)
@@ -262,7 +274,11 @@ class DashboardService:
             ),
             "delivery_complete": (
                 ActivityType.EMAIL_PROCESSED,
-                ("✅ Email processing complete" if success else "❌ Email processing failed"),
+                (
+                    "✅ Email processing complete"
+                    if success
+                    else "❌ Email processing failed"
+                ),
                 f"Completed processing '{subject}' in {email_data.get('processing_time_ms', 0)}ms",
             ),
             "processing_error": (
@@ -335,7 +351,9 @@ class DashboardService:
 
         # Calculate derived metrics
         avg_response_time = (
-            (total_processing_time / processing_count / 1000) if processing_count > 0 else 3.5
+            (total_processing_time / processing_count / 1000)
+            if processing_count > 0
+            else 3.5
         )
         classification_accuracy = (
             (successful_classifications / classification_attempts)
@@ -405,11 +423,15 @@ class DashboardService:
             if activity_type == ActivityType.EMAIL_PROCESSED:
                 sender = random.choice(senders)
                 title = f"{prefix} {sender}"
-                description = f"Successfully processed and classified email from {sender}"
+                description = (
+                    f"Successfully processed and classified email from {sender}"
+                )
             elif activity_type == ActivityType.CLASSIFICATION_COMPLETE:
                 category = random.choice(categories)
                 title = f"{prefix} {category}"
-                description = f"AI classified email with {random.randint(85, 98)}% confidence"
+                description = (
+                    f"AI classified email with {random.randint(85, 98)}% confidence"
+                )
             elif activity_type == ActivityType.ROUTING_EXECUTED:
                 destination = random.choice(destinations)
                 title = f"{prefix} {destination}"
@@ -421,7 +443,8 @@ class DashboardService:
             activity = ProcessingActivity(
                 id=str(uuid.uuid4()),
                 type=activity_type,
-                timestamp=now - timedelta(minutes=random.randint(1, 1440)),  # Last 24 hours
+                timestamp=now
+                - timedelta(minutes=random.randint(1, 1440)),  # Last 24 hours
                 client_id=client_id,
                 title=title,
                 description=description,
@@ -476,7 +499,9 @@ class DashboardService:
                 message=message,
                 timestamp=now - timedelta(minutes=random.randint(1, 720)),
                 resolved=(
-                    random.choice([True, False]) if severity != AlertSeverity.CRITICAL else False
+                    random.choice([True, False])
+                    if severity != AlertSeverity.CRITICAL
+                    else False
                 ),
                 metadata={"demo": True},
             )
@@ -609,17 +634,23 @@ class DashboardService:
             previous_start = previous_end - period_duration
 
             # Get current period data
-            volume_data = await self.analytics_repository.get_routing_volume_by_category(
-                client_id, start_date, end_date
+            volume_data = (
+                await self.analytics_repository.get_routing_volume_by_category(
+                    client_id, start_date, end_date
+                )
             )
-            avg_processing_time = await self.analytics_repository.get_average_processing_time(
-                client_id, start_date, end_date
+            avg_processing_time = (
+                await self.analytics_repository.get_average_processing_time(
+                    client_id, start_date, end_date
+                )
             )
             error_rate = await self.analytics_repository.get_error_rate(
                 client_id, start_date, end_date
             )
-            confidence_dist = await self.analytics_repository.get_confidence_distribution(
-                client_id, start_date, end_date
+            confidence_dist = (
+                await self.analytics_repository.get_confidence_distribution(
+                    client_id, start_date, end_date
+                )
             )
             escalation_metrics = await self.analytics_repository.get_escalation_metrics(
                 client_id, start_date, end_date
@@ -658,7 +689,11 @@ class DashboardService:
                 },
                 "quality_metrics": {
                     "high_confidence_rate": round(
-                        (confidence_dist.get("high", 0) / max(total_confidence_emails, 1)) * 100,
+                        (
+                            confidence_dist.get("high", 0)
+                            / max(total_confidence_emails, 1)
+                        )
+                        * 100,
                         2,
                     ),
                     "classification_accuracy": round(avg_confidence * 100, 2),
@@ -667,7 +702,9 @@ class DashboardService:
                 "escalation_metrics": {
                     "total_escalations": escalation_metrics.get("total_escalations", 0),
                     "escalation_rate": escalation_metrics.get("escalation_rate", 0.0),
-                    "escalation_reasons": escalation_metrics.get("escalation_reasons", {}),
+                    "escalation_reasons": escalation_metrics.get(
+                        "escalation_reasons", {}
+                    ),
                 },
                 "trends": comparison_data.get(
                     "changes",
@@ -684,7 +721,9 @@ class DashboardService:
             logger.error(f"Failed to calculate dashboard trends: {e}")
             return self._get_fallback_trends(client_id, timeframe)
 
-    async def get_volume_patterns(self, client_id: str, timeframe: str = "7d") -> Dict[str, Any]:
+    async def get_volume_patterns(
+        self, client_id: str, timeframe: str = "7d"
+    ) -> Dict[str, Any]:
         """Get email volume patterns for visualization."""
         if not self.analytics_repository:
             logger.warning("Analytics repository not available, using fallback data")
@@ -705,13 +744,21 @@ class DashboardService:
 
             # Calculate summary statistics
             total_volume = sum(hourly_pattern.values())
-            peak_hour = max(hourly_pattern.items(), key=lambda x: x[1])[0] if hourly_pattern else 9
+            peak_hour = (
+                max(hourly_pattern.items(), key=lambda x: x[1])[0]
+                if hourly_pattern
+                else 9
+            )
             quietest_hour = (
-                min(hourly_pattern.items(), key=lambda x: x[1])[0] if hourly_pattern else 3
+                min(hourly_pattern.items(), key=lambda x: x[1])[0]
+                if hourly_pattern
+                else 3
             )
 
             # Calculate business hours vs after hours
-            business_hours_volume = sum(hourly_pattern.get(hour, 0) for hour in range(9, 18))
+            business_hours_volume = sum(
+                hourly_pattern.get(hour, 0) for hour in range(9, 18)
+            )
             after_hours_volume = total_volume - business_hours_volume
 
             return {
@@ -759,11 +806,15 @@ class DashboardService:
 
             # Calculate domain diversity metrics
             total_unique_domains = len(top_domains)
-            top_domain_concentration = top_domains[0]["percentage"] if top_domains else 0.0
+            top_domain_concentration = (
+                top_domains[0]["percentage"] if top_domains else 0.0
+            )
 
             # Calculate diversity score (1 - Herfindahl index)
             if top_domains:
-                herfindahl_index = sum((domain["percentage"] / 100) ** 2 for domain in top_domains)
+                herfindahl_index = sum(
+                    (domain["percentage"] / 100) ** 2 for domain in top_domains
+                )
                 domain_diversity = round((1 - herfindahl_index) * 100, 2)
             else:
                 domain_diversity = 0.0
@@ -793,14 +844,18 @@ class DashboardService:
             start_date = self._parse_timeframe_to_start_date(timeframe, end_date)
 
             # Get performance data
-            avg_processing_time = await self.analytics_repository.get_average_processing_time(
-                client_id, start_date, end_date
+            avg_processing_time = (
+                await self.analytics_repository.get_average_processing_time(
+                    client_id, start_date, end_date
+                )
             )
             error_rate = await self.analytics_repository.get_error_rate(
                 client_id, start_date, end_date
             )
-            confidence_dist = await self.analytics_repository.get_confidence_distribution(
-                client_id, start_date, end_date
+            confidence_dist = (
+                await self.analytics_repository.get_confidence_distribution(
+                    client_id, start_date, end_date
+                )
             )
             escalation_metrics = await self.analytics_repository.get_escalation_metrics(
                 client_id, start_date, end_date
@@ -862,7 +917,9 @@ class DashboardService:
 
     # Helper methods for analytics
 
-    def _parse_timeframe_to_start_date(self, timeframe: str, end_date: datetime) -> datetime:
+    def _parse_timeframe_to_start_date(
+        self, timeframe: str, end_date: datetime
+    ) -> datetime:
         """Parse timeframe string to start datetime."""
         if timeframe == "1h":
             return end_date - timedelta(hours=1)
@@ -897,10 +954,14 @@ class DashboardService:
         else:
             return "D"
 
-    def _calculate_quality_grade(self, error_rate: float, confidence_dist: Dict[str, int]) -> str:
+    def _calculate_quality_grade(
+        self, error_rate: float, confidence_dist: Dict[str, int]
+    ) -> str:
         """Calculate quality performance grade."""
         total_emails = sum(confidence_dist.values())
-        high_confidence_rate = (confidence_dist.get("high", 0) / max(total_emails, 1)) * 100
+        high_confidence_rate = (
+            confidence_dist.get("high", 0) / max(total_emails, 1)
+        ) * 100
 
         # Combine error rate and confidence for quality score
         quality_score = (100 - error_rate) * 0.4 + high_confidence_rate * 0.6
@@ -1002,13 +1063,19 @@ class DashboardService:
                 "Consider optimizing email processing pipeline - average response time exceeds 5 seconds"
             )
         elif avg_time_ms > 3000:
-            recommendations.append("Monitor processing times - approaching performance threshold")
+            recommendations.append(
+                "Monitor processing times - approaching performance threshold"
+            )
 
         # Error rate recommendations
         if error_rate > 5:
-            recommendations.append("Investigate and address high error rate in email processing")
+            recommendations.append(
+                "Investigate and address high error rate in email processing"
+            )
         elif error_rate > 2:
-            recommendations.append("Review recent errors to prevent issues from escalating")
+            recommendations.append(
+                "Review recent errors to prevent issues from escalating"
+            )
 
         # Confidence recommendations
         total_emails = sum(confidence_dist.values())
@@ -1022,7 +1089,9 @@ class DashboardService:
         # Escalation recommendations
         escalation_rate = escalation_metrics.get("escalation_rate", 0)
         if escalation_rate > 5:
-            recommendations.append("Review escalation triggers - escalation rate may be too high")
+            recommendations.append(
+                "Review escalation triggers - escalation rate may be too high"
+            )
 
         # Add positive feedback if everything is good
         if not recommendations:
@@ -1065,7 +1134,9 @@ class DashboardService:
             },
         }
 
-    def _get_fallback_volume_patterns(self, client_id: str, timeframe: str) -> Dict[str, Any]:
+    def _get_fallback_volume_patterns(
+        self, client_id: str, timeframe: str
+    ) -> Dict[str, Any]:
         """Get fallback volume pattern data when analytics repository is unavailable."""
         # Generate basic pattern
         hourly_pattern = {hour: 0 for hour in range(24)}
@@ -1091,7 +1162,9 @@ class DashboardService:
             "top_domain_concentration": 0.0,
         }
 
-    def _get_fallback_performance_insights(self, client_id: str, timeframe: str) -> Dict[str, Any]:
+    def _get_fallback_performance_insights(
+        self, client_id: str, timeframe: str
+    ) -> Dict[str, Any]:
         """Get fallback performance insights when analytics repository is unavailable."""
         return {
             "processing_performance": {

@@ -297,7 +297,9 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
                     # Use the overridden dependency (for tests)
                     auth_service = app.dependency_overrides[get_auth_service]()
                     request.state.auth_service = auth_service
-                    request.state.db_session = None  # No session to close in override case
+                    request.state.db_session = (
+                        None  # No session to close in override case
+                    )
                 else:
                     # Use regular dependency resolution
                     from core.authentication.auth_service import AuthService
@@ -328,7 +330,9 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
 
             # Skip authentication for public endpoints
             if self._is_public_endpoint(str(request.url.path)):
-                logger.debug(f"Skipping authentication for public endpoint: {request.url.path}")
+                logger.debug(
+                    f"Skipping authentication for public endpoint: {request.url.path}"
+                )
                 response = await call_next(request)
                 self._add_security_headers(response)
                 return response
@@ -364,17 +368,24 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
             self.security_manager.log_security_event(
                 "middleware_error",
                 {"error": str(e), "path": str(request.url.path)},
-                getattr(request.state, "security_context", SecurityContext()).ip_address,
+                getattr(
+                    request.state, "security_context", SecurityContext()
+                ).ip_address,
             )
             logger.error(f"Unified auth middleware error: {e}")
             raise
         finally:
             # Clean up database session if it was created in middleware (not in test overrides)
-            if hasattr(request.state, "db_session") and request.state.db_session is not None:
+            if (
+                hasattr(request.state, "db_session")
+                and request.state.db_session is not None
+            ):
                 try:
                     request.state.db_session.close()
                 except Exception as e:
-                    logger.warning(f"Failed to close database session in middleware: {e}")
+                    logger.warning(
+                        f"Failed to close database session in middleware: {e}"
+                    )
 
     def _is_public_endpoint(self, path: str) -> bool:
         """

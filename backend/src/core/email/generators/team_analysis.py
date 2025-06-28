@@ -86,7 +86,9 @@ class TeamAnalysisGenerator(BaseEmailGenerator):
         """
         try:
             # Compose team analysis prompt using client templates
-            prompt = self._compose_team_analysis_prompt(client_id, email_data, classification)
+            prompt = self._compose_team_analysis_prompt(
+                client_id, email_data, classification
+            )
 
             # Generate team analysis using AI
             analysis = await self._ai_client.call_ai_service(prompt)
@@ -95,7 +97,9 @@ class TeamAnalysisGenerator(BaseEmailGenerator):
             return analysis
 
         except Exception as e:
-            logger.error(f"Client-specific team analysis generation failed for {client_id}: {e}")
+            logger.error(
+                f"Client-specific team analysis generation failed for {client_id}: {e}"
+            )
             raise
 
     async def generate_generic(
@@ -158,7 +162,9 @@ class TeamAnalysisGenerator(BaseEmailGenerator):
             Client-specific fallback team analysis text
         """
         try:
-            fallback_responses = self._config_provider.load_fallback_responses(client_id)
+            fallback_responses = self._config_provider.load_fallback_responses(
+                client_id
+            )
 
             if "team_analysis" in fallback_responses:
                 responses = fallback_responses["team_analysis"]
@@ -168,10 +174,14 @@ class TeamAnalysisGenerator(BaseEmailGenerator):
                     return responses["general"]
 
             # Fall back to hard fallback
-            return self._fallback_provider.get_hard_fallback_response("team_analysis", category)
+            return self._fallback_provider.get_hard_fallback_response(
+                "team_analysis", category
+            )
 
         except Exception:
-            return self._fallback_provider.get_hard_fallback_response("team_analysis", category)
+            return self._fallback_provider.get_hard_fallback_response(
+                "team_analysis", category
+            )
 
     def _compose_team_analysis_prompt(
         self, client_id: str, email_data: Dict[str, Any], classification: Dict[str, Any]
@@ -279,7 +289,9 @@ def get_team_analysis_generator(
             template_validator = get_template_validator()
             template_loader = template_loader or get_template_loader(template_validator)
             template_engine = template_engine or get_template_engine()
-            context_builder = context_builder or get_template_context_builder(client_manager)
+            context_builder = context_builder or get_template_context_builder(
+                client_manager
+            )
 
         get_team_analysis_generator._instance = TeamAnalysisGenerator(
             client_manager,

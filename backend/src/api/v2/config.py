@@ -95,7 +95,9 @@ class ResponseTimeRequest(BaseModel):
 class ResponseTimesResponse(BaseModel):
     """Response model for response times."""
 
-    times: Dict[str, Dict[str, Any]]  # category -> {target_response, business_hours_only}
+    times: Dict[
+        str, Dict[str, Any]
+    ]  # category -> {target_response, business_hours_only}
 
 
 class AIPromptRequest(BaseModel):
@@ -279,7 +281,9 @@ async def delete_routing_rule(
         )
 
     config_bridge = DatabaseConfigBridge(db_session)
-    success = config_bridge.delete_routing_rule(client_id, category, security_context.username)
+    success = config_bridge.delete_routing_rule(
+        client_id, category, security_context.username
+    )
     if not success:
         raise HTTPException(status_code=404, detail="Routing rule not found")
 
@@ -339,7 +343,9 @@ async def update_branding_config(
     branding_data = {k: v for k, v in request.model_dump().items() if v is not None}
 
     config_bridge = DatabaseConfigBridge(db_session)
-    branding = config_bridge.update_branding(client_id, branding_data, security_context.username)
+    branding = config_bridge.update_branding(
+        client_id, branding_data, security_context.username
+    )
     db_session.commit()
 
     return BrandingResponse(
@@ -385,7 +391,9 @@ async def get_response_times(
     return ResponseTimesResponse(times=times_dict)
 
 
-@router.put("/clients/{client_id}/response-times/{category}", response_model=Dict[str, Any])
+@router.put(
+    "/clients/{client_id}/response-times/{category}", response_model=Dict[str, Any]
+)
 async def update_response_time(
     client_id: Annotated[str, Path(description="Client ID")],
     category: Annotated[str, Path(description="Email category")],
@@ -423,7 +431,9 @@ async def update_response_time(
 # =============================================================================
 
 
-@router.get("/clients/{client_id}/ai-prompts/{prompt_type}", response_model=AIPromptResponse)
+@router.get(
+    "/clients/{client_id}/ai-prompts/{prompt_type}", response_model=AIPromptResponse
+)
 async def get_ai_prompt(
     client_id: Annotated[str, Path(description="Client ID")],
     prompt_type: Annotated[str, Path(description="Prompt type")],
@@ -451,7 +461,9 @@ async def get_ai_prompt(
     )
 
 
-@router.put("/clients/{client_id}/ai-prompts/{prompt_type}", response_model=AIPromptResponse)
+@router.put(
+    "/clients/{client_id}/ai-prompts/{prompt_type}", response_model=AIPromptResponse
+)
 async def update_ai_prompt(
     client_id: Annotated[str, Path(description="Client ID")],
     prompt_type: Annotated[str, Path(description="Prompt type")],

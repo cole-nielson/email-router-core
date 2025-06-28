@@ -56,13 +56,17 @@ class User(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Authentication fields
-    username = Column(String(50), nullable=False, unique=True)  # Unique login identifier
+    username = Column(
+        String(50), nullable=False, unique=True
+    )  # Unique login identifier
     email = Column(String(200), nullable=False, unique=True)
     password_hash = Column(String(255), nullable=False)  # bcrypt hash
 
     # User information
     full_name = Column(String(200), nullable=False)
-    role: Column[UserRole] = Column(Enum(UserRole), nullable=False, default=UserRole.CLIENT_USER)
+    role: Column[UserRole] = Column(
+        Enum(UserRole), nullable=False, default=UserRole.CLIENT_USER
+    )
     status: Column[UserStatus] = Column(
         Enum(UserStatus), nullable=False, default=UserStatus.PENDING
     )
@@ -81,7 +85,9 @@ class User(Base):
 
     # Audit fields
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     # API access for agents
@@ -99,7 +105,9 @@ class User(Base):
         cascade="all, delete-orphan",
         primaryjoin="User.id == UserPermission.user_id",
     )
-    sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
+    sessions = relationship(
+        "UserSession", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class UserPermission(Base):
@@ -178,11 +186,15 @@ class Client(Base):
     business_hours = Column(String(20), nullable=False, default="9-17")
 
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     # Relationships
     users = relationship("User", back_populates="client", cascade="all, delete-orphan")
-    domains = relationship("ClientDomain", back_populates="client", cascade="all, delete-orphan")
+    domains = relationship(
+        "ClientDomain", back_populates="client", cascade="all, delete-orphan"
+    )
     branding = relationship(
         "ClientBranding",
         back_populates="client",
@@ -195,8 +207,12 @@ class Client(Base):
     response_times = relationship(
         "ResponseTime", back_populates="client", cascade="all, delete-orphan"
     )
-    ai_prompts = relationship("AIPrompt", back_populates="client", cascade="all, delete-orphan")
-    settings = relationship("ClientSetting", back_populates="client", cascade="all, delete-orphan")
+    ai_prompts = relationship(
+        "AIPrompt", back_populates="client", cascade="all, delete-orphan"
+    )
+    settings = relationship(
+        "ClientSetting", back_populates="client", cascade="all, delete-orphan"
+    )
     routing_history = relationship(
         "RoutingHistory", back_populates="client", cascade="all, delete-orphan"
     )
@@ -225,7 +241,9 @@ class ClientBranding(Base):
     __tablename__ = "client_branding"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    client_id = Column(String(100), ForeignKey("clients.id"), nullable=False, unique=True)
+    client_id = Column(
+        String(100), ForeignKey("clients.id"), nullable=False, unique=True
+    )
 
     company_name = Column(String(200), nullable=False)
     primary_color = Column(String(7), nullable=False, default="#667eea")  # Hex color
@@ -237,7 +255,9 @@ class ClientBranding(Base):
     # Extended color palette stored as JSON
     colors = Column(JSON, nullable=True)
 
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     # Relationships
     client = relationship("Client", back_populates="branding")
@@ -259,7 +279,9 @@ class RoutingRule(Base):
     escalation_rules = Column(JSON, nullable=True)
 
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     # Relationships
     client = relationship("Client", back_populates="routing_rules")
@@ -273,11 +295,15 @@ class ResponseTime(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     client_id = Column(String(100), ForeignKey("clients.id"), nullable=False)
 
-    category = Column(String(50), nullable=False)  # support, billing, sales, general, urgent
+    category = Column(
+        String(50), nullable=False
+    )  # support, billing, sales, general, urgent
     target_response = Column(String(50), nullable=False)  # "within 4 hours"
     business_hours_only = Column(Boolean, nullable=False, default=True)
 
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     # Relationships
     client = relationship("Client", back_populates="response_times")
@@ -300,7 +326,9 @@ class AIPrompt(Base):
     is_active = Column(Boolean, nullable=False, default=True)
 
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     # Relationships
     client = relationship("Client", back_populates="ai_prompts")
@@ -317,7 +345,9 @@ class ClientSetting(Base):
     setting_key = Column(String(100), nullable=False)
     setting_value = Column(JSON, nullable=True)  # Flexible value storage
 
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     # Relationships
     client = relationship("Client", back_populates="settings")
@@ -392,7 +422,9 @@ class RoutingHistory(Base):
 
     # Routing performance
     processing_time_ms = Column(Integer, nullable=True)  # Total processing time
-    classification_time_ms = Column(Integer, nullable=True)  # Time for AI classification
+    classification_time_ms = Column(
+        Integer, nullable=True
+    )  # Time for AI classification
     routing_time_ms = Column(Integer, nullable=True)  # Time for routing decision
 
     # Business context
@@ -406,11 +438,15 @@ class RoutingHistory(Base):
     error_details = Column(Text, nullable=True)
 
     # Additional metadata for future analysis
-    additional_metadata = Column(JSON, nullable=True)  # Flexible storage for additional data
+    additional_metadata = Column(
+        JSON, nullable=True
+    )  # Flexible storage for additional data
 
     # Timestamps
     routed_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     # Relationships
-    client = relationship("Client", back_populates="routing_history", foreign_keys=[client_id])
+    client = relationship(
+        "Client", back_populates="routing_history", foreign_keys=[client_id]
+    )

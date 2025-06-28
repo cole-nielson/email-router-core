@@ -70,7 +70,9 @@ class SQLAlchemyClientRepository(ClientRepository):
         )
 
         # Get routing categories
-        routing_categories = [rule.category for rule in client.routing_rules if rule.is_active]
+        routing_categories = [
+            rule.category for rule in client.routing_rules if rule.is_active
+        ]
 
         # Get settings
         settings = {}
@@ -108,13 +110,19 @@ class SQLAlchemyClientRepository(ClientRepository):
         """Find client by domain."""
         try:
             domain_record = (
-                self.db.query(ClientDomain).filter(ClientDomain.domain_value == domain).first()
+                self.db.query(ClientDomain)
+                .filter(ClientDomain.domain_value == domain)
+                .first()
             )
 
             if not domain_record:
                 return None
 
-            client = self.db.query(Client).filter(Client.id == domain_record.client_id).first()
+            client = (
+                self.db.query(Client)
+                .filter(Client.id == domain_record.client_id)
+                .first()
+            )
             return self._client_to_domain_model(client) if client else None
         except Exception as e:
             logger.error(f"Error finding client by domain {domain}: {e}")
@@ -175,10 +183,14 @@ class SQLAlchemyClientRepository(ClientRepository):
         try:
             # Check for existing client ID
             existing_client = (
-                self.db.query(Client).filter(Client.id == client_data["client_id"]).first()
+                self.db.query(Client)
+                .filter(Client.id == client_data["client_id"])
+                .first()
             )
             if existing_client:
-                raise ConflictError(f"Client ID '{client_data['client_id']}' already exists")
+                raise ConflictError(
+                    f"Client ID '{client_data['client_id']}' already exists"
+                )
 
             # Create new client
             new_client = Client(
@@ -205,7 +217,9 @@ class SQLAlchemyClientRepository(ClientRepository):
             logger.error(f"Error creating client {client_data.get('client_id')}: {e}")
             raise ValueError(f"Failed to create client: {e}")
 
-    async def update_client(self, client_id: str, client_data: Dict) -> Optional[ClientSummary]:
+    async def update_client(
+        self, client_id: str, client_data: Dict
+    ) -> Optional[ClientSummary]:
         """Update an existing client."""
         try:
             client = self.db.query(Client).filter(Client.id == client_id).first()
@@ -299,18 +313,26 @@ class SQLAlchemyClientRepository(ClientRepository):
     async def get_client_domains(self, client_id: str) -> Set[str]:
         """Get all domains associated with a client."""
         try:
-            domains = self.db.query(ClientDomain).filter(ClientDomain.client_id == client_id).all()
+            domains = (
+                self.db.query(ClientDomain)
+                .filter(ClientDomain.client_id == client_id)
+                .all()
+            )
             return {domain.domain_value for domain in domains}
         except Exception as e:
             logger.error(f"Error getting domains for client {client_id}: {e}")
             return set()
 
-    async def add_client_domain(self, client_id: str, domain: str, domain_type: str) -> bool:
+    async def add_client_domain(
+        self, client_id: str, domain: str, domain_type: str
+    ) -> bool:
         """Add a domain to a client."""
         try:
             # Check if domain already exists
             existing = (
-                self.db.query(ClientDomain).filter(ClientDomain.domain_value == domain).first()
+                self.db.query(ClientDomain)
+                .filter(ClientDomain.domain_value == domain)
+                .first()
             )
 
             if existing:
@@ -357,7 +379,9 @@ class SQLAlchemyClientRepository(ClientRepository):
             logger.error(f"Error removing domain {domain} from client {client_id}: {e}")
             return False
 
-    async def update_domain_type(self, client_id: str, domain: str, domain_type: str) -> bool:
+    async def update_domain_type(
+        self, client_id: str, domain: str, domain_type: str
+    ) -> bool:
         """Update the type of a domain."""
         try:
             domain_record = (
@@ -375,12 +399,16 @@ class SQLAlchemyClientRepository(ClientRepository):
             domain_record.domain_type = domain_type
             self.db.commit()
 
-            logger.info(f"Updated domain {domain} type to {domain_type} for client {client_id}")
+            logger.info(
+                f"Updated domain {domain} type to {domain_type} for client {client_id}"
+            )
             return True
 
         except Exception as e:
             self.db.rollback()
-            logger.error(f"Error updating domain type for {domain} in client {client_id}: {e}")
+            logger.error(
+                f"Error updating domain type for {domain} in client {client_id}: {e}"
+            )
             return False
 
     async def find_clients_by_domain_pattern(self, pattern: str) -> List[ClientSummary]:
@@ -410,7 +438,9 @@ class SQLAlchemyClientRepository(ClientRepository):
         try:
             rules = (
                 self.db.query(RoutingRule)
-                .filter(RoutingRule.client_id == client_id, RoutingRule.is_active == True)
+                .filter(
+                    RoutingRule.client_id == client_id, RoutingRule.is_active == True
+                )
                 .all()
             )
 
@@ -423,12 +453,16 @@ class SQLAlchemyClientRepository(ClientRepository):
             logger.error(f"Error getting routing rules for client {client_id}: {e}")
             return None
 
-    async def update_routing_rule(self, client_id: str, category: str, email: str) -> bool:
+    async def update_routing_rule(
+        self, client_id: str, category: str, email: str
+    ) -> bool:
         """Update a routing rule for a client."""
         try:
             rule = (
                 self.db.query(RoutingRule)
-                .filter(RoutingRule.client_id == client_id, RoutingRule.category == category)
+                .filter(
+                    RoutingRule.client_id == client_id, RoutingRule.category == category
+                )
                 .first()
             )
 
@@ -453,7 +487,9 @@ class SQLAlchemyClientRepository(ClientRepository):
             # Check if rule already exists
             existing = (
                 self.db.query(RoutingRule)
-                .filter(RoutingRule.client_id == client_id, RoutingRule.category == category)
+                .filter(
+                    RoutingRule.client_id == client_id, RoutingRule.category == category
+                )
                 .first()
             )
 
@@ -464,7 +500,9 @@ class SQLAlchemyClientRepository(ClientRepository):
                 existing.updated_at = datetime.utcnow()
             else:
                 # Create new rule
-                rule = RoutingRule(client_id=client_id, category=category, email_address=email)
+                rule = RoutingRule(
+                    client_id=client_id, category=category, email_address=email
+                )
                 self.db.add(rule)
 
             self.db.commit()
@@ -482,7 +520,9 @@ class SQLAlchemyClientRepository(ClientRepository):
         try:
             rule = (
                 self.db.query(RoutingRule)
-                .filter(RoutingRule.client_id == client_id, RoutingRule.category == category)
+                .filter(
+                    RoutingRule.client_id == client_id, RoutingRule.category == category
+                )
                 .first()
             )
 
@@ -536,7 +576,9 @@ class SQLAlchemyClientRepository(ClientRepository):
         """Get branding configuration for a client."""
         try:
             branding = (
-                self.db.query(ClientBranding).filter(ClientBranding.client_id == client_id).first()
+                self.db.query(ClientBranding)
+                .filter(ClientBranding.client_id == client_id)
+                .first()
             )
 
             if not branding:
@@ -560,7 +602,9 @@ class SQLAlchemyClientRepository(ClientRepository):
         """Update branding configuration for a client."""
         try:
             branding = (
-                self.db.query(ClientBranding).filter(ClientBranding.client_id == client_id).first()
+                self.db.query(ClientBranding)
+                .filter(ClientBranding.client_id == client_id)
+                .first()
             )
 
             if not branding:
@@ -603,7 +647,9 @@ class SQLAlchemyClientRepository(ClientRepository):
         """Get response time SLAs for a client."""
         try:
             response_times = (
-                self.db.query(ResponseTime).filter(ResponseTime.client_id == client_id).all()
+                self.db.query(ResponseTime)
+                .filter(ResponseTime.client_id == client_id)
+                .all()
             )
 
             if not response_times:
@@ -632,7 +678,9 @@ class SQLAlchemyClientRepository(ClientRepository):
             logger.error(f"Error getting response times for client {client_id}: {e}")
             return None
 
-    async def update_response_time(self, client_id: str, category: str, minutes: int) -> bool:
+    async def update_response_time(
+        self, client_id: str, category: str, minutes: int
+    ) -> bool:
         """Update response time SLA for a client category."""
         try:
             response_time = (
@@ -699,7 +747,9 @@ class SQLAlchemyClientRepository(ClientRepository):
             logger.error(f"Error getting AI prompts for client {client_id}: {e}")
             return None
 
-    async def update_ai_prompt(self, client_id: str, prompt_type: str, content: str) -> bool:
+    async def update_ai_prompt(
+        self, client_id: str, prompt_type: str, content: str
+    ) -> bool:
         """Update AI prompt for a client."""
         try:
             # Deactivate existing prompts of this type
@@ -708,7 +758,9 @@ class SQLAlchemyClientRepository(ClientRepository):
             ).update({"is_active": False})
 
             # Create new prompt
-            prompt = AIPrompt(client_id=client_id, prompt_type=prompt_type, prompt_content=content)
+            prompt = AIPrompt(
+                client_id=client_id, prompt_type=prompt_type, prompt_content=content
+            )
 
             self.db.add(prompt)
             self.db.commit()
@@ -729,7 +781,9 @@ class SQLAlchemyClientRepository(ClientRepository):
         """Get settings for a client."""
         try:
             settings = (
-                self.db.query(ClientSetting).filter(ClientSetting.client_id == client_id).all()
+                self.db.query(ClientSetting)
+                .filter(ClientSetting.client_id == client_id)
+                .all()
             )
 
             if not settings:
@@ -813,7 +867,9 @@ class SQLAlchemyClientRepository(ClientRepository):
 
         except Exception as e:
             self.db.rollback()
-            logger.error(f"Error logging configuration change for client {client_id}: {e}")
+            logger.error(
+                f"Error logging configuration change for client {client_id}: {e}"
+            )
 
     async def get_configuration_changes(
         self, client_id: str, limit: int = 50, offset: int = 0
@@ -845,5 +901,7 @@ class SQLAlchemyClientRepository(ClientRepository):
             ]
 
         except Exception as e:
-            logger.error(f"Error getting configuration changes for client {client_id}: {e}")
+            logger.error(
+                f"Error getting configuration changes for client {client_id}: {e}"
+            )
             return []

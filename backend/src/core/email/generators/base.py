@@ -19,7 +19,9 @@ class BaseEmailGenerator(ABC):
     for all email generation classes in the system.
     """
 
-    def __init__(self, client_manager: Any, ai_client: Any, fallback_provider: Any) -> None:
+    def __init__(
+        self, client_manager: Any, ai_client: Any, fallback_provider: Any
+    ) -> None:
         """
         Initialize the base email generator.
 
@@ -149,14 +151,18 @@ class BaseEmailGenerator(ABC):
                         email_data, classification, client_id
                     )
                 except Exception as e:
-                    logger.warning(f"Client-specific generation failed for {client_id}: {e}")
+                    logger.warning(
+                        f"Client-specific generation failed for {client_id}: {e}"
+                    )
                     # Try client-specific fallback
                     try:
                         return self.get_client_fallback_response(
                             client_id, classification.get("category", "general")
                         )
                     except Exception as fallback_e:
-                        logger.warning(f"Client fallback failed for {client_id}: {fallback_e}")
+                        logger.warning(
+                            f"Client fallback failed for {client_id}: {fallback_e}"
+                        )
 
             # Fall back to generic generation
             try:

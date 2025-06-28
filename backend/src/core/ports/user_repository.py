@@ -209,7 +209,9 @@ class UserRepository(ABC):
         pass
 
     @abstractmethod
-    async def lock_user_account(self, user_id: int, lock_until: datetime, reason: str) -> None:
+    async def lock_user_account(
+        self, user_id: int, lock_until: datetime, reason: str
+    ) -> None:
         """
         Lock user account until specified time.
 
@@ -245,7 +247,9 @@ class UserRepository(ABC):
         pass
 
     @abstractmethod
-    async def update_last_login(self, user_id: int, login_time: Optional[datetime] = None) -> None:
+    async def update_last_login(
+        self, user_id: int, login_time: Optional[datetime] = None
+    ) -> None:
         """
         Update user's last login timestamp.
 
@@ -340,7 +344,9 @@ class UserRepository(ABC):
         pass
 
     @abstractmethod
-    async def list_user_sessions(self, user_id: int, active_only: bool = True) -> List[UserSession]:
+    async def list_user_sessions(
+        self, user_id: int, active_only: bool = True
+    ) -> List[UserSession]:
         """
         List sessions for a user.
 
@@ -354,7 +360,9 @@ class UserRepository(ABC):
         pass
 
     @abstractmethod
-    async def update_refresh_token_hash(self, user_id: int, token_hash: Optional[str]) -> None:
+    async def update_refresh_token_hash(
+        self, user_id: int, token_hash: Optional[str]
+    ) -> None:
         """
         Update user's refresh token hash.
 

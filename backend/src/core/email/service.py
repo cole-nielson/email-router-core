@@ -44,7 +44,9 @@ class EmailService:
     - Maintains backward compatibility with existing APIs
     """
 
-    def __init__(self, config_provider: ConfigurationProvider, client_manager: ClientManager):
+    def __init__(
+        self, config_provider: ConfigurationProvider, client_manager: ClientManager
+    ):
         """
         Initialize the email service orchestrator.
 
@@ -57,7 +59,9 @@ class EmailService:
         self._branding_manager = get_branding_manager()
         self._template_validator = get_template_validator()
         self._context_builder = TemplateContextBuilder(client_manager)
-        self._template_loader = get_template_loader(self.config_provider, self._template_validator)
+        self._template_loader = get_template_loader(
+            self.config_provider, self._template_validator
+        )
         self._template_engine = get_template_engine()
         self._ai_client = get_ai_client()
         self._fallback_provider = get_fallback_response_provider()
@@ -99,7 +103,9 @@ class EmailService:
         Returns:
             Generated acknowledgment text
         """
-        return await self._acknowledgment_generator.generate(email_data, classification, client_id)
+        return await self._acknowledgment_generator.generate(
+            email_data, classification, client_id
+        )
 
     async def generate_team_analysis(
         self,
@@ -118,7 +124,9 @@ class EmailService:
         Returns:
             Generated team analysis text
         """
-        return await self._team_analysis_generator.generate(email_data, classification, client_id)
+        return await self._team_analysis_generator.generate(
+            email_data, classification, client_id
+        )
 
     async def generate_plain_text_emails(
         self,
@@ -144,12 +152,16 @@ class EmailService:
             )
 
             # Generate team analysis (keep as structured content for internal use)
-            team_content = await self.generate_team_analysis(email_data, classification, client_id)
+            team_content = await self.generate_team_analysis(
+                email_data, classification, client_id
+            )
 
             # For team analysis, apply HTML branding for internal readability
             if client_id:
                 client_config = self.client_manager.get_client_config(client_id)
-                branding = self._branding_manager.load_client_branding(client_id, client_config)
+                branding = self._branding_manager.load_client_branding(
+                    client_id, client_config
+                )
             else:
                 branding = _get_default_branding()
 
@@ -175,15 +187,21 @@ class EmailService:
         except Exception as e:
             logger.error(f"Plain text email generation failed: {e}")
             # Return basic fallback responses
-            customer_fallback = self._acknowledgment_generator.get_fallback_response(classification)
-            team_fallback = self._team_analysis_generator.get_fallback_response(classification)
+            customer_fallback = self._acknowledgment_generator.get_fallback_response(
+                classification
+            )
+            team_fallback = self._team_analysis_generator.get_fallback_response(
+                classification
+            )
             return customer_fallback, team_fallback
 
     # =============================================================================
     # TEMPLATE AND UTILITY SERVICES
     # =============================================================================
 
-    def compose_classification_prompt(self, client_id: str, email_data: Dict[str, Any]) -> str:
+    def compose_classification_prompt(
+        self, client_id: str, email_data: Dict[str, Any]
+    ) -> str:
         """
         Compose classification prompt for a client.
 
@@ -199,7 +217,9 @@ class EmailService:
             template = self._template_loader.load_template(client_id, "classification")
 
             logger.debug(f"Preparing template context for {client_id}")
-            context = self._context_builder.prepare_template_context(client_id, email_data)
+            context = self._context_builder.prepare_template_context(
+                client_id, email_data
+            )
 
             logger.debug(f"Injecting template variables for {client_id}")
             prompt = self._template_engine.inject_variables(template, context)
@@ -212,19 +232,25 @@ class EmailService:
                 )
                 logger.debug(f"Full template context keys: {list(context.keys())}")
 
-            logger.info(f"✅ Composed classification prompt for {client_id} ({len(prompt)} chars)")
+            logger.info(
+                f"✅ Composed classification prompt for {client_id} ({len(prompt)} chars)"
+            )
             logger.debug(f"Classification prompt preview: {prompt[:200]}...")
             return prompt
 
         except Exception as e:
-            logger.error(f"❌ Failed to compose classification prompt for {client_id}: {e}")
+            logger.error(
+                f"❌ Failed to compose classification prompt for {client_id}: {e}"
+            )
             logger.debug(f"Exception details: {str(e)}", exc_info=True)
 
             # Fallback to basic classification prompt
             logger.warning(f"Using fallback classification prompt for {client_id}")
             return self._get_fallback_classification_prompt(email_data)
 
-    def validate_template(self, template_content: str, client_id: str = None) -> ValidationResult:
+    def validate_template(
+        self, template_content: str, client_id: str = None
+    ) -> ValidationResult:
         """
         Validate template content for correctness and security.
 
@@ -262,10 +288,14 @@ class EmailService:
                     return responses["general"]
 
             # Hard fallback
-            return self._fallback_provider.get_hard_fallback_response(response_type, category)
+            return self._fallback_provider.get_hard_fallback_response(
+                response_type, category
+            )
 
         except Exception:
-            return self._fallback_provider.get_hard_fallback_response(response_type, category)
+            return self._fallback_provider.get_hard_fallback_response(
+                response_type, category
+            )
 
     def clear_cache(self):
         """Clear all caches."""
@@ -328,4 +358,6 @@ async def generate_plain_text_emails(
 ) -> Tuple[str, str]:
     """Generate human-like plain text customer response and HTML team analysis."""
     email_service = get_email_service()
-    return await email_service.generate_plain_text_emails(email_data, classification, client_id)
+    return await email_service.generate_plain_text_emails(
+        email_data, classification, client_id
+    )

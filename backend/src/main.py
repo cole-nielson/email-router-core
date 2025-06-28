@@ -43,7 +43,9 @@ from infrastructure.logging.logger import configure_logging, get_logger  # type:
 
 # Get configuration and set up logging
 config = get_app_config()
-configure_logging(level=config.server.log_level.value, format_string=config.server.log_format)
+configure_logging(
+    level=config.server.log_level.value, format_string=config.server.log_format
+)
 logger = get_logger(__name__)
 
 from api.v1.auth import router as auth_router  # type: ignore
@@ -412,17 +414,25 @@ async def health_check():
         config_manager = get_config_manager()
 
         # Test AI service
-        ai_status = "healthy" if config_manager.is_service_available("anthropic") else "degraded"
+        ai_status = (
+            "healthy"
+            if config_manager.is_service_available("anthropic")
+            else "degraded"
+        )
 
         # Test email service
-        email_status = "healthy" if config_manager.is_service_available("mailgun") else "degraded"
+        email_status = (
+            "healthy" if config_manager.is_service_available("mailgun") else "degraded"
+        )
 
         # Calculate response time
         response_time_ms = int((time.time() - start_time) * 1000)
 
         health_data = HealthResponse(
             status=(
-                "healthy" if ai_status == "healthy" and email_status == "healthy" else "degraded"
+                "healthy"
+                if ai_status == "healthy" and email_status == "healthy"
+                else "degraded"
             ),
             timestamp=datetime.utcnow(),
             version=config.app_version,
@@ -480,7 +490,9 @@ async def detailed_health_check():
         ai_response_time = time.time()
         components["ai_classifier"] = {
             "status": (
-                "healthy" if config_manager.is_service_available("anthropic") else "degraded"
+                "healthy"
+                if config_manager.is_service_available("anthropic")
+                else "degraded"
             ),
             "response_time_ms": int((time.time() - ai_response_time) * 1000),
             "details": (
@@ -493,7 +505,11 @@ async def detailed_health_check():
         # Email Service Health
         email_response_time = time.time()
         components["email_service"] = {
-            "status": ("healthy" if config_manager.is_service_available("mailgun") else "degraded"),
+            "status": (
+                "healthy"
+                if config_manager.is_service_available("mailgun")
+                else "degraded"
+            ),
             "response_time_ms": int((time.time() - email_response_time) * 1000),
             "details": (
                 f"Mailgun service for {config.services.mailgun_domain}"
@@ -659,5 +675,9 @@ async def global_exception_handler(request: Request, exc: Exception):
 if __name__ == "__main__":
     import uvicorn
 
-    logger.info(f"Starting Email Router SaaS API {config.app_version} on port {config.server.port}")
-    uvicorn.run("src.main:app", host=config.server.host, port=config.server.port, reload=False)
+    logger.info(
+        f"Starting Email Router SaaS API {config.app_version} on port {config.server.port}"
+    )
+    uvicorn.run(
+        "src.main:app", host=config.server.host, port=config.server.port, reload=False
+    )

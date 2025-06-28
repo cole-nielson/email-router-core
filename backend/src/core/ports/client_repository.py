@@ -122,7 +122,9 @@ class ClientRepository(ABC):
         pass
 
     @abstractmethod
-    async def update_client(self, client_id: str, client_data: Dict) -> Optional[ClientSummary]:
+    async def update_client(
+        self, client_id: str, client_data: Dict
+    ) -> Optional[ClientSummary]:
         """
         Update an existing client.
 
@@ -195,7 +197,9 @@ class ClientRepository(ABC):
         pass
 
     @abstractmethod
-    async def add_client_domain(self, client_id: str, domain: str, domain_type: str) -> bool:
+    async def add_client_domain(
+        self, client_id: str, domain: str, domain_type: str
+    ) -> bool:
         """
         Add a domain to a client.
 
@@ -224,7 +228,9 @@ class ClientRepository(ABC):
         pass
 
     @abstractmethod
-    async def update_domain_type(self, client_id: str, domain: str, domain_type: str) -> bool:
+    async def update_domain_type(
+        self, client_id: str, domain: str, domain_type: str
+    ) -> bool:
         """
         Update the type of a domain.
 
@@ -269,7 +275,9 @@ class ClientRepository(ABC):
         pass
 
     @abstractmethod
-    async def update_routing_rule(self, client_id: str, category: str, email: str) -> bool:
+    async def update_routing_rule(
+        self, client_id: str, category: str, email: str
+    ) -> bool:
         """
         Update a routing rule for a client.
 
@@ -374,7 +382,9 @@ class ClientRepository(ABC):
         pass
 
     @abstractmethod
-    async def update_response_time(self, client_id: str, category: str, minutes: int) -> bool:
+    async def update_response_time(
+        self, client_id: str, category: str, minutes: int
+    ) -> bool:
         """
         Update response time SLA for a client category.
 
@@ -406,7 +416,9 @@ class ClientRepository(ABC):
         pass
 
     @abstractmethod
-    async def update_ai_prompt(self, client_id: str, prompt_type: str, content: str) -> bool:
+    async def update_ai_prompt(
+        self, client_id: str, prompt_type: str, content: str
+    ) -> bool:
         """
         Update AI prompt for a client.
 

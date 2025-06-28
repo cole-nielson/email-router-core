@@ -95,7 +95,9 @@ class SQLAlchemyAnalyticsRepository(AnalyticsRepository):
                 priority_level=routing_result.get("priority"),
                 # Routing performance
                 processing_time_ms=performance_metrics.get("total_time_ms"),
-                classification_time_ms=performance_metrics.get("classification_time_ms"),
+                classification_time_ms=performance_metrics.get(
+                    "classification_time_ms"
+                ),
                 routing_time_ms=performance_metrics.get("routing_time_ms"),
                 # Business context
                 business_hours=business_hours,
@@ -166,7 +168,9 @@ class SQLAlchemyAnalyticsRepository(AnalyticsRepository):
                 query = query.filter(RoutingHistory.category == category)
 
             # Order by most recent first and limit
-            routing_records = query.order_by(desc(RoutingHistory.routed_at)).limit(limit).all()
+            routing_records = (
+                query.order_by(desc(RoutingHistory.routed_at)).limit(limit).all()
+            )
 
             # Convert to dictionaries
             result = []
@@ -255,7 +259,9 @@ class SQLAlchemyAnalyticsRepository(AnalyticsRepository):
             # Average confidence (exclude None values)
             avg_confidence_result = (
                 base_query.filter(RoutingHistory.confidence_level.isnot(None))
-                .with_entities(func.avg(RoutingHistory.confidence_level).label("avg_confidence"))
+                .with_entities(
+                    func.avg(RoutingHistory.confidence_level).label("avg_confidence")
+                )
                 .first()
             )
             avg_confidence = (
@@ -278,7 +284,9 @@ class SQLAlchemyAnalyticsRepository(AnalyticsRepository):
 
             # Fallback usage
             fallback_count = base_query.filter(RoutingHistory.fallback_used).count()
-            fallback_rate = (fallback_count / total_emails * 100) if total_emails > 0 else 0.0
+            fallback_rate = (
+                (fallback_count / total_emails * 100) if total_emails > 0 else 0.0
+            )
 
             return {
                 "client_id": client_id,
@@ -325,8 +333,12 @@ class SQLAlchemyAnalyticsRepository(AnalyticsRepository):
 
             # Calculate averages
             performance_stats = perf_query.with_entities(
-                func.avg(RoutingHistory.processing_time_ms).label("avg_processing_time"),
-                func.avg(RoutingHistory.classification_time_ms).label("avg_classification_time"),
+                func.avg(RoutingHistory.processing_time_ms).label(
+                    "avg_processing_time"
+                ),
+                func.avg(RoutingHistory.classification_time_ms).label(
+                    "avg_classification_time"
+                ),
                 func.avg(RoutingHistory.routing_time_ms).label("avg_routing_time"),
                 func.count(RoutingHistory.id).label("total_with_metrics"),
             ).first()

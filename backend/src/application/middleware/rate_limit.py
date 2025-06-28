@@ -120,13 +120,17 @@ class RateLimitStorage:
 
         # Remove old buckets that haven't been used recently
         cutoff = now - 3600  # 1 hour
-        old_buckets = [key for key, bucket in self.buckets.items() if bucket.last_update < cutoff]
+        old_buckets = [
+            key for key, bucket in self.buckets.items() if bucket.last_update < cutoff
+        ]
 
         for key in old_buckets:
             del self.buckets[key]
 
         # Clean up expired blocked IPs
-        expired_ips = [ip for ip, expiry in self.blocked_ips.items() if datetime.utcnow() >= expiry]
+        expired_ips = [
+            ip for ip, expiry in self.blocked_ips.items() if datetime.utcnow() >= expiry
+        ]
 
         for ip in expired_ips:
             del self.blocked_ips[ip]
@@ -171,7 +175,9 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
 
             config = get_app_config()
 
-            self.calls_per_minute = calls_per_minute or config.security.api_rate_limit_per_minute
+            self.calls_per_minute = (
+                calls_per_minute or config.security.api_rate_limit_per_minute
+            )
             self.burst_limit = burst_limit or max(
                 10, self.calls_per_minute // 6
             )  # 1/6 of per-minute limit
@@ -347,12 +353,16 @@ def get_rate_limit_info(client_identifier: str) -> Dict:
         return {
             "sustained": {
                 "limit": 60,  # calls per minute
-                "remaining": (int(sustained_bucket.remaining_tokens()) if sustained_bucket else 60),
+                "remaining": (
+                    int(sustained_bucket.remaining_tokens()) if sustained_bucket else 60
+                ),
                 "reset_time": datetime.utcnow() + timedelta(minutes=1),
             },
             "burst": {
                 "limit": 10,  # calls per 10 seconds
-                "remaining": (int(burst_bucket.remaining_tokens()) if burst_bucket else 10),
+                "remaining": (
+                    int(burst_bucket.remaining_tokens()) if burst_bucket else 10
+                ),
                 "reset_time": datetime.utcnow() + timedelta(seconds=10),
             },
             "request_rate": storage.get_request_rate(client_identifier),

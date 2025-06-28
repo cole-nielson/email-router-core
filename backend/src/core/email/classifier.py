@@ -31,7 +31,9 @@ class AIClassifier:
     - Confidence scoring and detailed reasoning
     """
 
-    def __init__(self, config_provider: ConfigurationProvider, client_manager: ClientManager):
+    def __init__(
+        self, config_provider: ConfigurationProvider, client_manager: ClientManager
+    ):
         """
         Initialize dynamic classifier.
 
@@ -61,7 +63,9 @@ class AIClassifier:
             if not client_id:
                 client_id = self._identify_client_from_email(email_data)
                 if not client_id:
-                    logger.warning("No client identified for email, using fallback classification")
+                    logger.warning(
+                        "No client identified for email, using fallback classification"
+                    )
                     return await self._classify_with_fallback(email_data)
 
             # Validate client exists
@@ -72,12 +76,19 @@ class AIClassifier:
                 return await self._classify_with_fallback(email_data)
 
             # Check if AI classification is enabled for this client
-            if client_config is None or not client_config.settings.ai_classification_enabled:
-                logger.info(f"AI classification disabled for client {client_id}, using fallback")
+            if (
+                client_config is None
+                or not client_config.settings.ai_classification_enabled
+            ):
+                logger.info(
+                    f"AI classification disabled for client {client_id}, using fallback"
+                )
                 return self._classify_with_keywords(client_id, email_data)
 
             # Compose client-specific classification prompt
-            prompt = self.email_service.compose_classification_prompt(client_id, email_data)
+            prompt = self.email_service.compose_classification_prompt(
+                client_id, email_data
+            )
 
             # Call AI service with composed prompt
             classification = await self._call_ai_service(prompt)
@@ -130,7 +141,9 @@ class AIClassifier:
                 )
                 return client_result.client_id
             elif isinstance(client_result, str) and client_result:
-                logger.debug(f"Identified client {client_result} from recipient: {recipient}")
+                logger.debug(
+                    f"Identified client {client_result} from recipient: {recipient}"
+                )
                 return client_result
 
         # Try to identify from sender domain (less reliable, but possible for replies)
@@ -145,7 +158,9 @@ class AIClassifier:
                     )
                     return client_result.client_id
                 elif isinstance(client_result, str) and client_result:
-                    logger.debug(f"Identified client {client_result} from sender domain: {domain}")
+                    logger.debug(
+                        f"Identified client {client_result} from sender domain: {domain}"
+                    )
                     return client_result
 
         return None
@@ -168,7 +183,9 @@ class AIClassifier:
                 "https://api.anthropic.com/v1/messages",
                 headers={
                     "Content-Type": "application/json",
-                    "x-api-key": self.config_provider.get_required("services.anthropic_api_key"),
+                    "x-api-key": self.config_provider.get_required(
+                        "services.anthropic_api_key"
+                    ),
                     "anthropic-version": "2023-06-01",
                 },
                 json={
@@ -198,7 +215,9 @@ class AIClassifier:
                 if "confidence" not in classification:
                     classification["confidence"] = 0.5
 
-                logger.debug(f"✅ Successfully parsed AI classification: {classification}")
+                logger.debug(
+                    f"✅ Successfully parsed AI classification: {classification}"
+                )
                 return dict(classification)
 
             except json.JSONDecodeError as e:
@@ -208,7 +227,9 @@ class AIClassifier:
                 logger.error(f"JSON decode error: {e}")
                 raise ValueError(f"Invalid AI response format: {e}")
 
-    def _classify_with_keywords(self, client_id: str, email_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _classify_with_keywords(
+        self, client_id: str, email_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Fallback classification using client-specific keywords.
 
@@ -223,24 +244,31 @@ class AIClassifier:
             # Load client-specific categories if available
             # For now, use simple keyword matching
             subject = email_data.get("subject", "").lower()
-            body = (email_data.get("stripped_text") or email_data.get("body_text", "")).lower()
+            body = (
+                email_data.get("stripped_text") or email_data.get("body_text", "")
+            ).lower()
             text = f"{subject} {body}"
 
             # Basic keyword classification
-            if any(word in text for word in ["billing", "invoice", "payment", "charge", "refund"]):
+            if any(
+                word in text
+                for word in ["billing", "invoice", "payment", "charge", "refund"]
+            ):
                 category, confidence = "billing", 0.85
                 reasoning = "Keyword-based: billing-related terms detected"
                 actions = ["check_payment", "billing_support"]
 
             elif any(
-                word in text for word in ["support", "help", "problem", "issue", "error", "bug"]
+                word in text
+                for word in ["support", "help", "problem", "issue", "error", "bug"]
             ):
                 category, confidence = "support", 0.90
                 reasoning = "Keyword-based: support-related terms detected"
                 actions = ["technical_assistance", "troubleshooting"]
 
             elif any(
-                word in text for word in ["sales", "pricing", "demo", "purchase", "buy", "trial"]
+                word in text
+                for word in ["sales", "pricing", "demo", "purchase", "buy", "trial"]
             ):
                 category, confidence = "sales", 0.80
                 reasoning = "Keyword-based: sales-related terms detected"
@@ -261,14 +289,18 @@ class AIClassifier:
                 "timestamp": datetime.utcnow().isoformat(),
             }
 
-            logger.info(f"📝 Keyword classification for {client_id}: {category} ({confidence:.2f})")
+            logger.info(
+                f"📝 Keyword classification for {client_id}: {category} ({confidence:.2f})"
+            )
             return classification
 
         except Exception as e:
             logger.error(f"Keyword classification failed for {client_id}: {e}")
             return self._get_default_classification(client_id, email_data)
 
-    async def _classify_with_fallback(self, email_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def _classify_with_fallback(
+        self, email_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Fallback classification when no client is identified.
 
@@ -280,7 +312,9 @@ class AIClassifier:
         """
         try:
             # Use basic AI prompt without client-specific context
-            fallback_prompt = self.email_service._get_fallback_classification_prompt(email_data)
+            fallback_prompt = self.email_service._get_fallback_classification_prompt(
+                email_data
+            )
             classification = await self._call_ai_service(fallback_prompt)
 
             # Add fallback metadata
