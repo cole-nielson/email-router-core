@@ -143,7 +143,6 @@ class RBACManager:
                 and security_context.client_id
                 and security_context.client_id != target_client_id
             ):
-
                 if raise_on_deny:
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,

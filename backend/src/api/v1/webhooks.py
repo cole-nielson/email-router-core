@@ -280,9 +280,10 @@ async def process_email_pipeline(
             logger.warning(f"Using fallback routing for unknown client: {forward_to}")
 
         # Step 3: Generate human-like plain text customer response and HTML team analysis
-        customer_response, team_analysis = await email_service.generate_plain_text_emails(
-            email_data, classification, client_id
-        )
+        (
+            customer_response,
+            team_analysis,
+        ) = await email_service.generate_plain_text_emails(email_data, classification, client_id)
 
         # Step 4: Send plain text customer acknowledgment (human-like)
         await send_auto_reply(email_data, classification, customer_response, client_id)
