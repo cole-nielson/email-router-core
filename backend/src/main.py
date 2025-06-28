@@ -53,7 +53,9 @@ from api.v1.clients import router as api_v1_router  # type: ignore
 from api.v1.dashboard import router as dashboard_router  # type: ignore
 from api.v1.webhooks import router as webhook_router  # type: ignore
 from api.v2.config import router as api_v2_router  # type: ignore
-from application.middleware.auth import UnifiedAuthMiddleware as DualAuthMiddleware  # type: ignore
+from application.middleware.auth import (
+    UnifiedAuthMiddleware as DualAuthMiddleware,  # type: ignore
+)
 from application.middleware.rate_limit import RateLimiterMiddleware  # type: ignore
 from core.models.schemas import APIInfo, HealthResponse  # type: ignore
 from infrastructure.monitoring.metrics import MetricsCollector  # type: ignore

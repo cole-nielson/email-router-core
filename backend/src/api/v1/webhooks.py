@@ -19,10 +19,7 @@ from core.dashboard.service import (  # type: ignore
 )
 from core.email.classifier import AIClassifier, get_ai_classifier  # type: ignore
 from core.email.router import RoutingEngine, get_routing_engine  # type: ignore
-from core.email.service import (  # type: ignore
-    EmailService,
-    get_email_service,
-)
+from core.email.service import EmailService, get_email_service  # type: ignore
 from infrastructure.config.manager import get_app_config  # type: ignore
 from infrastructure.external.mailgun import (  # type: ignore
     forward_to_team,

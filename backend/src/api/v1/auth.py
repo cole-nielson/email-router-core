@@ -20,11 +20,7 @@ from application.dependencies.auth import require_auth
 from application.dependencies.repositories import get_auth_service, get_user_repository
 from core.authentication.auth_service import AuthService
 from core.authentication.context import SecurityContext
-from core.models.schemas import (
-    CreateUserRequest,
-    LoginRequest,
-    TokenResponse,
-)
+from core.models.schemas import CreateUserRequest, LoginRequest, TokenResponse
 from core.ports.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)

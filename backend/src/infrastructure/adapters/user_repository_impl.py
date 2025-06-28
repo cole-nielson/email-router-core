@@ -23,17 +23,11 @@ from core.models.schemas import (
     UserWithPermissions,
 )
 from core.ports.user_repository import UserRepository
-from infrastructure.database.models import (
-    User,
-)
+from infrastructure.database.models import User
 from infrastructure.database.models import UserPermission as DBUserPermission
-from infrastructure.database.models import (
-    UserRole,
-)
+from infrastructure.database.models import UserRole
 from infrastructure.database.models import UserSession as DBUserSession
-from infrastructure.database.models import (
-    UserStatus,
-)
+from infrastructure.database.models import UserStatus
 
 logger = logging.getLogger(__name__)
 
