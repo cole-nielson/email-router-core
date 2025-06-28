@@ -6,8 +6,7 @@ Email service orchestrator for AI-powered response generation.
 
 import logging
 import re
-from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from core.ports.config_provider import ConfigurationProvider
 from infrastructure.templates.email import (

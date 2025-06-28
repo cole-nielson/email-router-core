@@ -48,18 +48,18 @@ configure_logging(
 )
 logger = get_logger(__name__)
 
-from api.v1.auth import router as auth_router  # type: ignore
-from api.v1.clients import router as api_v1_router  # type: ignore
-from api.v1.dashboard import router as dashboard_router  # type: ignore
-from api.v1.webhooks import router as webhook_router  # type: ignore
-from api.v2.config import router as api_v2_router  # type: ignore
-from application.middleware.auth import (
+from api.v1.auth import router as auth_router  # type: ignore # noqa: E402
+from api.v1.clients import router as api_v1_router  # type: ignore # noqa: E402
+from api.v1.dashboard import router as dashboard_router  # type: ignore # noqa: E402
+from api.v1.webhooks import router as webhook_router  # type: ignore # noqa: E402
+from api.v2.config import router as api_v2_router  # type: ignore # noqa: E402
+from application.middleware.auth import (  # noqa: E402
     UnifiedAuthMiddleware as DualAuthMiddleware,  # type: ignore
 )
-from application.middleware.rate_limit import RateLimiterMiddleware  # type: ignore
-from core.models.schemas import APIInfo, HealthResponse  # type: ignore
-from infrastructure.monitoring.metrics import MetricsCollector  # type: ignore
-from infrastructure.websockets.manager import get_websocket_manager  # type: ignore
+from application.middleware.rate_limit import RateLimiterMiddleware  # type: ignore # noqa: E402
+from core.models.schemas import APIInfo, HealthResponse  # type: ignore # noqa: E402
+from infrastructure.monitoring.metrics import MetricsCollector  # type: ignore # noqa: E402
+from infrastructure.websockets.manager import get_websocket_manager  # type: ignore # noqa: E402
 
 # Initialize metrics collector
 metrics = MetricsCollector()
@@ -360,7 +360,7 @@ async def root():  # type: ignore
     """
     try:
         # Config loaded for service status validation
-        config_manager = get_config_manager()
+        get_config_manager()  # Validate config is loadable
 
         return APIInfo(
             name=config.app_name,

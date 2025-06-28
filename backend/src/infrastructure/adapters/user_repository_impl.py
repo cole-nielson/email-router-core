@@ -10,12 +10,10 @@ import logging
 from datetime import datetime
 from typing import List, Optional, Tuple
 
-from sqlalchemy import and_, func, or_, text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from core.models.schemas import (
-    AuthenticatedUser,
     CreateUserRequest,
     UpdateUserRequest,
     UserPermission,
@@ -642,7 +640,7 @@ class SQLAlchemyUserRepository(UserRepository):
             count = (
                 self.db.query(DBUserSession)
                 .filter(
-                    DBUserSession.user_id == user_id, DBUserSession.is_active == True
+                    DBUserSession.user_id == user_id, DBUserSession.is_active is True
                 )
                 .update(
                     {
@@ -671,7 +669,7 @@ class SQLAlchemyUserRepository(UserRepository):
             )
 
             if active_only:
-                query = query.filter(DBUserSession.is_active == True)
+                query = query.filter(DBUserSession.is_active is True)
 
             sessions = query.all()
             return [self._session_to_domain_model(session) for session in sessions]

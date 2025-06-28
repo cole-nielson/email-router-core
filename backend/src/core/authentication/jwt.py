@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import jwt
+from jwt.exceptions import PyJWTError as JWTError
 from fastapi import HTTPException, status
 from passlib.context import CryptContext
 from pydantic import BaseModel

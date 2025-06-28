@@ -288,7 +288,6 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
             try:
                 from application.dependencies.repositories import (
                     get_auth_service,
-                    get_user_repository,
                 )
                 from main import app
 

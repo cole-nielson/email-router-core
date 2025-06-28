@@ -7,7 +7,6 @@ depending on any specific database technology or ORM.
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime
 from typing import Any, Dict, List, Optional, Set
 
 from core.models.schemas import ClientSummary

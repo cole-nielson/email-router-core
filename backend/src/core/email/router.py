@@ -12,7 +12,6 @@ import pytz
 from infrastructure.config.schema import ClientConfig
 
 from ..clients.manager import ClientManager
-from ..clients.resolver import extract_domain_from_email
 from ..ports.analytics_repository import AnalyticsRepository
 
 logger = logging.getLogger(__name__)

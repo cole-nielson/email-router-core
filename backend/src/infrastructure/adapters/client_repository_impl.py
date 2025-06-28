@@ -10,7 +10,6 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set
 
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from core.models.schemas import ClientSummary
@@ -439,7 +438,7 @@ class SQLAlchemyClientRepository(ClientRepository):
             rules = (
                 self.db.query(RoutingRule)
                 .filter(
-                    RoutingRule.client_id == client_id, RoutingRule.is_active == True
+                    RoutingRule.client_id == client_id, RoutingRule.is_active is True
                 )
                 .all()
             )
@@ -548,7 +547,7 @@ class SQLAlchemyClientRepository(ClientRepository):
                 self.db.query(RoutingRule)
                 .filter(
                     RoutingRule.client_id == client_id,
-                    RoutingRule.is_active == True,
+                    RoutingRule.is_active is True,
                     RoutingRule.escalation_rules.is_not(None),
                 )
                 .all()
@@ -734,7 +733,7 @@ class SQLAlchemyClientRepository(ClientRepository):
         try:
             prompts = (
                 self.db.query(AIPrompt)
-                .filter(AIPrompt.client_id == client_id, AIPrompt.is_active == True)
+                .filter(AIPrompt.client_id == client_id, AIPrompt.is_active is True)
                 .all()
             )
 

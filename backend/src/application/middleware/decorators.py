@@ -5,7 +5,7 @@ Authorization Decorators for Route Protection
 
 import logging
 from functools import wraps
-from typing import Callable, List, Optional, Union
+from typing import Callable, List, Optional
 
 from fastapi import HTTPException, status
 

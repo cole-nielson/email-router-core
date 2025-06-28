@@ -6,13 +6,13 @@ Central Security Manager for Email Router
 import logging
 import secrets
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException, Request, status
 
 from infrastructure.config.security import SecurityConfig
 
-from .context import AuthenticationType, SecurityContext
+from .context import SecurityContext
 
 logger = logging.getLogger(__name__)
 

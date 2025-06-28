@@ -12,6 +12,7 @@ from typing import Any, Dict, Optional
 import httpx
 
 from core.ports.config_provider import ConfigurationProvider
+from infrastructure.config.manager import get_config_manager
 
 from ..clients.manager import ClientManager
 from ..clients.resolver import extract_domain_from_email

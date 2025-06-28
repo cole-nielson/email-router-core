@@ -8,7 +8,6 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from fastapi import Request
-from sqlalchemy.orm import Session
 
 from infrastructure.config.security import SecurityConfig
 
@@ -115,7 +114,6 @@ class JWTHandler(AuthenticationHandler):
         except Exception as e:
             logger.debug(f"JWT authentication failed: {e}")
             # Log security event for monitoring
-            from ..core.security_manager import SecurityManager
 
             if hasattr(request.state, "security_manager"):
                 request.state.security_manager.log_security_event(
@@ -227,7 +225,6 @@ class APIKeyHandler(AuthenticationHandler):
         except Exception as e:
             logger.debug(f"API key authentication failed: {e}")
             # Log security event for monitoring
-            from ..core.security_manager import SecurityManager
 
             if hasattr(request.state, "security_manager"):
                 request.state.security_manager.log_security_event(

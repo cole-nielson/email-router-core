@@ -75,7 +75,7 @@ def init_database():
         # Create all tables
         Base.metadata.create_all(bind=engine)
 
-        logger.info(f"✅ Database initialized successfully")
+        logger.info("✅ Database initialized successfully")
 
     except Exception as e:
         logger.error(f"❌ Database initialization failed: {e}")

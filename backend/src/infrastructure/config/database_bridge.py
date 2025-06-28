@@ -125,7 +125,7 @@ class DatabaseConfigBridge:
         # First get from database
         db_rules = (
             self.db.query(RoutingRule)
-            .filter(RoutingRule.client_id == client_id, RoutingRule.is_active == True)
+            .filter(RoutingRule.client_id == client_id, RoutingRule.is_active is True)
             .all()
         )
 
@@ -412,7 +412,7 @@ class DatabaseConfigBridge:
             .filter(
                 AIPrompt.client_id == client_id,
                 AIPrompt.prompt_type == prompt_type,
-                AIPrompt.is_active == True,
+                AIPrompt.is_active is True,
             )
             .first()
         )

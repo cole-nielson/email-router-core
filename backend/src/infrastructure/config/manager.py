@@ -7,13 +7,13 @@ import os
 import sys
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 import yaml  # type: ignore[import-untyped]
 from pydantic import ValidationError
 
 from ..logging.logger import get_logger
-from .schema import AppConfig, ClientConfig, Environment
+from .schema import AppConfig, ClientConfig
 
 logger = get_logger(__name__)
 
@@ -200,7 +200,7 @@ class ConfigManager:
             logger.warning(warning)
 
         self._env_loaded = True
-        logger.info(f"Environment variables loaded and validated successfully")
+        logger.info("Environment variables loaded and validated successfully")
         if validation_warnings:
             logger.info(
                 f"Configuration loaded with {len(validation_warnings)} warnings"

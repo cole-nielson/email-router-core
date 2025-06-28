@@ -10,7 +10,7 @@ import httpx
 
 from core.clients.manager import ClientManager, get_client_manager
 
-from ..config.manager import get_app_config, get_config_manager
+from ..config.manager import get_app_config
 from ..templates.email import create_customer_template, create_team_template
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,6 @@ async def send_auto_reply(
             try:
                 client_config = client_manager.get_client_config(client_id)
                 sender_name = client_config.branding.company_name
-                sender_signature = client_config.branding.email_signature
 
                 # Check if auto-reply is enabled for this client
                 if not client_config.settings.auto_reply_enabled:
@@ -56,11 +55,9 @@ async def send_auto_reply(
             except Exception as e:
                 logger.warning(f"Failed to load client config for {client_id}: {e}")
                 sender_name = "AI Email Router"
-                sender_signature = "Support Team"
         else:
             # No client identified, use generic branding
             sender_name = "AI Email Router"
-            sender_signature = "Support Team"
 
         # Create customer-facing email content
         subject = f"Re: {email_data.get('subject', 'Your inquiry')}"

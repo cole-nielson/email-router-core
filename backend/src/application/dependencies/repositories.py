@@ -7,7 +7,7 @@ dependency injection for repository interfaces.
 """
 
 import logging
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends
 from sqlalchemy.orm import Session
@@ -21,6 +21,11 @@ from infrastructure.adapters.analytics_repository_impl import (
 from infrastructure.adapters.client_repository_impl import SQLAlchemyClientRepository
 from infrastructure.adapters.user_repository_impl import SQLAlchemyUserRepository
 from infrastructure.database.connection import get_database_session
+
+if TYPE_CHECKING:
+    from core.authentication.auth_service import AuthService
+    from core.authentication.jwt import AuthService as LegacyAuthService
+    from core.clients.manager import ClientManager as EnhancedClientManager
 
 logger = logging.getLogger(__name__)
 

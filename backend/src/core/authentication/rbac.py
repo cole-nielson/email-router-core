@@ -11,7 +11,7 @@ from fastapi import HTTPException, status
 from pydantic import BaseModel
 
 from .context import SecurityContext
-from .permissions import Permissions, PermissionSets, PermissionUtils
+from .permissions import PermissionSets, PermissionUtils
 
 logger = logging.getLogger(__name__)
 
