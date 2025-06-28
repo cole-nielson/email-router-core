@@ -201,9 +201,7 @@ class AuthService:
                 "created_at": result[13],
                 "updated_at": result[14],
                 "created_by": result[15],
-                "api_access_enabled": (
-                    bool(result[16]) if result[16] is not None else True
-                ),
+                "api_access_enabled": (bool(result[16]) if result[16] is not None else True),
                 "rate_limit_tier": result[17] or "standard",
             }
 
@@ -216,9 +214,7 @@ class AuthService:
                 "CLIENT_ADMIN": self.UserRole.CLIENT_ADMIN,
                 "CLIENT_USER": self.UserRole.CLIENT_USER,
             }
-            user_data["role"] = role_mapping.get(
-                user_data["role_str"], self.UserRole.CLIENT_USER
-            )
+            user_data["role"] = role_mapping.get(user_data["role_str"], self.UserRole.CLIENT_USER)
 
             # Map string status to enum values (handle both values and names)
             status_mapping = {
@@ -273,9 +269,7 @@ class AuthService:
 
                 # Lock account if too many attempts
                 if new_attempts >= MAX_LOGIN_ATTEMPTS:
-                    lock_until = datetime.utcnow() + timedelta(
-                        minutes=LOCKOUT_DURATION_MINUTES
-                    )
+                    lock_until = datetime.utcnow() + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
                     self.db.execute(
                         text(
                             "UPDATE users SET login_attempts = :attempts, locked_until = :locked WHERE username = :username"
@@ -298,9 +292,7 @@ class AuthService:
                     )
 
                 self.db.commit()
-                logger.warning(
-                    f"Authentication failed: invalid password for user '{username}'"
-                )
+                logger.warning(f"Authentication failed: invalid password for user '{username}'")
                 return None
 
             # Check client scope for non-super-admin users
@@ -336,12 +328,12 @@ class AuthService:
     # JWT TOKEN MANAGEMENT
     # =========================================================================
 
-    def create_access_token(
-        self, user: Any, permissions: List[str] = None
-    ) -> Dict[str, Any]:
+    def create_access_token(self, user: Any, permissions: List[str] = None) -> Dict[str, Any]:
         """Create JWT access token with user claims."""
-        now = datetime.utcnow()
-        exp = now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        import time
+
+        now = int(time.time())  # Use time.time() for proper UTC timestamps
+        exp = now + (ACCESS_TOKEN_EXPIRE_MINUTES * 60)  # Convert minutes to seconds
         jti = secrets.token_urlsafe(32)
 
         # Build token claims
@@ -353,35 +345,40 @@ class AuthService:
             "client_id": user.client_id,
             "permissions": permissions or self._get_user_permissions(user),
             "jti": jti,
-            "iat": int(now.timestamp()),
-            "exp": int(exp.timestamp()),
+            "iat": now,
+            "exp": exp,
             "token_type": "access",
         }
 
         # Create JWT token
         token = jwt.encode(claims, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
+        # Convert timestamp back to datetime for database storage
+        exp_datetime = datetime.fromtimestamp(exp)
+
         # Store session for tracking
         session = self.UserSession(
-            user_id=user.id, session_id=jti, token_type="access", expires_at=exp
+            user_id=user.id, session_id=jti, token_type="access", expires_at=exp_datetime
         )
         self.db.add(session)
         self.db.commit()
 
-        return {"token": token, "claims": claims, "expires_at": exp}
+        return {"token": token, "claims": claims, "expires_at": exp_datetime}
 
     def create_refresh_token(self, user: Any) -> Dict[str, Any]:
         """Create JWT refresh token for long-term sessions."""
-        now = datetime.utcnow()
-        exp = now + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+        import time
+
+        now = int(time.time())  # Use time.time() for proper UTC timestamps
+        exp = now + (REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60)  # Convert days to seconds
         jti = secrets.token_urlsafe(32)
 
         claims = {
             "sub": str(user.id),
             "username": user.username,
             "jti": jti,
-            "iat": int(now.timestamp()),
-            "exp": int(exp.timestamp()),
+            "iat": now,
+            "exp": exp,
             "token_type": "refresh",
         }
 
@@ -391,14 +388,17 @@ class AuthService:
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         user.jwt_refresh_token_hash = token_hash
 
+        # Convert timestamp back to datetime for database storage
+        exp_datetime = datetime.fromtimestamp(exp)
+
         # Store session
         session = self.UserSession(
-            user_id=user.id, session_id=jti, token_type="refresh", expires_at=exp
+            user_id=user.id, session_id=jti, token_type="refresh", expires_at=exp_datetime
         )
         self.db.add(session)
         self.db.commit()
 
-        return {"token": token, "claims": claims, "expires_at": exp}
+        return {"token": token, "claims": claims, "expires_at": exp_datetime}
 
     @staticmethod
     def validate_token_stateless(
@@ -407,7 +407,10 @@ class AuthService:
         """Validate JWT token signature and expiration without database access."""
         try:
             # Decode token with signature and expiration validation
-            payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+            # Add leeway to handle clock skew (required for newer PyJWT versions)
+            payload = jwt.decode(
+                token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM], leeway=timedelta(seconds=10)
+            )
             claims = UserTokenClaims(**payload)
 
             # Check token type
@@ -429,9 +432,7 @@ class AuthService:
             logger.error(f"Token validation error: {e}")
             return None
 
-    def validate_token(
-        self, token: str, token_type: str = "access"
-    ) -> Optional[UserTokenClaims]:
+    def validate_token(self, token: str, token_type: str = "access") -> Optional[UserTokenClaims]:
         """Validate JWT token and return claims with database session check."""
         try:
             # First do stateless validation
@@ -497,11 +498,7 @@ class AuthService:
 
     def revoke_token(self, jti: str, reason: str = "user_logout") -> bool:
         """Revoke a specific token session."""
-        session = (
-            self.db.query(self.UserSession)
-            .filter(self.UserSession.session_id == jti)
-            .first()
-        )
+        session = self.db.query(self.UserSession).filter(self.UserSession.session_id == jti).first()
         if session:
             session.is_active = False
             session.revoked_at = datetime.utcnow()
@@ -510,9 +507,7 @@ class AuthService:
             return True
         return False
 
-    def revoke_all_user_tokens(
-        self, user_id: int, reason: str = "security_action"
-    ) -> int:
+    def revoke_all_user_tokens(self, user_id: int, reason: str = "security_action") -> int:
         """Revoke all active tokens for a user."""
         count = (
             self.db.query(self.UserSession)
@@ -623,9 +618,7 @@ class AuthService:
     ) -> TokenResponse:
         """Complete login flow with token generation."""
         # Authenticate user
-        user = self.authenticate_user(
-            request.username, request.password, request.client_id
-        )
+        user = self.authenticate_user(request.username, request.password, request.client_id)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"

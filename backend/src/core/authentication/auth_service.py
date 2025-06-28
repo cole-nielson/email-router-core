@@ -15,6 +15,7 @@ from typing import List, Optional, Union
 
 import jwt
 from fastapi import HTTPException, status
+from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
 from passlib.context import CryptContext
 
 from core.models.schemas import (
@@ -130,9 +131,7 @@ class AuthService:
 
             # Check account status
             if user.status != "active":
-                logger.warning(
-                    f"Authentication failed: account '{username}' is {user.status}"
-                )
+                logger.warning(f"Authentication failed: account '{username}' is {user.status}")
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=f"Account is {user.status}",
@@ -145,9 +144,7 @@ class AuthService:
 
                 # Check if we should lock the account
                 if user.login_attempts + 1 >= MAX_LOGIN_ATTEMPTS:
-                    lock_until = datetime.utcnow() + timedelta(
-                        minutes=LOCKOUT_DURATION_MINUTES
-                    )
+                    lock_until = datetime.utcnow() + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
                     await self.user_repository.lock_user_account(
                         user.id, lock_until, "Too many failed login attempts"
                     )
@@ -155,9 +152,7 @@ class AuthService:
                         f"Account '{username}' locked due to {MAX_LOGIN_ATTEMPTS} failed attempts"
                     )
 
-                logger.warning(
-                    f"Authentication failed: invalid password for user '{username}'"
-                )
+                logger.warning(f"Authentication failed: invalid password for user '{username}'")
                 return None
 
             # Check client scope for non-super-admin users
@@ -200,8 +195,10 @@ class AuthService:
         Returns:
             Dictionary containing token, claims, and expiry information
         """
-        now = datetime.utcnow()
-        exp = now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        import time
+
+        now = int(time.time())  # Use time.time() for proper UTC timestamps
+        exp = now + (ACCESS_TOKEN_EXPIRE_MINUTES * 60)  # Convert minutes to seconds
         jti = secrets.token_urlsafe(32)
 
         # Get user permissions if not provided
@@ -217,20 +214,23 @@ class AuthService:
             "client_id": user.client_id,
             "permissions": permissions,
             "jti": jti,
-            "iat": int(now.timestamp()),
-            "exp": int(exp.timestamp()),
+            "iat": now,
+            "exp": exp,
             "token_type": "access",
         }
 
         # Create JWT token
         token = jwt.encode(claims, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
+        # Convert timestamp back to datetime for database storage
+        exp_datetime = datetime.fromtimestamp(exp)
+
         # Store session for tracking
         await self.user_repository.create_user_session(
-            user_id=user.id, session_id=jti, token_type="access", expires_at=exp
+            user_id=user.id, session_id=jti, token_type="access", expires_at=exp_datetime
         )
 
-        return {"token": token, "claims": claims, "expires_at": exp}
+        return {"token": token, "claims": claims, "expires_at": exp_datetime}
 
     async def create_refresh_token(self, user: UserWithPermissions) -> dict:
         """
@@ -242,16 +242,18 @@ class AuthService:
         Returns:
             Dictionary containing token, claims, and expiry information
         """
-        now = datetime.utcnow()
-        exp = now + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+        import time
+
+        now = int(time.time())  # Use time.time() for proper UTC timestamps
+        exp = now + (REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60)  # Convert days to seconds
         jti = secrets.token_urlsafe(32)
 
         claims = {
             "sub": str(user.id),
             "username": user.username,
             "jti": jti,
-            "iat": int(now.timestamp()),
-            "exp": int(exp.timestamp()),
+            "iat": now,
+            "exp": exp,
             "token_type": "refresh",
         }
 
@@ -261,12 +263,15 @@ class AuthService:
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         await self.user_repository.update_refresh_token_hash(user.id, token_hash)
 
+        # Convert timestamp back to datetime for database storage
+        exp_datetime = datetime.fromtimestamp(exp)
+
         # Store session
         await self.user_repository.create_user_session(
-            user_id=user.id, session_id=jti, token_type="refresh", expires_at=exp
+            user_id=user.id, session_id=jti, token_type="refresh", expires_at=exp_datetime
         )
 
-        return {"token": token, "claims": claims, "expires_at": exp}
+        return {"token": token, "claims": claims, "expires_at": exp_datetime}
 
     @staticmethod
     def validate_token_stateless(
@@ -284,7 +289,12 @@ class AuthService:
         """
         try:
             # Decode token with signature and expiration validation
-            payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+            # Add leeway to handle clock skew (required for newer PyJWT versions)
+            logger.debug(f"Attempting to decode JWT token with leeway of 10 seconds")
+            payload = jwt.decode(
+                token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM], leeway=timedelta(seconds=10)
+            )
+            logger.debug(f"JWT decode successful: {payload.get('iat', 'no-iat')}")
 
             # Use appropriate claims model based on token type
             if token_type == "refresh":
@@ -301,10 +311,10 @@ class AuthService:
 
             return claims
 
-        except jwt.ExpiredSignatureError:
+        except ExpiredSignatureError:
             logger.warning("Token has expired")
             return None
-        except jwt.InvalidTokenError as e:
+        except InvalidTokenError as e:
             logger.warning(f"Invalid token: {e}")
             return None
         except Exception as e:
@@ -398,9 +408,7 @@ class AuthService:
         """
         return await self.user_repository.revoke_session(jti, reason)
 
-    async def revoke_all_user_tokens(
-        self, user_id: int, reason: str = "security_action"
-    ) -> int:
+    async def revoke_all_user_tokens(self, user_id: int, reason: str = "security_action") -> int:
         """
         Revoke all active tokens for a user.
 
@@ -542,9 +550,7 @@ class AuthService:
             HTTPException: If authentication fails
         """
         # Authenticate user
-        user = await self.authenticate_user(
-            request.username, request.password, request.client_id
-        )
+        user = await self.authenticate_user(request.username, request.password, request.client_id)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
@@ -557,9 +563,7 @@ class AuthService:
         # Update session metadata if provided
         if ip_address or user_agent:
             for session_info in [access_result, refresh_result]:
-                session = await self.user_repository.find_session(
-                    session_info["claims"]["jti"]
-                )
+                session = await self.user_repository.find_session(session_info["claims"]["jti"])
                 if session:
                     # Note: This would require adding session metadata update to repository
                     pass
