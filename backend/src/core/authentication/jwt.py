@@ -358,7 +358,10 @@ class AuthService:
 
         # Store session for tracking
         session = self.UserSession(
-            user_id=user.id, session_id=jti, token_type="access", expires_at=exp_datetime
+            user_id=user.id,
+            session_id=jti,
+            token_type="access",
+            expires_at=exp_datetime,
         )
         self.db.add(session)
         self.db.commit()
@@ -393,7 +396,10 @@ class AuthService:
 
         # Store session
         session = self.UserSession(
-            user_id=user.id, session_id=jti, token_type="refresh", expires_at=exp_datetime
+            user_id=user.id,
+            session_id=jti,
+            token_type="refresh",
+            expires_at=exp_datetime,
         )
         self.db.add(session)
         self.db.commit()
@@ -409,7 +415,10 @@ class AuthService:
             # Decode token with signature and expiration validation
             # Add leeway to handle clock skew (required for newer PyJWT versions)
             payload = jwt.decode(
-                token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM], leeway=timedelta(seconds=10)
+                token,
+                JWT_SECRET_KEY,
+                algorithms=[JWT_ALGORITHM],
+                leeway=timedelta(seconds=10),
             )
             claims = UserTokenClaims(**payload)
 

@@ -227,7 +227,10 @@ class AuthService:
 
         # Store session for tracking
         await self.user_repository.create_user_session(
-            user_id=user.id, session_id=jti, token_type="access", expires_at=exp_datetime
+            user_id=user.id,
+            session_id=jti,
+            token_type="access",
+            expires_at=exp_datetime,
         )
 
         return {"token": token, "claims": claims, "expires_at": exp_datetime}
@@ -268,7 +271,10 @@ class AuthService:
 
         # Store session
         await self.user_repository.create_user_session(
-            user_id=user.id, session_id=jti, token_type="refresh", expires_at=exp_datetime
+            user_id=user.id,
+            session_id=jti,
+            token_type="refresh",
+            expires_at=exp_datetime,
         )
 
         return {"token": token, "claims": claims, "expires_at": exp_datetime}
@@ -292,7 +298,10 @@ class AuthService:
             # Add leeway to handle clock skew (required for newer PyJWT versions)
             logger.debug(f"Attempting to decode JWT token with leeway of 10 seconds")
             payload = jwt.decode(
-                token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM], leeway=timedelta(seconds=10)
+                token,
+                JWT_SECRET_KEY,
+                algorithms=[JWT_ALGORITHM],
+                leeway=timedelta(seconds=10),
             )
             logger.debug(f"JWT decode successful: {payload.get('iat', 'no-iat')}")
 
