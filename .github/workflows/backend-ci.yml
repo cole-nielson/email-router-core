@@ -54,9 +54,9 @@ jobs:
 
     - name: Run tests with coverage
       env:
-        JWT_SECRET_KEY: test-secret-key-for-ci-testing
-        ANTHROPIC_API_KEY: test-key
-        MAILGUN_API_KEY: test-key
+        JWT_SECRET_KEY: test-secret-key-for-ci-testing-with-32-chars
+        ANTHROPIC_API_KEY: sk-ant-test-key-for-ci-testing
+        MAILGUN_API_KEY: key-test-mailgun-key-for-ci
         MAILGUN_DOMAIN: test.example.com
         EMAIL_ROUTER_ENVIRONMENT: test
       run: |
