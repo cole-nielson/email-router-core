@@ -22,24 +22,69 @@ class TestClientConfigValidation:
     """Test validation of client configuration files."""
 
     def setup_method(self):
-        """Set up test fixtures."""
+        """Set up test fixtures with comprehensive mock data."""
         # Create a mock config provider with realistic return values
         self.config_provider = Mock(spec=ConfigurationProvider)
 
-        # Mock client config for testing
+        # Create a comprehensive mock client config that matches the real schema
         mock_client_config = Mock()
         mock_client_config.client_id = "client-001-cole-nielson"
-        mock_client_config.name = "Test Client"
+        mock_client_config.name = "Cole Nielson Email Router"  # Match expected name
         mock_client_config.industry = "Technology"
-        mock_client_config.domains = Mock()
-        mock_client_config.domains.primary = "example.com"
-        mock_client_config.domains.aliases = []
+        mock_client_config.timezone = "UTC"
+        mock_client_config.active = True
+
+        # Mock domains configuration with realistic data
+        mock_domains = Mock()
+        mock_domains.primary = "colesportfolio.com"  # Match expected domain
+        mock_domains.aliases = ["mail.colesportfolio.com"]
+        mock_domains.catch_all = False
+        mock_domains.support = "support@colesportfolio.com"  # This needs to be a string, not Mock
+        mock_domains.mailgun = "mg.colesportfolio.com"
+        mock_client_config.domains = mock_domains
+
+        # Mock branding configuration
+        mock_branding = Mock()
+        mock_branding.company_name = "Cole Nielson Email Router"
+        mock_branding.logo_url = "https://colesportfolio.com/logo.png"
+        mock_branding.primary_color = "#007bff"
+        mock_branding.secondary_color = "#6c757d"
+        mock_client_config.branding = mock_branding
+
+        # Mock contacts configuration
+        mock_contacts = Mock()
+        mock_contacts.primary_contact = "admin@example.com"
+        mock_contacts.escalation_contact = "escalation@example.com"
+        mock_contacts.billing_contact = "billing@example.com"
+        mock_client_config.contacts = mock_contacts
+
+        # Mock routing rules
+        mock_client_config.routing = []
+
+        # Mock SLA and settings
+        mock_client_config.sla = Mock()
+        mock_settings = Mock()
+        mock_settings.auto_reply_enabled = True
+        mock_settings.ai_classification_enabled = True
+        mock_settings.team_forwarding_enabled = True
+        mock_client_config.settings = mock_settings
+
+        # Mock AI configuration
+        mock_client_config.ai_categories = ["general", "support", "billing", "sales"]
+        mock_client_config.custom_prompts = {}
 
         # Set up the mock to return a proper dictionary
         self.config_provider.get_all_clients.return_value = {
             "client-001-cole-nielson": mock_client_config
         }
-        self.config_provider.get_client_config.return_value = mock_client_config
+
+        # Set up get_client_config to handle valid and invalid client IDs
+        def mock_get_client_config(client_id):
+            if client_id == "client-001-cole-nielson":
+                return mock_client_config
+            return None  # Return None for invalid/nonexistent clients
+
+        self.config_provider.get_client_config.side_effect = mock_get_client_config
 
         self.client_manager = ClientManager(config_provider=self.config_provider)
         self.clients_dir = Path("clients/active")

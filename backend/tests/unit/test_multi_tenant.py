@@ -3,6 +3,8 @@ Enhanced multi-tenant functionality tests.
 Tests the advanced client identification, domain resolution, and fuzzy matching capabilities.
 """
 
+from unittest.mock import Mock
+
 import pytest
 
 from core.clients.manager import ClientIdentificationResult, EnhancedClientManager
@@ -15,7 +17,78 @@ from core.clients.resolver import (
     match_domain_pattern,
     normalize_domain,
 )
+from core.ports.config_provider import ConfigurationProvider
 from infrastructure.config.manager import ConfigurationError, get_config_manager
+
+
+@pytest.fixture
+def mock_enhanced_client_manager():
+    """Create a properly mocked EnhancedClientManager for testing."""
+    # Create a mock config provider with realistic client data
+    config_provider = Mock(spec=ConfigurationProvider)
+
+    # Mock client config that matches the test expectations
+    mock_client_config = Mock()
+    mock_client_config.client_id = "client-001-cole-nielson"
+    mock_client_config.name = "Cole Nielson Email Router"
+    mock_client_config.industry = "Technology"
+    mock_client_config.timezone = "UTC"
+    mock_client_config.active = True
+
+    # Mock domains configuration with test domains
+    mock_domains = Mock()
+    mock_domains.primary = "colenielson.dev"
+    mock_domains.aliases = ["mail.colenielson.dev", "api.colenielson.dev"]
+    mock_domains.catch_all = False
+    mock_domains.support = "support@colenielson.dev"
+    mock_domains.mailgun = "mg.colenielson.dev"
+    mock_client_config.domains = mock_domains
+
+    # Mock other required config sections
+    mock_client_config.branding = Mock()
+    mock_client_config.contacts = Mock()
+
+    # Mock routing rules with proper structure for expected tests
+    mock_routing_rule_support = Mock()
+    mock_routing_rule_support.category = "support"
+    mock_routing_rule_support.email = "colenielson.re@gmail.com"
+    mock_routing_rule_support.enabled = True
+
+    mock_routing_rule_billing = Mock()
+    mock_routing_rule_billing.category = "billing"
+    mock_routing_rule_billing.email = "colenielson8@gmail.com"
+    mock_routing_rule_billing.enabled = True
+
+    mock_client_config.routing = [mock_routing_rule_support, mock_routing_rule_billing]
+
+    # Mock SLA configuration with proper response times
+    mock_sla = Mock()
+    mock_sla.response_times = {
+        "support": 240,  # 4 hours in minutes
+        "billing": 1440,  # 24 hours in minutes
+        "urgent": 15,
+        "high": 60,
+        "medium": 240,
+        "low": 1440,
+    }
+    mock_client_config.sla = mock_sla
+
+    mock_client_config.settings = Mock()
+    mock_client_config.ai_categories = ["general", "support", "billing", "sales"]
+    mock_client_config.custom_prompts = {}
+
+    # Set up the mock to return client data
+    config_provider.get_all_clients.return_value = {"client-001-cole-nielson": mock_client_config}
+
+    def mock_get_client_config(client_id):
+        if client_id == "client-001-cole-nielson":
+            return mock_client_config
+        return None
+
+    config_provider.get_client_config.side_effect = mock_get_client_config
+
+    # Create the enhanced client manager with the mock provider
+    return EnhancedClientManager(config_provider=config_provider)
 
 
 def test_client_discovery():
@@ -42,9 +115,9 @@ def test_load_client_config():
     assert config.domains.primary == "mail.colesportfolio.com"
 
 
-def test_enhanced_client_manager_domain_resolution():
+def test_enhanced_client_manager_domain_resolution(mock_enhanced_client_manager):
     """Test enhanced domain resolution with multiple strategies"""
-    manager = EnhancedClientManager()
+    manager = mock_enhanced_client_manager
 
     # Test exact domain match
     result = manager.identify_client_by_domain("colenielson.dev")
@@ -64,9 +137,9 @@ def test_enhanced_client_manager_domain_resolution():
     assert result.is_successful
 
 
-def test_enhanced_client_manager_email_identification():
+def test_enhanced_client_manager_email_identification(mock_enhanced_client_manager):
     """Test enhanced email-based client identification"""
-    manager = EnhancedClientManager()
+    manager = mock_enhanced_client_manager
 
     # Test direct email identification
     result = manager.identify_client_by_email("support@colenielson.dev")
@@ -83,9 +156,9 @@ def test_enhanced_client_manager_email_identification():
     assert client_id == "client-001-cole-nielson"
 
 
-async def test_enhanced_client_manager_routing():
+async def test_enhanced_client_manager_routing(mock_enhanced_client_manager):
     """Test enhanced routing with confidence-based decisions"""
-    manager = EnhancedClientManager()
+    manager = mock_enhanced_client_manager
 
     # Test category routing
     destination = await manager.get_routing_destination("client-001-cole-nielson", "support")
@@ -95,9 +168,9 @@ async def test_enhanced_client_manager_routing():
     assert destination == "colenielson8@gmail.com"
 
 
-async def test_enhanced_client_manager_response_times():
+async def test_enhanced_client_manager_response_times(mock_enhanced_client_manager):
     """Test response time lookup with enhanced configuration"""
-    manager = EnhancedClientManager()
+    manager = mock_enhanced_client_manager
 
     # Test specific category response times
     response_time = await manager.get_response_time("client-001-cole-nielson", "support")
@@ -107,18 +180,18 @@ async def test_enhanced_client_manager_response_times():
     assert response_time == "within 24 hours"
 
 
-async def test_client_validation():
+async def test_client_validation(mock_enhanced_client_manager):
     """Test enhanced client configuration validation"""
-    manager = EnhancedClientManager()
+    manager = mock_enhanced_client_manager
 
     # Valid client should pass validation
     is_valid = await manager.validate_client_setup("client-001-cole-nielson")
     assert is_valid == True
 
 
-def test_unknown_client_handling():
+def test_unknown_client_handling(mock_enhanced_client_manager):
     """Test handling of unknown clients with enhanced fallback"""
-    manager = EnhancedClientManager()
+    manager = mock_enhanced_client_manager
 
     # Should return failure result for unknown domain
     result = manager.identify_client_by_domain("nonexistent.example.com")
@@ -131,9 +204,9 @@ def test_unknown_client_handling():
     assert client_id is None
 
 
-async def test_invalid_client_id():
+async def test_invalid_client_id(mock_enhanced_client_manager):
     """Test handling of invalid client IDs with enhanced error reporting"""
-    manager = EnhancedClientManager()
+    manager = mock_enhanced_client_manager
 
     # The new config manager returns None for invalid clients, it does not raise an error
     # on get_client_config. An error would be raised on initialization if a config is malformed.
@@ -221,9 +294,9 @@ def test_domain_matcher_advanced_strategies():
     assert method == "alias_resolution"
 
 
-async def test_client_domains_management():
+async def test_client_domains_management(mock_enhanced_client_manager):
     """Test client domain management features"""
-    manager = EnhancedClientManager()
+    manager = mock_enhanced_client_manager
 
     # Test getting client domains
     domains = await manager.get_client_domains("client-001-cole-nielson")
@@ -232,9 +305,9 @@ async def test_client_domains_management():
     assert "colenielson.dev" in domains
 
 
-def test_similar_clients_discovery():
+def test_similar_clients_discovery(mock_enhanced_client_manager):
     """Test finding similar clients based on domain similarity"""
-    manager = EnhancedClientManager()
+    manager = mock_enhanced_client_manager
 
     # Test finding similar clients
     similar = manager.find_similar_clients("similar.colenielson.dev", limit=3)
@@ -246,9 +319,9 @@ def test_similar_clients_discovery():
         assert 0.0 <= score <= 1.0
 
 
-async def test_client_summary_generation():
+async def test_client_summary_generation(mock_enhanced_client_manager):
     """Test comprehensive client summary generation"""
-    manager = EnhancedClientManager()
+    manager = mock_enhanced_client_manager
 
     summary = await manager.get_client_summary("client-001-cole-nielson")
 
@@ -260,9 +333,9 @@ async def test_client_summary_generation():
     assert summary["total_domains"] > 0
 
 
-def test_domain_alias_functionality():
+def test_domain_alias_functionality(mock_enhanced_client_manager):
     """Test domain alias management"""
-    manager = EnhancedClientManager()
+    manager = mock_enhanced_client_manager
 
     # Add domain alias
     manager.add_domain_alias("legacy.colenielson.dev", "colenielson.dev")
@@ -273,9 +346,9 @@ def test_domain_alias_functionality():
     assert True  # Placeholder - would need more complex test setup
 
 
-def test_fuzzy_matching_configuration():
+def test_fuzzy_matching_configuration(mock_enhanced_client_manager):
     """Test fuzzy matching configuration options"""
-    manager = EnhancedClientManager()
+    manager = mock_enhanced_client_manager
 
     # Test configuration options
     assert hasattr(manager, "confidence_threshold")
@@ -288,16 +361,18 @@ def test_fuzzy_matching_configuration():
     assert not result.is_successful
 
 
-def test_confidence_scoring_accuracy():
+def test_confidence_scoring_accuracy(mock_enhanced_client_manager):
     """Test that confidence scores are reasonable and consistent"""
-    manager = EnhancedClientManager()
+    manager = mock_enhanced_client_manager
 
     # Exact match should have highest confidence
     result = manager.identify_client_by_domain("colenielson.dev")
     assert result.confidence == 1.0
 
     # Subdomain matches should have lower but reasonable confidence
-    result = manager.identify_client_by_domain("api.colenielson.dev")
+    # Note: api.colenielson.dev is in our mock aliases, so it gets exact match (1.0)
+    # Use a different subdomain that's not in aliases
+    result = manager.identify_client_by_domain("test.colenielson.dev")
     if result.is_successful:
         assert 0.7 <= result.confidence < 1.0
 
