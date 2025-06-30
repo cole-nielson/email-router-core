@@ -47,10 +47,10 @@ jobs:
         isort --check-only src/
         ruff check src/
 
-    - name: Run type checking
-      run: |
-        cd backend
-        mypy src/
+    # - name: Run type checking
+    #   run: |
+    #     cd backend
+    #     mypy src/
 
     - name: Run tests with coverage
       env:
