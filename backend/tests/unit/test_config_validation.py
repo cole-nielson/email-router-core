@@ -23,8 +23,24 @@ class TestClientConfigValidation:
 
     def setup_method(self):
         """Set up test fixtures."""
-        # Create a mock config provider
+        # Create a mock config provider with realistic return values
         self.config_provider = Mock(spec=ConfigurationProvider)
+
+        # Mock client config for testing
+        mock_client_config = Mock()
+        mock_client_config.client_id = "client-001-cole-nielson"
+        mock_client_config.name = "Test Client"
+        mock_client_config.industry = "Technology"
+        mock_client_config.domains = Mock()
+        mock_client_config.domains.primary = "example.com"
+        mock_client_config.domains.aliases = []
+
+        # Set up the mock to return a proper dictionary
+        self.config_provider.get_all_clients.return_value = {
+            "client-001-cole-nielson": mock_client_config
+        }
+        self.config_provider.get_client_config.return_value = mock_client_config
+
         self.client_manager = ClientManager(config_provider=self.config_provider)
         self.clients_dir = Path("clients/active")
 
