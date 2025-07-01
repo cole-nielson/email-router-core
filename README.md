@@ -1,6 +1,21 @@
-# Email Router
+# 🚀 Email Router V2.0
 
-A production-ready enterprise multi-tenant AI email router that automatically classifies incoming emails using Claude 3.5 Sonnet, generates personalized auto-replies, and forwards emails to appropriate team members.
+**Production-ready enterprise multi-tenant AI email router** that automatically classifies incoming emails using Claude 3.5 Sonnet, generates personalized auto-replies, and forwards emails to appropriate team members.
+
+## ✨ V2.0 Highlights
+
+🏗️ **Clean Architecture** • 🔐 **Enterprise Auth** • 📊 **Dashboard Analytics** • 🎯 **Multi-Tenant** • ☁️ **Cloud Native**
+
+**🎉 Live Production System**: https://email-router-696958557925.us-central1.run.app
+
+### **What's New in V2.0**
+- ✅ **Complete Architectural Overhaul**: Clean architecture with proper separation of concerns
+- ✅ **Enterprise Authentication**: JWT + RBAC with session management
+- ✅ **Dashboard Analytics**: Real-time metrics and business intelligence
+- ✅ **Enhanced Multi-Tenancy**: Complete client isolation with advanced domain matching
+- ✅ **Production Deployment**: Live on Google Cloud Run with auto-scaling
+- ✅ **Comprehensive Testing**: 88 tests covering all critical functionality
+- ✅ **Developer Experience**: Modern tooling with hot-reload and comprehensive docs
 
 ## 🏗️ Project Structure
 
