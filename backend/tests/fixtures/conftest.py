@@ -3,8 +3,6 @@ Global fixtures for the Email Router test suite.
 """
 
 import os
-import sys
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -29,25 +27,13 @@ for key, value in TEST_ENV_VARS.items():
     os.environ.setdefault(key, value)
 
 # Import all models to ensure they're registered with SQLAlchemy metadata
-import infrastructure.database.models  # This imports all models
 from core.authentication.auth_service import AuthService
 from infrastructure.adapters.user_repository_impl import SQLAlchemyUserRepository
 from infrastructure.database.connection import get_db
 from infrastructure.database.models import (
-    AIPrompt,
     Base,
-    Client,
-    ClientBranding,
-    ClientDomain,
-    ClientSetting,
-    ConfigurationChange,
-    ResponseTime,
-    RoutingHistory,
-    RoutingRule,
     User,
-    UserPermission,
     UserRole,
-    UserSession,
     UserStatus,
 )
 from main import app

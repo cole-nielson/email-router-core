@@ -649,7 +649,7 @@ class SQLAlchemyUserRepository(UserRepository):
             query = self.db.query(DBUserSession).filter(DBUserSession.user_id == user_id)
 
             if active_only:
-                query = query.filter(DBUserSession.is_active == True)
+                query = query.filter(DBUserSession.is_active is True)
 
             sessions = query.all()
             logger.error(

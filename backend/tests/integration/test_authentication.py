@@ -6,9 +6,7 @@ Comprehensive Authentication System Tests
 import pytest
 from fastapi.testclient import TestClient
 
-from application.middleware.auth import APIKeyUser, DualAuthUser
 from core.authentication.jwt import AuthService
-from infrastructure.database.models import User, UserRole, UserStatus
 from main import app
 
 # Create a test client for the FastAPI app
@@ -651,7 +649,7 @@ class TestSessionManagement:
         )
 
         token1 = login1.json()["access_token"]
-        token2 = login2.json()["access_token"]
+        login2.json()["access_token"]
 
         # Get sessions from first token
         sessions_response = client.get(
@@ -683,7 +681,7 @@ class TestSecurityFeatures:
         """Test rate limiting for failed login attempts."""
         # Make multiple failed login attempts
         for i in range(6):  # Exceed the limit of 5
-            response = client.post(
+            client.post(
                 "/auth/login",
                 json={
                     "username": test_user["client_user"].username,
