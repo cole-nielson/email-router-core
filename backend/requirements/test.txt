@@ -1,0 +1,46 @@
+# =============================================================================
+# TEST DEPENDENCIES - Only for running tests
+# =============================================================================
+
+# Include base requirements
+-r base.txt
+
+# Testing Framework
+pytest==7.4.0
+pytest-asyncio==0.23.7
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+pytest-timeout==2.2.0
+pytest-xdist==3.5.0  # Parallel test execution
+
+# Test Utilities
+factory-boy==3.3.0
+faker==22.2.0
+freezegun==1.4.0
+
+# HTTP Testing
+pytest-httpx==0.30.0
+respx==0.20.2
+
+# Database Testing
+pytest-postgresql==5.1.0
+sqlalchemy-utils==0.41.1
+
+# Coverage Reporting
+coverage[toml]==7.4.0
+pytest-html==4.1.1
+
+# Mocking
+responses==0.24.1
+aioresponses==0.7.6
+
+# Code Quality Tools (needed for CI)
+black==23.12.1
+isort==5.13.2
+ruff==0.1.9
+mypy==1.8.0
+
+# Type Stubs (needed for mypy)
+types-PyYAML==6.0.12.12
+types-tabulate==0.9.0.3
+types-pytz==2023.3.1.1

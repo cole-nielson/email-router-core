@@ -4,19 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a **production-ready enterprise multi-tenant AI email router** built with FastAPI that automatically classifies incoming emails using Claude 3.5 Sonnet, generates personalized auto-replies, and forwards emails to appropriate team members. It features sophisticated multi-tenant architecture with complete client isolation, advanced domain matching, and enterprise-grade scalability.
+This is a **production-ready enterprise multi-tenant AI email router V2.0** built with FastAPI that automatically classifies incoming emails using Claude 3.5 Sonnet, generates personalized auto-replies, and forwards emails to appropriate team members. It features sophisticated multi-tenant architecture with complete client isolation, advanced domain matching, enterprise-grade scalability, and comprehensive dashboard analytics.
 
-**🎉 PRODUCTION STATUS**: ✅ **Milestone 1 Complete - LIVE & OPERATIONAL**
+**🚀 PRODUCTION STATUS**: ✅ **V2.0 ARCHITECTURAL OVERHAUL COMPLETE - LIVE & OPERATIONAL**
 
-**Completed:**
-- ✅ All FastAPI dependency injection issues resolved
-- ✅ Multi-tenant client isolation and domain matching (1.00 confidence)
-- ✅ Claude 3.5 Sonnet AI classification working (95%+ accuracy)
-- ✅ Mailgun email delivery validated (100% success rate)
-- ✅ Complete end-to-end workflow (5-7 second processing)
-- ✅ Production deployment on Google Cloud Run
-- ✅ Real API testing with live credentials completed
-- ✅ Health monitoring and comprehensive logging active
+**V2.0 Major Accomplishments:**
+- ✅ **Clean Architecture Implementation**: Domain/Application/Infrastructure layers
+- ✅ **Enterprise Authentication System**: JWT + RBAC with session management
+- ✅ **Dashboard Analytics Module**: Real-time metrics and business intelligence
+- ✅ **Multi-tenant client isolation**: Complete separation with 1.00 confidence matching
+- ✅ **Claude 3.5 Sonnet AI classification**: 95%+ accuracy with client-specific prompts
+- ✅ **Mailgun email delivery**: 100% success rate with branded templates
+- ✅ **Complete end-to-end workflow**: 5-7 second processing (beats SLA)
+- ✅ **Production deployment**: Live on Google Cloud Run with auto-scaling
+- ✅ **Comprehensive test suite**: 88 tests covering all critical functionality
+- ✅ **CI/CD pipeline**: Automated testing, security checks, and deployment
+- ✅ **Health monitoring**: Real-time metrics, logging, and alerting
 
 **Current Deployment:**
 - **Live URL**: https://email-router-696958557925.us-central1.run.app
@@ -34,29 +37,38 @@ This is a **production-ready enterprise multi-tenant AI email router** built wit
 
 ### Local Development
 ```bash
+# Navigate to backend directory
+cd backend
+
 # Install dependencies
-pip install -r requirements.txt
+pip install -e .[dev]
 
 # Create initial admin user (required for JWT auth)
 python scripts/simple_create_admin.py
 
 # Start development server with auto-reload
-python -m uvicorn app.main:app --port 8080 --reload
+python -m uvicorn src.main:app --port 8080 --reload
 
 # Alternative: Run directly
-python -m app.main
+python -m src.main
 ```
 
 ### Testing
 ```bash
+# Navigate to backend directory
+cd backend
+
 # Run all tests
 python -m pytest tests/ -v
 
 # Run authentication tests
-python -m pytest tests/test_authentication.py -v
+python -m pytest tests/integration/test_authentication.py -v
+
+# Run multi-tenant tests
+python -m pytest tests/unit/test_multi_tenant.py -v
 
 # Run specific test file
-python -m pytest tests/test_webhook.py -v
+python -m pytest tests/unit/test_config_validation.py -v
 
 # Test health endpoint
 curl http://localhost:8080/health
@@ -69,11 +81,14 @@ curl -X POST http://localhost:8080/auth/login \
 
 ### Code Quality
 ```bash
+# Navigate to backend directory
+cd backend
+
 # Format code with black
-black app/ tests/
+black src/ tests/
 
 # Type checking
-mypy app/
+mypy src/
 
 # No specific linting command defined - use black for formatting
 ```
@@ -82,85 +97,96 @@ mypy app/
 
 ### Service Dependency Graph
 
-**Core Service Dependencies** (post-Milestone 2 service consolidation):
+**Current Architecture** (Clean Architecture Implementation):
 ```
-┌─────────────────┐
-│   main.py       │ ← FastAPI application entry point
-│   (FastAPI)     │
-└────────┬────────┘
-         │
-    ┌────▼────┐         ┌─────────────────┐
-    │ Routers │         │   Middleware    │
-    └────┬────┘         └─────────────────┘
-         │                       │
-    ┌────▼────────────────────────▼────┐
-    │          Services               │
-    │                                 │
-    │  ┌─────────────────────────────┐ │
-    │  │     client_manager.py       │ │ ← Central dependency
-    │  │   (Multi-tenant core)      │ │
-    │  └──────────┬──────────────────┘ │
-    │            │                    │
-    │  ┌─────────▼─────────┐          │
-    │  │   ai_classifier    │          │
-    │  │   email_service    │          │
-    │  │   routing_engine   │          │
-    │  │   email_sender     │          │
-    │  └─────────┬─────────┘          │
-    └────────────┼────────────────────┘
-                 │
-    ┌────────────▼────────────┐
-    │        Utils            │
-    │                         │
-    │  client_loader.py       │ ← YAML config loading
-    │  domain_resolver.py     │ ← Domain matching
-    │  config.py             │ ← Environment config
-    └─────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                   backend/src/main.py                      │ ← FastAPI Entry Point
+│                    (Application)                           │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────┐
+│                 API Layer (Interface)                      │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │
+│  │   v1/auth    │  │  v1/clients  │  │   v1/webhooks    │   │
+│  │   v1/dash    │  │   v2/config  │  │                  │   │
+│  └──────────────┘  └──────────────┘  └──────────────────┘   │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────┐
+│               Application Layer                             │
+│  ┌─────────────────┐  ┌─────────────────────────────────────┐ │
+│  │  Dependencies   │  │          Middleware                 │ │
+│  │   auth.py       │  │ auth, security, rate_limit, etc.   │ │
+│  └─────────────────┘  └─────────────────────────────────────┘ │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────┐
+│                 Core Layer (Business Logic)                │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │
+│  │  clients/    │  │    email/    │  │ authentication/  │   │
+│  │  manager.py  │  │ classifier   │  │    jwt.py        │   │
+│  │  resolver.py │  │ composer.py  │  │   handlers.py    │   │
+│  │              │  │  router.py   │  │    rbac.py       │   │
+│  └──────────────┘  └──────────────┘  └──────────────────┘   │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────┐
+│              Infrastructure Layer                           │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │
+│  │   config/    │  │  database/   │  │   external/      │   │
+│  │  manager.py  │  │ connection   │  │   mailgun.py     │   │
+│  │  schema.py   │  │  models.py   │  │                  │   │
+│  └──────────────┘  └──────────────┘  └──────────────────┘   │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │
+│  │  logging/    │  │ monitoring/  │  │  templates/      │   │
+│  │  logger.py   │  │ metrics.py   │  │   email.py       │   │
+│  └──────────────┘  └──────────────┘  └──────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 **Dependency Injection Pattern:**
-- All services use FastAPI `Depends()` for injection
-- `client_manager` is singleton - single instance across app
-- Services depend on `client_manager` but not each other
-- Utils are stateless and imported directly
+- All services use FastAPI `Depends()` for clean dependency injection
+- Clean separation between layers with proper interfaces
+- Core business logic independent of frameworks
+- Infrastructure adapters for external services (Anthropic, Mailgun)
 
-**Data Flow:**
+**Email Processing Pipeline:**
 ```
-Webhook → Client Identification → AI Classification → Email Generation → Delivery
-   ↓              ↓                      ↓                 ↓            ↓
-webhooks.py → client_manager → ai_classifier → email_service → email_sender
+Mailgun Webhook → Client Identification → AI Classification → Smart Routing → Email Generation → Delivery
+       ↓                   ↓                      ↓                ↓               ↓            ↓
+  api/v1/webhooks → core/clients/manager → core/email/classifier → core/email/router → core/email/composer → infrastructure/external/mailgun
 ```
 
-**Consolidation Results (Milestone 2):**
-- **Services reduced**: 12 → 9 files (25% reduction)
-- **Code consolidation**: 4,273 → 4,044 lines (5% reduction with enhanced functionality)
-- **Eliminated redundancy**: Merged email_composer + template_engine → email_service
-- **Unified AI logic**: Combined dynamic_classifier + classifier → ai_classifier
-- **Preserved functionality**: All core features intact with cleaner architecture
+**Architecture Benefits:**
+- **Clean Architecture**: Clear separation of concerns with dependency rule
+- **Domain-Driven Design**: Business logic organized by domain (clients, email, auth)
+- **Testability**: Each layer can be tested independently
+- **Maintainability**: Clear structure with minimal coupling
+- **Scalability**: Easy to extend and modify individual components
 
 ### Multi-Tenant Core Components
 
 **FastAPI Application Structure:**
-- `app/main.py` - FastAPI application entry point with enterprise middleware, monitoring, and comprehensive API management
-- `app/routers/` - API endpoints:
-  - `webhooks.py` - Core Mailgun webhook handler (`/webhooks/mailgun/inbound`) with dependency injection
-  - `api/v1.py` - Client management API with authentication and comprehensive endpoints
-- `app/services/` - Business logic services with singleton dependency injection:
-  - `client_manager.py` - **Multi-tenant client management** with advanced domain matching and fuzzy algorithms
-  - `dynamic_classifier.py` - **Client-specific Claude 3.5 Sonnet classification** with template engine
-  - `routing_engine.py` - **Smart routing engine** with business rules, escalation, and after-hours handling
-  - `email_composer.py` - **Dual-mode email generation** (customer acknowledgment + team analysis) with client branding
-  - `email_sender.py` - **Mailgun email delivery** with client-specific templates and headers
-- `app/models/` - Data models:
-  - `schemas.py` - API schemas with comprehensive validation
-  - `client_config.py` - **Multi-tenant configuration models** with Pydantic validation
-- `app/utils/` - Utilities:
-  - `config.py` - Environment configuration management
-  - `client_loader.py` - **YAML-based client configuration loading** with caching
-  - `domain_resolver.py` - **Advanced domain matching algorithms** with confidence scoring
-- `app/middleware/` - FastAPI middleware:
-  - `api_key_auth.py` - **API key authentication** with role-based access
-  - `rate_limiter.py` - **Rate limiting** with burst protection
+- `backend/src/main.py` - FastAPI application entry point with enterprise middleware, monitoring, and comprehensive API management
+- `backend/src/api/` - API endpoints:
+  - `v1/webhooks.py` - Core Mailgun webhook handler (`/webhooks/mailgun/inbound`) with dependency injection
+  - `v1/clients.py` - Client management API with authentication and comprehensive endpoints
+  - `v1/auth.py` - Authentication endpoints with JWT support
+  - `v2/config.py` - Configuration management API
+- `backend/src/core/` - Business logic services with clean architecture:
+  - `clients/manager.py` - **Multi-tenant client management** with advanced domain matching and fuzzy algorithms
+  - `email/classifier.py` - **Client-specific Claude 3.5 Sonnet classification** with template engine
+  - `email/router.py` - **Smart routing engine** with business rules, escalation, and after-hours handling
+  - `email/composer.py` - **Dual-mode email generation** (customer acknowledgment + team analysis) with client branding
+  - `authentication/jwt.py` - **JWT token management** with session handling
+- `backend/src/infrastructure/` - Infrastructure services:
+  - `external/mailgun.py` - **Mailgun email delivery** with client-specific templates and headers
+  - `config/manager.py` - Environment configuration management
+  - `database/models.py` - **Database models** with SQLAlchemy
+  - `templates/email.py` - **Email template management** with client branding
+- `backend/src/application/` - Application layer:
+  - `middleware/` - FastAPI middleware (auth, security, rate limiting)
+  - `dependencies/` - **Dependency injection** setup
 
 ### Multi-Tenant Email Processing Pipeline
 1. **Mailgun webhook** receives email → `/webhooks/mailgun/inbound`
@@ -173,7 +199,7 @@ webhooks.py → client_manager → ai_classifier → email_service → email_sen
 4. **Complete processing** in 5-7 seconds with comprehensive audit logging
 
 ### Multi-Tenant Configuration Management
-**Environment Variables** (managed in `app/utils/config.py`):
+**Environment Variables** (managed in `src/infrastructure/config/manager.py`):
 - **Required:** `ANTHROPIC_API_KEY`, `MAILGUN_API_KEY`, `MAILGUN_DOMAIN`
 - **Optional:** `ANTHROPIC_MODEL` (defaults to claude-3-5-sonnet-20241022), `PORT` (8080)
 
