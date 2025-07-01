@@ -30,12 +30,7 @@ for key, value in TEST_ENV_VARS.items():
 from core.authentication.auth_service import AuthService
 from infrastructure.adapters.user_repository_impl import SQLAlchemyUserRepository
 from infrastructure.database.connection import get_db
-from infrastructure.database.models import (
-    Base,
-    User,
-    UserRole,
-    UserStatus,
-)
+from infrastructure.database.models import Base, User, UserRole, UserStatus
 from main import app
 
 # Use an in-memory SQLite database for testing
