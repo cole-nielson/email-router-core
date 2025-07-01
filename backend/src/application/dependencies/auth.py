@@ -8,7 +8,9 @@ from typing import Annotated, Optional
 
 from fastapi import Depends, HTTPException, Request, status
 
+from application.dependencies.repositories import get_user_repository
 from core.authentication.context import AuthenticationType, SecurityContext
+from core.ports.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)
 
@@ -80,21 +82,24 @@ async def get_current_user(
 
 async def require_auth(
     security_context: Annotated[SecurityContext, Depends(get_security_context)],
+    user_repository: Annotated[UserRepository, Depends(get_user_repository)],
 ) -> SecurityContext:
     """
     Require any form of authentication (JWT or API key).
 
     This is the primary authentication dependency that accepts both
-    JWT and API key authentication methods.
+    JWT and API key authentication methods. For JWT tokens, it also
+    validates that the session is still active in the database.
 
     Args:
         security_context: Security context from middleware
+        user_repository: Repository for database operations
 
     Returns:
         Authenticated SecurityContext
 
     Raises:
-        HTTPException: If not authenticated
+        HTTPException: If not authenticated or session is revoked
     """
     if not security_context.is_authenticated:
         raise HTTPException(
@@ -102,6 +107,30 @@ async def require_auth(
             detail="Authentication required. Provide either JWT Bearer token or API key.",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # For JWT authentication, verify the session is still active in the database
+    if security_context.auth_type == AuthenticationType.JWT and security_context.session_id:
+        try:
+            # Check if the session exists and is active
+            session = await user_repository.find_session(security_context.session_id)
+            if not session or not session.is_active:
+                logger.warning(
+                    f"JWT session {security_context.session_id} for user {security_context.username} "
+                    f"is revoked or not found"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Session has been revoked. Please log in again.",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+        except Exception as e:
+            logger.error(f"Error checking session validity: {e}")
+            # If we can't check the session, reject for security
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication validation failed.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
     return security_context
 
@@ -219,9 +248,7 @@ async def require_admin(
     admin_roles = ["super_admin", "client_admin"]
 
     if not security_context.has_role(admin_roles):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
     return security_context
 

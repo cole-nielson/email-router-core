@@ -74,9 +74,7 @@ class JWTHandler(AuthenticationHandler):
     def can_handle_request(self, request: Request) -> bool:
         """Check if request contains JWT Bearer token."""
         auth_header = request.headers.get("Authorization", "")
-        return auth_header.startswith("Bearer ") and not auth_header.startswith(
-            "Bearer sk-"
-        )
+        return auth_header.startswith("Bearer ") and not auth_header.startswith("Bearer sk-")
 
     async def authenticate(
         self, request: Request, security_context: SecurityContext
@@ -100,7 +98,7 @@ class JWTHandler(AuthenticationHandler):
             token = auth_header[7:]  # Remove "Bearer " prefix
 
             # Use existing auth service for validation
-            user = await self._validate_jwt_token(token)
+            user = await self._validate_jwt_token(token, request)
 
             if user:
                 return SecurityContext.create_from_jwt_user(
@@ -122,38 +120,72 @@ class JWTHandler(AuthenticationHandler):
 
         return security_context
 
-    async def _validate_jwt_token(self, token: str):
+    async def _validate_jwt_token(self, token: str, request: Request = None):
         """
-        Validate JWT token using stateless validation for middleware.
+        Validate JWT token using auth service from request state if available.
 
         Args:
             token: JWT token string
+            request: FastAPI request object (optional)
 
         Returns:
             User-like object with JWT claims or None
         """
         try:
-            # Import here to avoid circular imports
-            from .jwt import AuthService
-
             logger.debug(f"Attempting to validate JWT token: {token[:20]}...")
 
-            # Use stateless validation for middleware - no database access needed
-            claims = AuthService.validate_token_stateless(token)
-            logger.debug(f"JWT validation result: {claims}")
+            # Try to use auth service from request state for database validation
+            if request and hasattr(request.state, "auth_service") and request.state.auth_service:
+                logger.debug("Using auth service from request state for full validation")
+                auth_service = request.state.auth_service
+
+                # Check if this is the new auth service (has async validate_token)
+                if hasattr(auth_service, "validate_token") and hasattr(
+                    auth_service.__class__.validate_token, "__code__"
+                ):
+                    # New auth service - use async validate_token
+                    claims = await auth_service.validate_token(token)
+                else:
+                    # Legacy auth service - use sync validate_token
+                    claims = auth_service.validate_token(token)
+            else:
+                # Fallback to stateless validation if no auth service available
+                logger.debug("Using stateless validation (no auth service available)")
+                from .jwt import AuthService as LegacyAuthService
+
+                claims = LegacyAuthService.validate_token_stateless(token)
+                logger.debug(f"JWT stateless validation result: {claims}")
 
             if claims:
+                # Handle different claim structures between new and legacy services
+                if hasattr(claims, "user_id"):
+                    # New auth service structure
+                    user_id = claims.user_id
+                    username = claims.username
+                    email = claims.email
+                    role = claims.role
+                    client_id = claims.client_id
+                    permissions = getattr(claims, "permissions", [])
+                else:
+                    # Legacy auth service structure
+                    user_id = int(claims.sub)
+                    username = claims.username
+                    email = claims.email
+                    role = claims.role
+                    client_id = claims.client_id
+                    permissions = getattr(claims, "permissions", [])
+
                 # Return a user-like object with basic info from JWT claims
                 user_obj = type(
                     "JWTUser",
                     (),
                     {
-                        "id": claims.user_id,
-                        "username": claims.username,
-                        "email": claims.email,
-                        "role": claims.role,
-                        "client_id": claims.client_id,
-                        "permissions": claims.permissions or [],
+                        "id": user_id,
+                        "username": username,
+                        "email": email,
+                        "role": role,
+                        "client_id": client_id,
+                        "permissions": permissions or [],
                         "auth_type": "jwt",
                     },
                 )()
@@ -255,9 +287,7 @@ class APIKeyHandler(AuthenticationHandler):
 
         return None
 
-    async def _validate_api_key(
-        self, api_key: str
-    ) -> tuple[Optional[str], list[str], str]:
+    async def _validate_api_key(self, api_key: str) -> tuple[Optional[str], list[str], str]:
         """
         Validate API key and return client info.
 
@@ -363,9 +393,7 @@ class AuthenticationManager:
         # Try each handler until one succeeds
         for handler in handlers:
             if handler.can_handle_request(request):
-                authenticated_context = await handler.authenticate(
-                    request, security_context
-                )
+                authenticated_context = await handler.authenticate(request, security_context)
                 if authenticated_context.is_authenticated:
                     logger.debug(
                         f"Authentication successful: {handler.__class__.__name__} "

@@ -294,22 +294,23 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
                     # Use the overridden dependency (for tests)
                     auth_service = app.dependency_overrides[get_auth_service]()
                     request.state.auth_service = auth_service
-                    request.state.db_session = (
-                        None  # No session to close in override case
-                    )
+                    request.state.db_session = None  # No session to close in override case
                 else:
                     # Use regular dependency resolution
                     from core.authentication.auth_service import AuthService
                     from infrastructure.adapters.user_repository_impl import (
                         SQLAlchemyUserRepository,
                     )
-                    from infrastructure.database.connection import get_database_session
+                    from infrastructure.database.connection import get_db
 
-                    db = get_database_session()
+                    # Use the same get_db function that endpoints use
+                    db_generator = get_db()
+                    db = next(db_generator)
                     user_repository = SQLAlchemyUserRepository(db)
                     auth_service = AuthService(user_repository)
                     request.state.auth_service = auth_service
                     request.state.db_session = db
+                    request.state.db_generator = db_generator  # Keep generator for cleanup
             except Exception as e:
                 logger.warning(f"Failed to inject auth service: {e}")
                 request.state.auth_service = None
@@ -327,12 +328,13 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
 
             # Skip authentication for public endpoints
             if self._is_public_endpoint(str(request.url.path)):
-                logger.debug(
-                    f"Skipping authentication for public endpoint: {request.url.path}"
-                )
+                logger.debug(f"Skipping authentication for public endpoint: {request.url.path}")
                 response = await call_next(request)
                 self._add_security_headers(response)
                 return response
+
+            # Debug: Log non-public endpoints
+            logger.debug(f"Processing authentication for endpoint: {request.url.path}")
 
             # Authenticate the request
             authenticated_context = await self.security_manager.authenticate_request(
@@ -365,24 +367,24 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
             self.security_manager.log_security_event(
                 "middleware_error",
                 {"error": str(e), "path": str(request.url.path)},
-                getattr(
-                    request.state, "security_context", SecurityContext()
-                ).ip_address,
+                getattr(request.state, "security_context", SecurityContext()).ip_address,
             )
             logger.error(f"Unified auth middleware error: {e}")
             raise
         finally:
             # Clean up database session if it was created in middleware (not in test overrides)
-            if (
-                hasattr(request.state, "db_session")
-                and request.state.db_session is not None
-            ):
+            if hasattr(request.state, "db_session") and request.state.db_session is not None:
                 try:
-                    request.state.db_session.close()
+                    # If we have a generator, use it for proper cleanup
+                    if hasattr(request.state, "db_generator"):
+                        try:
+                            next(request.state.db_generator)
+                        except StopIteration:
+                            pass  # Generator cleanup completed
+                    else:
+                        request.state.db_session.close()
                 except Exception as e:
-                    logger.warning(
-                        f"Failed to close database session in middleware: {e}"
-                    )
+                    logger.warning(f"Failed to close database session in middleware: {e}")
 
     def _is_public_endpoint(self, path: str) -> bool:
         """
