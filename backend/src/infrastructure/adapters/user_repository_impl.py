@@ -638,14 +638,22 @@ class SQLAlchemyUserRepository(UserRepository):
     async def list_user_sessions(self, user_id: int, active_only: bool = True) -> List[UserSession]:
         """List sessions for a user."""
         try:
+            # Debug: Check all sessions in database
+            all_sessions = self.db.query(DBUserSession).all()
+            logger.error(f"DEBUG: Total sessions in DB: {len(all_sessions)}")
+            for s in all_sessions:
+                logger.error(
+                    f"DEBUG: Session user_id={s.user_id}, session_id={s.session_id}, is_active={s.is_active}"
+                )
+
             query = self.db.query(DBUserSession).filter(DBUserSession.user_id == user_id)
 
             if active_only:
-                query = query.filter(DBUserSession.is_active is True)
+                query = query.filter(DBUserSession.is_active == True)
 
             sessions = query.all()
-            logger.debug(
-                f"Found {len(sessions)} sessions for user {user_id} (active_only={active_only})"
+            logger.error(
+                f"DEBUG: Found {len(sessions)} sessions for user {user_id} (active_only={active_only})"
             )
             return [self._session_to_domain_model(session) for session in sessions]
 

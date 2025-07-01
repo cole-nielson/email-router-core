@@ -292,9 +292,11 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
                 # Use FastAPI's dependency system (respects test overrides)
                 if get_auth_service in app.dependency_overrides:
                     # Use the overridden dependency (for tests)
-                    auth_service = app.dependency_overrides[get_auth_service]()
+                    override_func = app.dependency_overrides[get_auth_service]
+                    auth_service = override_func()
                     request.state.auth_service = auth_service
                     request.state.db_session = None  # No session to close in override case
+                    request.state.is_test_override = True
                 else:
                     # Use regular dependency resolution
                     from core.authentication.auth_service import AuthService
@@ -303,18 +305,31 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
                     )
                     from infrastructure.database.connection import get_db
 
-                    # Use the same get_db function that endpoints use
-                    db_generator = get_db()
-                    db = next(db_generator)
-                    user_repository = SQLAlchemyUserRepository(db)
-                    auth_service = AuthService(user_repository)
-                    request.state.auth_service = auth_service
-                    request.state.db_session = db
-                    request.state.db_generator = db_generator  # Keep generator for cleanup
+                    # Check if get_db is also overridden (test environment)
+                    if get_db in app.dependency_overrides:
+                        override_func = app.dependency_overrides[get_db]
+                        db_generator = override_func()
+                        db = next(db_generator)
+                        user_repository = SQLAlchemyUserRepository(db)
+                        auth_service = AuthService(user_repository)
+                        request.state.auth_service = auth_service
+                        request.state.db_session = None  # Don't close overridden sessions
+                        request.state.is_test_override = True
+                    else:
+                        # Use the same get_db function that endpoints use
+                        db_generator = get_db()
+                        db = next(db_generator)
+                        user_repository = SQLAlchemyUserRepository(db)
+                        auth_service = AuthService(user_repository)
+                        request.state.auth_service = auth_service
+                        request.state.db_session = db
+                        request.state.db_generator = db_generator  # Keep generator for cleanup
+                        request.state.is_test_override = False
             except Exception as e:
                 logger.warning(f"Failed to inject auth service: {e}")
                 request.state.auth_service = None
                 request.state.db_session = None
+                request.state.is_test_override = False
 
             # Create initial security context
             security_context = self.security_manager.create_security_context(request)
@@ -373,7 +388,12 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
             raise
         finally:
             # Clean up database session if it was created in middleware (not in test overrides)
-            if hasattr(request.state, "db_session") and request.state.db_session is not None:
+            is_test_override = getattr(request.state, "is_test_override", False)
+            if (
+                not is_test_override
+                and hasattr(request.state, "db_session")
+                and request.state.db_session is not None
+            ):
                 try:
                     # If we have a generator, use it for proper cleanup
                     if hasattr(request.state, "db_generator"):

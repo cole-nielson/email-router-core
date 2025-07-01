@@ -203,21 +203,26 @@ class TestJWTAuthentication:
         assert claims is not None
         assert claims.username == test_user["client_user"].username
 
-    def test_user_authentication(self, auth_service, test_user):
+    async def test_user_authentication(self, client, test_user):
         """Test user authentication."""
+        # Get auth service from client to use same database session
+        auth_service = client._test_auth_service
+
         # Test valid credentials
-        user = auth_service.authenticate_user(
+        user = await auth_service.authenticate_user(
             test_user["client_user"].username, test_user["client_user"].password
         )
         assert user is not None
         assert user.username == test_user["client_user"].username
 
         # Test invalid password
-        user = auth_service.authenticate_user(test_user["client_user"].username, "wrongpassword")
+        user = await auth_service.authenticate_user(
+            test_user["client_user"].username, "wrongpassword"
+        )
         assert user is None
 
         # Test nonexistent user
-        user = auth_service.authenticate_user("nonexistent", "password")
+        user = await auth_service.authenticate_user("nonexistent", "password")
         assert user is None
 
 
@@ -623,6 +628,7 @@ class TestSessionManagement:
 
         assert response.status_code == 200
         data = response.json()
+        print(f"DEBUG: Session response data: {data}")
         assert "sessions" in data
         assert len(data["sessions"]) >= 1  # At least current session
 
