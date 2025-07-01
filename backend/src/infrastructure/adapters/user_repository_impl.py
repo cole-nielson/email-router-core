@@ -554,21 +554,14 @@ class SQLAlchemyUserRepository(UserRepository):
             )
 
             self.db.add(session)
-            self.db.flush()  # Ensure session gets an ID
-
-            # Only commit if we're not in a nested transaction (test environment)
-            import os
-
-            if os.getenv("ENVIRONMENT") != "test":
-                self.db.commit()
-                self.db.refresh(session)
+            self.db.commit()
+            self.db.refresh(session)
 
             logger.debug(f"Created session {session_id} for user {user_id}")
             return self._session_to_domain_model(session)
 
         except Exception as e:
-            if os.getenv("ENVIRONMENT") != "test":
-                self.db.rollback()
+            self.db.rollback()
             logger.error(f"Error creating user session: {e}")
             raise
 
@@ -612,22 +605,11 @@ class SQLAlchemyUserRepository(UserRepository):
             session.is_active = False
             session.revoked_at = datetime.utcnow()
             session.revoked_reason = reason
-
-            # Only commit if we're not in a nested transaction (test environment)
-            import os
-
-            if os.getenv("ENVIRONMENT") != "test":
-                self.db.commit()
-            else:
-                self.db.flush()
-
+            self.db.commit()
             return True
 
         except Exception as e:
-            import os
-
-            if os.getenv("ENVIRONMENT") != "test":
-                self.db.rollback()
+            self.db.rollback()
             logger.error(f"Error revoking session {session_id}: {e}")
             return False
 
@@ -645,21 +627,11 @@ class SQLAlchemyUserRepository(UserRepository):
                     }
                 )
             )
-
-            # Only commit if we're not in a nested transaction (test environment)
-            import os
-
-            if os.getenv("ENVIRONMENT") != "test":
-                self.db.commit()
-            else:
-                self.db.flush()
+            self.db.commit()
             return count
 
         except Exception as e:
-            import os
-
-            if os.getenv("ENVIRONMENT") != "test":
-                self.db.rollback()
+            self.db.rollback()
             logger.error(f"Error revoking all sessions for user {user_id}: {e}")
             return 0
 

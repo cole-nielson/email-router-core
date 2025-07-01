@@ -28,10 +28,28 @@ TEST_ENV_VARS = {
 for key, value in TEST_ENV_VARS.items():
     os.environ.setdefault(key, value)
 
+# Import all models to ensure they're registered with SQLAlchemy metadata
+import infrastructure.database.models  # This imports all models
 from core.authentication.auth_service import AuthService
 from infrastructure.adapters.user_repository_impl import SQLAlchemyUserRepository
 from infrastructure.database.connection import get_db
-from infrastructure.database.models import Base, User, UserRole, UserStatus
+from infrastructure.database.models import (
+    AIPrompt,
+    Base,
+    Client,
+    ClientBranding,
+    ClientDomain,
+    ClientSetting,
+    ConfigurationChange,
+    ResponseTime,
+    RoutingHistory,
+    RoutingRule,
+    User,
+    UserPermission,
+    UserRole,
+    UserSession,
+    UserStatus,
+)
 from main import app
 
 # Use an in-memory SQLite database for testing
@@ -52,21 +70,48 @@ def setup_database():
 
 @pytest.fixture(scope="function")
 def db_session():
-    """Yield a new database session for each test function."""
-    connection = engine.connect()
-    transaction = connection.begin()
-    session = TestingSessionLocal(bind=connection)
+    """
+    Yield a new database session for each test function with proper isolation.
 
-    yield session
+    Uses a per-test database approach to ensure complete isolation.
+    Each test gets a fresh database to avoid any transaction interference.
+    """
+    # Create a fresh in-memory database for each test
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
 
-    session.close()
-    transaction.rollback()
-    connection.close()
+    test_engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+
+    # Create all tables in the fresh database
+    Base.metadata.create_all(bind=test_engine)
+
+    # Create session
+    session = TestSessionLocal()
+
+    try:
+        yield session
+    finally:
+        session.close()
+        test_engine.dispose()
 
 
 @pytest.fixture(scope="function")
-def client(db_session):
+def client():
     """Yield a TestClient with a database override for each test function."""
+    # Create a fresh in-memory database for the client
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    test_engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+
+    # Create all tables in the fresh database
+    Base.metadata.create_all(bind=test_engine)
+
+    # Create session for the client
+    client_session = TestSessionLocal()
+
     from application.dependencies.repositories import (
         get_auth_service,
         get_user_repository,
@@ -74,33 +119,46 @@ def client(db_session):
     from core.authentication.auth_service import AuthService
 
     def override_get_db():
-        yield db_session
+        yield client_session
 
     def override_get_user_repository():
-        return SQLAlchemyUserRepository(db_session)
+        return SQLAlchemyUserRepository(client_session)
 
     def override_get_auth_service():
-        user_repository = SQLAlchemyUserRepository(db_session)
+        user_repository = SQLAlchemyUserRepository(client_session)
         return AuthService(user_repository)
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_user_repository] = override_get_user_repository
     app.dependency_overrides[get_auth_service] = override_get_auth_service
 
-    yield TestClient(app)
+    try:
+        yield TestClient(app)
+    finally:
+        # Clean up dependency overrides
+        if get_db in app.dependency_overrides:
+            del app.dependency_overrides[get_db]
+        if get_user_repository in app.dependency_overrides:
+            del app.dependency_overrides[get_user_repository]
+        if get_auth_service in app.dependency_overrides:
+            del app.dependency_overrides[get_auth_service]
 
-    # Clean up dependency overrides
-    if get_db in app.dependency_overrides:
-        del app.dependency_overrides[get_db]
-    if get_user_repository in app.dependency_overrides:
-        del app.dependency_overrides[get_user_repository]
-    if get_auth_service in app.dependency_overrides:
-        del app.dependency_overrides[get_auth_service]
+        # Close the session and engine
+        client_session.close()
+        test_engine.dispose()
 
 
 @pytest.fixture(scope="function")
-def test_user(db_session):
-    """Create a standard test user and a super_admin and add them to the session."""
+def test_user(client):
+    """Create a standard test user and a super_admin using the client's database."""
+    # Get the database session from the client's dependency overrides
+    from application.dependencies.repositories import get_auth_service, get_user_repository
+    from infrastructure.database.connection import get_db
+
+    # Get the overridden dependencies
+    db_session_gen = app.dependency_overrides[get_db]()
+    db_session = next(db_session_gen)
+
     user_repository = SQLAlchemyUserRepository(db_session)
     auth_service = AuthService(user_repository)
 
