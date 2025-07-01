@@ -255,7 +255,6 @@ def mock_external_services():
         patch("requests.post") as mock_requests_post,
         patch("requests.get") as mock_requests_get,
     ):
-
         # Set up default responses for requests
         mock_requests_post.return_value.status_code = 200
         mock_requests_post.return_value.json.return_value = {"id": "test-message-id"}

@@ -73,7 +73,14 @@ class ClientManagerCLI:
                     except Exception as e:
                         table_data.append([client_id, f"Error: {e}", "", "", "", ""])
 
-                headers = ["Client ID", "Name", "Industry", "Status", "Domains", "Routes"]
+                headers = [
+                    "Client ID",
+                    "Name",
+                    "Industry",
+                    "Status",
+                    "Domains",
+                    "Routes",
+                ]
                 print(tabulate(table_data, headers=headers, tablefmt="grid"))
 
         except Exception as e:

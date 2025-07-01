@@ -317,7 +317,9 @@ class ClientOnboardingWizard:
         # Support domain (can be different)
         self._print_info("Email address where support emails will be sent")
         support_email = self._prompt(
-            "Support email address", f"support@{primary_domain}", validator=self._validate_email
+            "Support email address",
+            f"support@{primary_domain}",
+            validator=self._validate_email,
         )
 
         # Mailgun domain
@@ -383,7 +385,9 @@ class ClientOnboardingWizard:
                 default_email = self.client_data["contacts"]["billing_contact"]
 
             routing[category] = self._prompt(
-                f"{category.title()} emails route to", default_email, validator=self._validate_email
+                f"{category.title()} emails route to",
+                default_email,
+                validator=self._validate_email,
             )
 
         # Response times
