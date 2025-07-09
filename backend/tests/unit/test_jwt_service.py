@@ -7,10 +7,9 @@ import time
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-import jwt
 import pytest
 
-from core.authentication.jwt import AuthenticatedUser, AuthService
+from core.authentication.jwt import AuthService
 from infrastructure.database.models import UserRole, UserStatus
 
 
@@ -184,7 +183,7 @@ class TestTokenRevocation:
         success = auth_service.revoke_token("test_jti", "user_logout")
 
         assert success
-        assert mock_session.is_active == False
+        assert mock_session.is_active is False
         assert mock_session.revoked_reason == "user_logout"
         assert mock_session.revoked_at is not None
         mock_db.commit.assert_called_once()
@@ -327,8 +326,8 @@ class TestPasswordSecurity:
         result2 = auth_service.verify_password(password, incorrect_hash)
         time2 = time.time() - start_time
 
-        assert result1 == True
-        assert result2 == False
+        assert result1 is True
+        assert result2 is False
 
         # Times should be similar (within reasonable bounds)
         # This is a property of bcrypt but timing can vary

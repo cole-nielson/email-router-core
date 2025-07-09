@@ -309,7 +309,7 @@ class TestClientConfigValidation:
 
         for client_id in self.client_ids:
             # Get main config
-            config = await self.client_manager.get_client_config(client_id)
+            await self.client_manager.get_client_config(client_id)
 
             # Load routing config
             routing_path = self.clients_dir / client_id / "routing-rules.yaml"

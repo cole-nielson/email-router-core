@@ -18,7 +18,7 @@ from core.clients.resolver import (
     normalize_domain,
 )
 from core.ports.config_provider import ConfigurationProvider
-from infrastructure.config.manager import ConfigurationError, get_config_manager
+from infrastructure.config.manager import get_config_manager
 
 
 @pytest.fixture
@@ -186,7 +186,7 @@ async def test_client_validation(mock_enhanced_client_manager):
 
     # Valid client should pass validation
     is_valid = await manager.validate_client_setup("client-001-cole-nielson")
-    assert is_valid == True
+    assert is_valid is True
 
 
 def test_unknown_client_handling(mock_enhanced_client_manager):
@@ -265,10 +265,10 @@ def test_domain_similarity_calculation():
 def test_domain_pattern_matching():
     """Test wildcard domain pattern matching"""
     # Test wildcard patterns
-    assert match_domain_pattern("api.company.com", "*.company.com") == True
-    assert match_domain_pattern("company.com", "*.company.com") == False
-    assert match_domain_pattern("support.company.com", "support.*") == True
-    assert match_domain_pattern("billing.company.com", "support.*") == False
+    assert match_domain_pattern("api.company.com", "*.company.com") is True
+    assert match_domain_pattern("company.com", "*.company.com") is False
+    assert match_domain_pattern("support.company.com", "support.*") is True
+    assert match_domain_pattern("billing.company.com", "support.*") is False
 
 
 def test_domain_matcher_advanced_strategies():

@@ -58,6 +58,7 @@ Thumbs.db
 
 # 🏗️ VIRTUAL ENVIRONMENTS
 .venv/
+.venv-fix/
 venv/
 ENV/
 env/

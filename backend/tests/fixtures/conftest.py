@@ -3,8 +3,6 @@ Global fixtures for the Email Router test suite.
 """
 
 import os
-import sys
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -28,6 +26,7 @@ TEST_ENV_VARS = {
 for key, value in TEST_ENV_VARS.items():
     os.environ.setdefault(key, value)
 
+# Import all models to ensure they're registered with SQLAlchemy metadata
 from core.authentication.auth_service import AuthService
 from infrastructure.adapters.user_repository_impl import SQLAlchemyUserRepository
 from infrastructure.database.connection import get_db
@@ -52,57 +51,119 @@ def setup_database():
 
 @pytest.fixture(scope="function")
 def db_session():
-    """Yield a new database session for each test function."""
-    connection = engine.connect()
-    transaction = connection.begin()
-    session = TestingSessionLocal(bind=connection)
+    """
+    Yield a new database session for each test function with proper isolation.
 
-    yield session
+    Uses a per-test database approach to ensure complete isolation.
+    Each test gets a fresh database to avoid any transaction interference.
+    """
+    # Create a fresh in-memory database for each test
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
 
-    session.close()
-    transaction.rollback()
-    connection.close()
+    test_engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+
+    # Create all tables in the fresh database
+    Base.metadata.create_all(bind=test_engine)
+
+    # Create session
+    session = TestSessionLocal()
+
+    try:
+        yield session
+    finally:
+        session.close()
+        test_engine.dispose()
 
 
 @pytest.fixture(scope="function")
-def client(db_session):
-    """Yield a TestClient with a database override for each test function."""
+def client():
+    """
+    Yield a TestClient with a database override for each test function.
+    This is the single source of truth for test environment setup.
+    """
+    # Create a fresh in-memory database for the client
+    import os
+    import tempfile
+
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    # Use a temporary file instead of in-memory for better isolation
+    temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
+    temp_db.close()
+    db_url = f"sqlite:///{temp_db.name}"
+
+    test_engine = create_engine(db_url, connect_args={"check_same_thread": False})
+    TestSessionLocal = sessionmaker(autocommit=False, autoflush=True, bind=test_engine)
+
+    # Create all tables in the fresh database
+    Base.metadata.create_all(bind=test_engine)
+
+    # Create session for the client
+    client_session = TestSessionLocal()
+
     from application.dependencies.repositories import (
         get_auth_service,
         get_user_repository,
     )
     from core.authentication.auth_service import AuthService
 
+    # Create repository and service instances using the test session
+    user_repository = SQLAlchemyUserRepository(client_session)
+    auth_service = AuthService(user_repository)
+
     def override_get_db():
-        yield db_session
+        yield client_session
 
     def override_get_user_repository():
-        return SQLAlchemyUserRepository(db_session)
+        return user_repository
 
     def override_get_auth_service():
-        user_repository = SQLAlchemyUserRepository(db_session)
-        return AuthService(user_repository)
+        return auth_service
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_user_repository] = override_get_user_repository
     app.dependency_overrides[get_auth_service] = override_get_auth_service
 
-    yield TestClient(app)
+    # Store the session and service instances on the client for test_user fixture to use
+    test_client = TestClient(app)
+    test_client._test_session = client_session
+    test_client._test_auth_service = auth_service
+    test_client._test_user_repository = user_repository
 
-    # Clean up dependency overrides
-    if get_db in app.dependency_overrides:
-        del app.dependency_overrides[get_db]
-    if get_user_repository in app.dependency_overrides:
-        del app.dependency_overrides[get_user_repository]
-    if get_auth_service in app.dependency_overrides:
-        del app.dependency_overrides[get_auth_service]
+    try:
+        yield test_client
+    finally:
+        # Clean up dependency overrides
+        if get_db in app.dependency_overrides:
+            del app.dependency_overrides[get_db]
+        if get_user_repository in app.dependency_overrides:
+            del app.dependency_overrides[get_user_repository]
+        if get_auth_service in app.dependency_overrides:
+            del app.dependency_overrides[get_auth_service]
+
+        # Close the session and engine
+        client_session.close()
+        test_engine.dispose()
+
+        # Clean up temporary database file
+        try:
+            os.unlink(temp_db.name)
+        except Exception:
+            pass  # Ignore cleanup errors
 
 
 @pytest.fixture(scope="function")
-def test_user(db_session):
-    """Create a standard test user and a super_admin and add them to the session."""
-    user_repository = SQLAlchemyUserRepository(db_session)
-    auth_service = AuthService(user_repository)
+def test_user(client):
+    """
+    Create a standard test user and a super_admin using the client's exact database and auth service.
+    This ensures consistency between the client fixture and test users.
+    """
+    # Use the exact same database session and auth service that the client fixture created
+    db_session = client._test_session
+    auth_service = client._test_auth_service
 
     # Create super_admin
     super_admin_password = "supersecretpassword"
@@ -175,7 +236,6 @@ def mock_external_services():
         patch("requests.post") as mock_requests_post,
         patch("requests.get") as mock_requests_get,
     ):
-
         # Set up default responses for requests
         mock_requests_post.return_value.status_code = 200
         mock_requests_post.return_value.json.return_value = {"id": "test-message-id"}
