@@ -1,5 +1,6 @@
 name: Backend CI
 
+# CI/CD pipeline for backend services
 on:
   push:
     branches: [ main, develop ]
