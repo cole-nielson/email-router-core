@@ -21,7 +21,9 @@ class PaginationParams(BaseModel):
 class UserFilterParams(BaseModel):
     """Filter parameters for user list endpoints."""
 
-    search: Optional[str] = Field(None, description="Search term for username, email, or full name")
+    search: Optional[str] = Field(
+        None, description="Search term for username, email, or full name"
+    )
     role: Optional[str] = Field(None, description="Filter by user role")
     status: Optional[str] = Field(None, description="Filter by user status")
     client_id: Optional[str] = Field(None, description="Filter by client ID")
@@ -49,7 +51,9 @@ def common_pagination_parameters(
     Returns:
         PaginationParams object with validated parameters
     """
-    return PaginationParams(offset=offset, limit=limit, sort_by=sort_by, sort_order=sort_order)
+    return PaginationParams(
+        offset=offset, limit=limit, sort_by=sort_by, sort_order=sort_order
+    )
 
 
 def user_filter_parameters(
@@ -83,7 +87,9 @@ def user_filter_parameters(
     Returns:
         UserFilterParams object with validated filter parameters
     """
-    return UserFilterParams(search=search, role=role, status=status, client_id=client_id)
+    return UserFilterParams(
+        search=search, role=role, status=status, client_id=client_id
+    )
 
 
 # Common sort field validation for different entities
@@ -151,7 +157,9 @@ def user_pagination_parameters(
     try:
         validated_sort_by = validate_user_sort_field(sort_by)
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
+        )
 
     return PaginationParams(
         offset=offset, limit=limit, sort_by=validated_sort_by, sort_order=sort_order

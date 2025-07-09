@@ -177,13 +177,18 @@ class SQLAlchemyUserRepository(UserRepository):
             # Check for existing username/email
             existing_user = (
                 self.db.query(User)
-                .filter((User.username == user_data.username) | (User.email == user_data.email))
+                .filter(
+                    (User.username == user_data.username)
+                    | (User.email == user_data.email)
+                )
                 .first()
             )
 
             if existing_user:
                 if existing_user.username == user_data.username:
-                    raise ConflictError(f"Username '{user_data.username}' already exists")
+                    raise ConflictError(
+                        f"Username '{user_data.username}' already exists"
+                    )
                 else:
                     raise ConflictError(f"Email '{user_data.email}' already exists")
 
@@ -402,7 +407,9 @@ class SQLAlchemyUserRepository(UserRepository):
             query = self.db.query(User)
 
             # Apply filters
-            query = self._build_user_filter_query(query, search, client_id, role, status)
+            query = self._build_user_filter_query(
+                query, search, client_id, role, status
+            )
 
             # Get total count before pagination
             total_count = query.count()
@@ -434,7 +441,9 @@ class SQLAlchemyUserRepository(UserRepository):
             query = self.db.query(func.count(User.id))
 
             # Apply the same filters as list_users
-            query = self._build_user_filter_query(query, search, client_id, role, status)
+            query = self._build_user_filter_query(
+                query, search, client_id, role, status
+            )
 
             return query.scalar() or 0
 
@@ -468,7 +477,9 @@ class SQLAlchemyUserRepository(UserRepository):
             self.db.rollback()
             logger.error(f"Error updating login attempt for {username}: {e}")
 
-    async def lock_user_account(self, user_id: int, lock_until: datetime, reason: str) -> None:
+    async def lock_user_account(
+        self, user_id: int, lock_until: datetime, reason: str
+    ) -> None:
         """Lock user account until specified time."""
         try:
             user = self.db.query(User).filter(User.id == user_id).first()
@@ -476,7 +487,9 @@ class SQLAlchemyUserRepository(UserRepository):
                 user.locked_until = lock_until
                 user.status = UserStatus.SUSPENDED
                 self.db.commit()
-                logger.info(f"Locked user account {user.username} until {lock_until}: {reason}")
+                logger.info(
+                    f"Locked user account {user.username} until {lock_until}: {reason}"
+                )
 
         except Exception as e:
             self.db.rollback()
@@ -517,7 +530,9 @@ class SQLAlchemyUserRepository(UserRepository):
             logger.error(f"Error updating password for user {user_id}: {e}")
             return False
 
-    async def update_last_login(self, user_id: int, login_time: Optional[datetime] = None) -> None:
+    async def update_last_login(
+        self, user_id: int, login_time: Optional[datetime] = None
+    ) -> None:
         """Update user's last login timestamp."""
         try:
             user = self.db.query(User).filter(User.id == user_id).first()
@@ -569,7 +584,9 @@ class SQLAlchemyUserRepository(UserRepository):
         """Find user session by session ID."""
         try:
             session = (
-                self.db.query(DBUserSession).filter(DBUserSession.session_id == session_id).first()
+                self.db.query(DBUserSession)
+                .filter(DBUserSession.session_id == session_id)
+                .first()
             )
             return self._session_to_domain_model(session) if session else None
 
@@ -583,7 +600,9 @@ class SQLAlchemyUserRepository(UserRepository):
         """Update session last used timestamp."""
         try:
             session = (
-                self.db.query(DBUserSession).filter(DBUserSession.session_id == session_id).first()
+                self.db.query(DBUserSession)
+                .filter(DBUserSession.session_id == session_id)
+                .first()
             )
             if session:
                 session.last_used_at = last_used or datetime.utcnow()
@@ -597,7 +616,9 @@ class SQLAlchemyUserRepository(UserRepository):
         """Revoke a user session."""
         try:
             session = (
-                self.db.query(DBUserSession).filter(DBUserSession.session_id == session_id).first()
+                self.db.query(DBUserSession)
+                .filter(DBUserSession.session_id == session_id)
+                .first()
             )
             if not session:
                 return False
@@ -618,7 +639,9 @@ class SQLAlchemyUserRepository(UserRepository):
         try:
             count = (
                 self.db.query(DBUserSession)
-                .filter(DBUserSession.user_id == user_id, DBUserSession.is_active is True)
+                .filter(
+                    DBUserSession.user_id == user_id, DBUserSession.is_active is True
+                )
                 .update(
                     {
                         "is_active": False,
@@ -635,7 +658,9 @@ class SQLAlchemyUserRepository(UserRepository):
             logger.error(f"Error revoking all sessions for user {user_id}: {e}")
             return 0
 
-    async def list_user_sessions(self, user_id: int, active_only: bool = True) -> List[UserSession]:
+    async def list_user_sessions(
+        self, user_id: int, active_only: bool = True
+    ) -> List[UserSession]:
         """List sessions for a user."""
         try:
             # Debug: Check all sessions in database
@@ -646,7 +671,9 @@ class SQLAlchemyUserRepository(UserRepository):
                     f"DEBUG: Session user_id={s.user_id}, session_id={s.session_id}, is_active={s.is_active}"
                 )
 
-            query = self.db.query(DBUserSession).filter(DBUserSession.user_id == user_id)
+            query = self.db.query(DBUserSession).filter(
+                DBUserSession.user_id == user_id
+            )
 
             if active_only:
                 query = query.filter(DBUserSession.is_active is True)
@@ -661,7 +688,9 @@ class SQLAlchemyUserRepository(UserRepository):
             logger.error(f"Error listing sessions for user {user_id}: {e}")
             return []
 
-    async def update_refresh_token_hash(self, user_id: int, token_hash: Optional[str]) -> None:
+    async def update_refresh_token_hash(
+        self, user_id: int, token_hash: Optional[str]
+    ) -> None:
         """Update user's refresh token hash."""
         try:
             user = self.db.query(User).filter(User.id == user_id).first()
@@ -700,7 +729,9 @@ class SQLAlchemyUserRepository(UserRepository):
     ) -> List[str]:
         """Get user permissions with optional client scoping."""
         try:
-            query = self.db.query(DBUserPermission).filter(DBUserPermission.user_id == user_id)
+            query = self.db.query(DBUserPermission).filter(
+                DBUserPermission.user_id == user_id
+            )
 
             if client_id:
                 query = query.filter(
