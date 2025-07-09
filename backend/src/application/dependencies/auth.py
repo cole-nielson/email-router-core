@@ -109,10 +109,7 @@ async def require_auth(
         )
 
     # For JWT authentication, verify the session is still active in the database
-    if (
-        security_context.auth_type == AuthenticationType.JWT
-        and security_context.session_id
-    ):
+    if security_context.auth_type == AuthenticationType.JWT and security_context.session_id:
         try:
             # Check if the session exists and is active
             session = await user_repository.find_session(security_context.session_id)
@@ -251,9 +248,7 @@ async def require_admin(
     admin_roles = ["super_admin", "client_admin"]
 
     if not security_context.has_role(admin_roles):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
     return security_context
 

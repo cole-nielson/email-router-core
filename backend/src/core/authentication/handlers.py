@@ -74,9 +74,7 @@ class JWTHandler(AuthenticationHandler):
     def can_handle_request(self, request: Request) -> bool:
         """Check if request contains JWT Bearer token."""
         auth_header = request.headers.get("Authorization", "")
-        return auth_header.startswith("Bearer ") and not auth_header.startswith(
-            "Bearer sk-"
-        )
+        return auth_header.startswith("Bearer ") and not auth_header.startswith("Bearer sk-")
 
     async def authenticate(
         self, request: Request, security_context: SecurityContext
@@ -137,14 +135,8 @@ class JWTHandler(AuthenticationHandler):
             logger.debug(f"Attempting to validate JWT token: {token[:20]}...")
 
             # Try to use auth service from request state for database validation
-            if (
-                request
-                and hasattr(request.state, "auth_service")
-                and request.state.auth_service
-            ):
-                logger.debug(
-                    "Using auth service from request state for full validation"
-                )
+            if request and hasattr(request.state, "auth_service") and request.state.auth_service:
+                logger.debug("Using auth service from request state for full validation")
                 auth_service = request.state.auth_service
 
                 # Check if this is the new auth service (has async validate_token)
@@ -295,9 +287,7 @@ class APIKeyHandler(AuthenticationHandler):
 
         return None
 
-    async def _validate_api_key(
-        self, api_key: str
-    ) -> tuple[Optional[str], list[str], str]:
+    async def _validate_api_key(self, api_key: str) -> tuple[Optional[str], list[str], str]:
         """
         Validate API key and return client info.
 
@@ -403,9 +393,7 @@ class AuthenticationManager:
         # Try each handler until one succeeds
         for handler in handlers:
             if handler.can_handle_request(request):
-                authenticated_context = await handler.authenticate(
-                    request, security_context
-                )
+                authenticated_context = await handler.authenticate(request, security_context)
                 if authenticated_context.is_authenticated:
                     logger.debug(
                         f"Authentication successful: {handler.__class__.__name__} "

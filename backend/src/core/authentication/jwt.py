@@ -201,9 +201,7 @@ class AuthService:
                 "created_at": result[13],
                 "updated_at": result[14],
                 "created_by": result[15],
-                "api_access_enabled": (
-                    bool(result[16]) if result[16] is not None else True
-                ),
+                "api_access_enabled": (bool(result[16]) if result[16] is not None else True),
                 "rate_limit_tier": result[17] or "standard",
             }
 
@@ -216,9 +214,7 @@ class AuthService:
                 "CLIENT_ADMIN": self.UserRole.CLIENT_ADMIN,
                 "CLIENT_USER": self.UserRole.CLIENT_USER,
             }
-            user_data["role"] = role_mapping.get(
-                user_data["role_str"], self.UserRole.CLIENT_USER
-            )
+            user_data["role"] = role_mapping.get(user_data["role_str"], self.UserRole.CLIENT_USER)
 
             # Map string status to enum values (handle both values and names)
             status_mapping = {
@@ -273,9 +269,7 @@ class AuthService:
 
                 # Lock account if too many attempts
                 if new_attempts >= MAX_LOGIN_ATTEMPTS:
-                    lock_until = datetime.utcnow() + timedelta(
-                        minutes=LOCKOUT_DURATION_MINUTES
-                    )
+                    lock_until = datetime.utcnow() + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
                     self.db.execute(
                         text(
                             "UPDATE users SET login_attempts = :attempts, locked_until = :locked WHERE username = :username"
@@ -298,9 +292,7 @@ class AuthService:
                     )
 
                 self.db.commit()
-                logger.warning(
-                    f"Authentication failed: invalid password for user '{username}'"
-                )
+                logger.warning(f"Authentication failed: invalid password for user '{username}'")
                 return None
 
             # Check client scope for non-super-admin users
@@ -336,9 +328,7 @@ class AuthService:
     # JWT TOKEN MANAGEMENT
     # =========================================================================
 
-    def create_access_token(
-        self, user: Any, permissions: List[str] = None
-    ) -> Dict[str, Any]:
+    def create_access_token(self, user: Any, permissions: List[str] = None) -> Dict[str, Any]:
         """Create JWT access token with user claims."""
         import time
 
@@ -383,9 +373,7 @@ class AuthService:
         import time
 
         now = int(time.time())  # Use time.time() for proper UTC timestamps
-        exp = now + (
-            REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
-        )  # Convert days to seconds
+        exp = now + (REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60)  # Convert days to seconds
         jti = secrets.token_urlsafe(32)
 
         claims = {
@@ -453,9 +441,7 @@ class AuthService:
             logger.error(f"Token validation error: {e}")
             return None
 
-    def validate_token(
-        self, token: str, token_type: str = "access"
-    ) -> Optional[UserTokenClaims]:
+    def validate_token(self, token: str, token_type: str = "access") -> Optional[UserTokenClaims]:
         """Validate JWT token and return claims with database session check."""
         try:
             # First do stateless validation
@@ -521,11 +507,7 @@ class AuthService:
 
     def revoke_token(self, jti: str, reason: str = "user_logout") -> bool:
         """Revoke a specific token session."""
-        session = (
-            self.db.query(self.UserSession)
-            .filter(self.UserSession.session_id == jti)
-            .first()
-        )
+        session = self.db.query(self.UserSession).filter(self.UserSession.session_id == jti).first()
         if session:
             session.is_active = False
             session.revoked_at = datetime.utcnow()
@@ -534,9 +516,7 @@ class AuthService:
             return True
         return False
 
-    def revoke_all_user_tokens(
-        self, user_id: int, reason: str = "security_action"
-    ) -> int:
+    def revoke_all_user_tokens(self, user_id: int, reason: str = "security_action") -> int:
         """Revoke all active tokens for a user."""
         count = (
             self.db.query(self.UserSession)
@@ -647,9 +627,7 @@ class AuthService:
     ) -> TokenResponse:
         """Complete login flow with token generation."""
         # Authenticate user
-        user = self.authenticate_user(
-            request.username, request.password, request.client_id
-        )
+        user = self.authenticate_user(request.username, request.password, request.client_id)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
