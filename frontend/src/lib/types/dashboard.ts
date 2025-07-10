@@ -303,3 +303,11 @@ export interface DashboardState {
   loading: boolean;
   error: string | null;
 }
+
+// WebSocket message types
+export interface WebSocketMessage {
+  type: string;
+  data?: any;
+  timestamp?: string;
+  client_id?: string;
+}
