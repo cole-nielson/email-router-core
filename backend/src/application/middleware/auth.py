@@ -295,7 +295,9 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
                     override_func = app.dependency_overrides[get_auth_service]
                     auth_service = override_func()
                     request.state.auth_service = auth_service
-                    request.state.db_session = None  # No session to close in override case
+                    request.state.db_session = (
+                        None  # No session to close in override case
+                    )
                     request.state.is_test_override = True
                 else:
                     # Use regular dependency resolution
@@ -313,7 +315,9 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
                         user_repository = SQLAlchemyUserRepository(db)
                         auth_service = AuthService(user_repository)
                         request.state.auth_service = auth_service
-                        request.state.db_session = None  # Don't close overridden sessions
+                        request.state.db_session = (
+                            None  # Don't close overridden sessions
+                        )
                         request.state.is_test_override = True
                     else:
                         # Use the same get_db function that endpoints use
@@ -323,7 +327,9 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
                         auth_service = AuthService(user_repository)
                         request.state.auth_service = auth_service
                         request.state.db_session = db
-                        request.state.db_generator = db_generator  # Keep generator for cleanup
+                        request.state.db_generator = (
+                            db_generator  # Keep generator for cleanup
+                        )
                         request.state.is_test_override = False
             except Exception as e:
                 logger.warning(f"Failed to inject auth service: {e}")
@@ -343,7 +349,9 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
 
             # Skip authentication for public endpoints
             if self._is_public_endpoint(str(request.url.path)):
-                logger.debug(f"Skipping authentication for public endpoint: {request.url.path}")
+                logger.debug(
+                    f"Skipping authentication for public endpoint: {request.url.path}"
+                )
                 response = await call_next(request)
                 self._add_security_headers(response)
                 return response
@@ -382,7 +390,9 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
             self.security_manager.log_security_event(
                 "middleware_error",
                 {"error": str(e), "path": str(request.url.path)},
-                getattr(request.state, "security_context", SecurityContext()).ip_address,
+                getattr(
+                    request.state, "security_context", SecurityContext()
+                ).ip_address,
             )
             logger.error(f"Unified auth middleware error: {e}")
             raise
@@ -404,7 +414,9 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
                     else:
                         request.state.db_session.close()
                 except Exception as e:
-                    logger.warning(f"Failed to close database session in middleware: {e}")
+                    logger.warning(
+                        f"Failed to close database session in middleware: {e}"
+                    )
 
     def _is_public_endpoint(self, path: str) -> bool:
         """
