@@ -8,7 +8,25 @@ This guide provides specific instructions for connecting the existing frontend c
 
 ## API Client Architecture
 
-### **Existing APIClient** ✅ **PRODUCTION-READY**
+### **Complete Service Layer** ✅ **PRODUCTION-READY**
+
+**New Service Architecture**: `frontend/src/lib/services/`
+
+```typescript
+// Complete service layer now available
+import { services } from '$lib/services';
+
+// All backend APIs accessible through standardized services:
+✅ AuthService - User management, JWT, RBAC, sessions
+✅ ClientService - Client config, routing, branding, domains
+✅ DashboardService - Metrics, analytics, activity feeds
+✅ SystemService - Health monitoring, diagnostics, logs
+✅ BaseService - Standardized error handling & patterns
+✅ TypeScript types for all API domains
+✅ 50+ endpoint mappings with consistent patterns
+```
+
+### **APIClient Foundation** ✅ **PRODUCTION-READY**
 
 Location: `frontend/src/lib/api/apiClient.ts`
 
