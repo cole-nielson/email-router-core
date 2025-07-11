@@ -1,4 +1,4 @@
-import adapter from '@sveltejs/adapter-vercel';
+import adapter from '@sveltejs/adapter-auto';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 /** @type {import('@sveltejs/kit').Config} */
@@ -8,29 +8,21 @@ const config = {
 	preprocess: vitePreprocess(),
 
 	kit: {
-		// Vercel adapter for production deployment
-		adapter: adapter({
-			runtime: 'nodejs18.x',
-			regions: ['iad1'], // US East for low latency to backend
-			functions: {
-				'src/routes/api/+server.ts': {
-					maxDuration: 30
-				}
-			}
-		}),
-		
+		// Auto adapter for development
+		adapter: adapter(),
+
 		// Environment configuration
 		env: {
 			dir: './',
 			publicPrefix: 'PUBLIC_'
 		},
-		
+
 		// Path aliases
 		alias: {
 			'$lib': './src/lib',
 			'$lib/*': './src/lib/*'
 		},
-		
+
 		// CSP for security
 		csp: {
 			mode: 'auto',

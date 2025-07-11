@@ -4,17 +4,29 @@
   import { currentUser, authService } from '$lib/stores/authStore';
   import AuthGuard from '$lib/components/auth/AuthGuard.svelte';
   import SystemMonitor from '$lib/components/monitoring/SystemMonitor.svelte';
-  import { 
-    User, 
-    Shield, 
-    Clock, 
-    LogOut, 
+  import RealtimeMetrics from '$lib/components/realtime/RealtimeMetrics.svelte';
+  import RealtimeActivityFeed from '$lib/components/realtime/RealtimeActivityFeed.svelte';
+  import ConnectionStatus from '$lib/components/realtime/ConnectionStatus.svelte';
+  import RealtimeAlerts from '$lib/components/realtime/RealtimeAlerts.svelte';
+  import { services } from '$lib/services';
+  import { websocketStore, realtimeMetrics } from '$lib/stores/websocket';
+  import type { DashboardMetrics, ActivityItem } from '$lib/types/dashboard';
+  import {
+    User,
+    Shield,
+    Clock,
+    LogOut,
     Settings,
     Bell,
     Mail,
     BarChart3,
     ChevronDown,
-    ChevronUp
+    ChevronUp,
+    Activity,
+    Zap,
+    CheckCircle,
+    AlertTriangle,
+    TrendingUp
   } from 'lucide-svelte';
 
   // State
@@ -24,6 +36,14 @@
   async function handleLogout() {
     await authService.logout();
   }
+
+  // Initialize WebSocket connection on mount
+  onMount(() => {
+    if ($currentUser?.client_id) {
+      // WebSocket will auto-connect via the websocket store
+      websocketStore.connect($currentUser.client_id);
+    }
+  });
 
   // Toggle monitoring section
   function toggleMonitoring() {
@@ -79,6 +99,8 @@
           <div class="flex items-center space-x-4">
             {#if $currentUser}
               <div class="flex items-center space-x-3">
+                <!-- Real-time connection status -->
+                <ConnectionStatus variant="badge" />
                 <span class="text-sm text-gray-700">
                   Welcome, {$currentUser.full_name}
                 </span>
@@ -103,11 +125,90 @@
         <div class="bg-white overflow-hidden shadow rounded-lg mb-6">
           <div class="px-4 py-5 sm:p-6">
             <h2 class="text-lg leading-6 font-medium text-gray-900 mb-4">
-              Welcome to Email Router Dashboard
+              {#if $currentUser?.client_id}
+                Email Router Dashboard - {$currentUser.client_id}
+              {:else}
+                Email Router System Dashboard
+              {/if}
             </h2>
             <p class="text-sm text-gray-600">
-              Your AI-powered email automation platform is ready. This is the foundation for Week 1 authentication implementation.
+              Real-time monitoring and analytics for your AI-powered email automation platform.
             </p>
+          </div>
+        </div>
+
+        <!-- Real-time Metrics -->
+        <RealtimeMetrics
+          clientId={$currentUser?.client_id}
+          showConnectionStatus={false}
+        />
+
+        <!-- Dashboard Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <!-- Real-time Activity Feed -->
+          <div class="lg:col-span-2">
+            <RealtimeActivityFeed
+              clientId={$currentUser?.client_id}
+              maxItems={15}
+              showConnectionStatus={false}
+            />
+          </div>
+
+          <!-- Side Panel -->
+          <div class="space-y-6">
+            <!-- Quick Stats -->
+            {#if $realtimeMetrics}
+              <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                  <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                    Quick Stats
+                  </h3>
+                  <dl class="space-y-4">
+                    <div>
+                      <dt class="text-sm font-medium text-gray-500">7-Day Volume</dt>
+                      <dd class="text-2xl font-bold text-gray-900">{$realtimeMetrics.emails_processed_7d?.toLocaleString() || '0'}</dd>
+                    </div>
+                    <div>
+                      <dt class="text-sm font-medium text-gray-500">30-Day Volume</dt>
+                      <dd class="text-2xl font-bold text-gray-900">{$realtimeMetrics.emails_processed_30d?.toLocaleString() || '0'}</dd>
+                    </div>
+                    <div>
+                      <dt class="text-sm font-medium text-gray-500">Routing Success</dt>
+                      <dd class="text-2xl font-bold text-gray-900">{$realtimeMetrics.routing_success_rate?.toFixed(1) || '0'}%</dd>
+                    </div>
+                    <div>
+                      <dt class="text-sm font-medium text-gray-500">Active Automations</dt>
+                      <dd class="text-2xl font-bold text-gray-900">{$realtimeMetrics.active_automations || '0'}</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+            {/if}
+
+            <!-- System Monitoring Toggle -->
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+              <div class="px-4 py-5 sm:p-6">
+                <button
+                  on:click={toggleMonitoring}
+                  class="w-full flex items-center justify-between p-4 border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                >
+                  <div class="flex items-center">
+                    <BarChart3 class="h-6 w-6 {showMonitoring ? 'text-blue-600' : 'text-gray-400'}" />
+                    <div class="ml-3 text-left">
+                      <p class="text-sm font-medium text-gray-900">System Health</p>
+                      <p class="text-sm text-gray-500">{showMonitoring ? 'Hide details' : 'Show health details'}</p>
+                    </div>
+                  </div>
+                  <div class="ml-4">
+                    {#if showMonitoring}
+                      <ChevronUp class="h-4 w-4 text-gray-400" />
+                    {:else}
+                      <ChevronDown class="h-4 w-4 text-gray-400" />
+                    {/if}
+                  </div>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -196,7 +297,7 @@
             <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
               Quick Actions
             </h3>
-            
+
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <!-- Coming soon placeholders -->
               <button
@@ -264,7 +365,7 @@
                     <span class="text-sm text-gray-500">Live</span>
                   </div>
                 </div>
-                
+
                 <SystemMonitor />
               </div>
             </div>
@@ -299,5 +400,8 @@
         </div>
       </div>
     </main>
+
+    <!-- Real-time Alerts -->
+    <RealtimeAlerts position="top-right" />
   </div>
-</AuthGuard> 
+</AuthGuard>
