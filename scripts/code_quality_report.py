@@ -10,7 +10,8 @@ from typing import Dict, Tuple
 
 
 def run_command(command: str) -> Tuple[str, int]:
-    """Run shell command and return output with exit code."""
+    """Run shell command and return output with exit 
+    code."""
     try:
         result = subprocess.run(
             command, shell=True, capture_output=True, text=True, timeout=60
