@@ -1,68 +1,68 @@
 # =============================================================================
-# CLIENT CONFIGURATION - COLE NIELSON (INFRASTRUCTURE SCHEMA)
+# CLIENT CONFIGURATION - DEMO CLIENT (INFRASTRUCTURE SCHEMA)
 # Updated to match infrastructure.config.schema ClientConfig model
 # =============================================================================
 
 # Basic client information (top-level as per schema)
-client_id: "client-001-cole-nielson"
-name: "Cole Nielson Email Router"
+client_id: "client-001-demo"
+name: "Demo Email Router"
 industry: "Technology"
 timezone: "America/Mountain"
 active: true
 
 # Domain configuration
 domains:
-  primary: "mail.colesportfolio.com"
-  support: "support@mail.colesportfolio.com"
-  mailgun: "mail.colesportfolio.com"
+  primary: "mail.example.com"
+  support: "support@mail.example.com"
+  mailgun: "mail.example.com"
   aliases:
-    - "colenielson.dev"
+    - "demo.example.com"
 
 # Branding configuration
 branding:
-  company_name: "Cole Nielson Email Router"
+  company_name: "Demo Email Router"
   email_signature: "AI Email Router Support Team"
   primary_color: "#667eea"
   secondary_color: "#764ba2"
   logo_url: ""
-  footer_text: "© 2024 Cole Nielson Email Router. Automated email processing."
+  footer_text: "© 2024 Demo Email Router. Automated email processing."
 
 # Contact information (Required)
 contacts:
-  primary_contact: "colenielson.re@gmail.com"
-  escalation_contact: "colenielson8@gmail.com"
-  billing_contact: "colenielson8@gmail.com"
+  primary_contact: "demo@example.com"
+  escalation_contact: "escalation@example.com"
+  billing_contact: "billing@example.com"
 
 # Routing configuration (List[ClientRoutingRule] as per schema)
 routing:
   - category: "support"
-    email: "colenielson.re@gmail.com"
-    backup_email: "colenielson8@gmail.com"
+    email: "support@example.com"
+    backup_email: "backup@example.com"
     priority: 1
     enabled: true
   - category: "billing"
-    email: "colenielson8@gmail.com"
-    backup_email: "colenielson.re@gmail.com"
+    email: "billing@example.com"
+    backup_email: "support@example.com"
     priority: 1
     enabled: true
   - category: "sales"
-    email: "colenielson@u.boisestate.edu"
-    backup_email: "colenielson.re@gmail.com"
+    email: "sales@example.com"
+    backup_email: "support@example.com"
     priority: 1
     enabled: true
   - category: "technical"
-    email: "colenielson.re@gmail.com"
-    backup_email: "colenielson8@gmail.com"
+    email: "tech@example.com"
+    backup_email: "support@example.com"
     priority: 1
     enabled: true
   - category: "complaint"
-    email: "colenielson8@gmail.com"
-    backup_email: "colenielson.re@gmail.com"
+    email: "complaints@example.com"
+    backup_email: "support@example.com"
     priority: 1
     enabled: true
   - category: "general"
-    email: "colenielson.re@gmail.com"
-    backup_email: "colenielson8@gmail.com"
+    email: "general@example.com"
+    backup_email: "support@example.com"
     priority: 1
     enabled: true
 
