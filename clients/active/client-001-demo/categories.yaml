@@ -11,35 +11,35 @@ categories:
     priority: "high"
     keywords: ["help", "problem", "issue", "error", "bug", "broken", "not working"]
     confidence_threshold: 0.8
-    
+
   billing:
     name: "Billing & Payments"
     description: "Payment issues, invoices, account billing, refunds"
     priority: "high"
     keywords: ["invoice", "payment", "billing", "charge", "refund", "receipt"]
     confidence_threshold: 0.85
-    
+
   sales:
     name: "Sales Inquiries"
     description: "Pricing inquiries, product demos, new business"
     priority: "medium"
     keywords: ["pricing", "demo", "quote", "purchase", "buy", "trial"]
     confidence_threshold: 0.75
-    
+
   general:
     name: "General Inquiries"
     description: "General questions, feedback, other inquiries"
     priority: "low"
     keywords: ["question", "inquiry", "feedback", "suggestion"]
     confidence_threshold: 0.6
-    
+
   technical:
     name: "Advanced Technical"
     description: "Complex technical issues requiring specialist knowledge"
     priority: "high"
     keywords: ["api", "integration", "database", "server", "configuration"]
     confidence_threshold: 0.9
-    
+
   complaint:
     name: "Complaints"
     description: "Customer complaints and dissatisfaction"
@@ -49,7 +49,7 @@ categories:
 
 # Additional specialized categories (optional)
 specialized_categories:
-    
+
   feature_request:
     name: "Feature Requests"
     description: "Product feature requests and suggestions"
@@ -59,7 +59,7 @@ specialized_categories:
 
 # Priority levels and their meanings
 priority_levels:
-  urgent: 
+  urgent:
     response_time: "within 1 hour"
     escalate_immediately: true
   high:
@@ -76,4 +76,4 @@ priority_levels:
 fallback:
   default_category: "general"
   minimum_confidence: 0.5
-  unknown_threshold: 0.3  # Below this, classify as "general" 
+  unknown_threshold: 0.3  # Below this, classify as "general"
